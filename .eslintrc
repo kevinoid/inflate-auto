@@ -16,6 +16,9 @@ ecmaFeatures:
   octalLiterals: true
   templateStrings: true
 
+## LOCAL:  Use eslint recommendations where not otherwise specified
+extends: "eslint:recommended"
+
 rules:
   # Possible Errors
   # list: https://github.com/eslint/eslint/tree/master/docs/rules#possible-errors
@@ -29,6 +32,8 @@ rules:
   no-duplicate-case: 2
   ## disallow assignment of exceptional params
   no-ex-assign: 2
+  ## LOCAL:  disallow shadowing of variables
+  no-shadow: [2, { "hoist": "all" }]
   ## disallow use of reserved words as keys like enum, class
   quote-props: [2, "as-needed", { "keywords": true }]
   ## disallow unreachable code
