@@ -1,0 +1,40 @@
+{
+  "name": "@kevinoid/inflate-auto",
+  "version": "0.1.0",
+  "description": "Inflate stream which detects compression type from the compressed data",
+  "keywords": [
+    "compression",
+    "compressor",
+    "deflate",
+    "gunzip",
+    "gzip",
+    "inflate",
+    "stream",
+    "zlib"
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/kevinoid/inflate-auto",
+  "author": "Kevin Locke <kevin@kevinlocke.name>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kevinoid/inflate-auto.git"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "istanbul": "^0.4.1",
+    "mocha": "^2.3.4",
+    "should": "^8.0.2"
+  },
+  "main": "index.js",
+  "files": [
+    "LICENSE",
+    "README.md",
+    "index.js"
+  ],
+  "scripts": {
+    "test": "npm run lint && npm run test-ci",
+    "test-ci": "mocha --recursive test/",
+    "test-cov": "istanbul cover _mocha test/",
+    "lint": "eslint . && echo Lint passed"
+  }
+}
