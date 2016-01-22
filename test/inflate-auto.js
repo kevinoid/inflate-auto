@@ -10,10 +10,10 @@
 // Check close, flush, params, reset work when called before write
 'use strict';
 
-var Buffer = require('buffer').Buffer;
-var InflateAuto = require('..');
-var should = require('should');
-var zlib = require('zlib');
+const Buffer = require('buffer').Buffer;
+const InflateAuto = require('..');
+const should = require('should');
+const zlib = require('zlib');
 
 describe('InflateAuto', function() {
   // Match constructor behavior of Gunzip/Inflate/InflateRaw
