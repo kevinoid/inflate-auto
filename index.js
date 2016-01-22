@@ -66,8 +66,7 @@ function zlibBufferSync(engine, buffer) {
   if (!(buffer instanceof Buffer))
     throw new TypeError('Not a string or buffer');
 
-  var inflater = engine._chooseInflaterNow(buffer);
-
+  var inflater = engine._detectInflaterNow(buffer);
   var flushFlag = zlib.Z_FINISH;
 
   return inflater._processChunk(buffer, flushFlag);
@@ -88,13 +87,20 @@ function InflateAuto(opts) {
   /** Whether #close() has been called.
    * @private {boolean} */
   this._closed = false;
+
   /** The instance of a zlib class which does the inflating for the detected
-   * compression type.
+   * compression format.
    * @private {zlib.Gunzip|zlib.Inflate|zlib.InflateRaw} */
   this._inflater = null;
+
   /** Options to pass to the inflater when created.
    * @private {Object} */
   this._options = opts;
+
+  /* Invariant:
+   * At most one of _inflater or _writeBuf is non-null.
+   * Since writes are being forwarded or buffered.
+   */
 }
 inherits(InflateAuto, Transform);
 
@@ -114,8 +120,8 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
   return zlibBufferSync(new InflateAuto(opts), buffer);
 };
 
-/** Chooses which zlib inflater to use based on the data in a Buffer, returning
- * null when uncertain.
+/** Detects which zlib inflater may be able to inflate data beginning with a
+ * given Buffer, returning null when uncertain.
  *
  * This method detects the existence of a gzip or zlib header at the beginning
  * of the Buffer and returns an instance of the corresponding zlib class:
@@ -125,13 +131,13 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
  * - Otherwise, an instance of zlib.DeflateRaw.
  *
  * @protected
- * @param {buffer.Buffer} chunk Data from which to deduce the compression
- * type.
+ * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
+ * compression format.
  * @return {zlib.Gunzip|zlib.Inflate|zlib.InflateRaw} An instance of the zlib
- * type which will inflate chunk and following data, or null if chunk is too
- * short to deduce the type conclusively.
+ * type which will inflate chunk and subsequent data, or null if chunk is too
+ * short to deduce the format conclusively.
  */
-InflateAuto.prototype._chooseInflater = function _chooseInflater(chunk) {
+InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
   if (!chunk || !chunk.length) {
     // No data to determine inflater
     return null;
@@ -168,23 +174,22 @@ InflateAuto.prototype._chooseInflater = function _chooseInflater(chunk) {
   return new zlib.InflateRaw(this._options);
 };
 
-/** Chooses which zlib inflater to use based on the data in a Buffer,
- * returning a default when uncertain.
+/** Detects which zlib inflater may be able to inflate data beginning with a
+ * given Buffer, returning a default when uncertain.
  *
- * This method behaves like _chooseInflater except that if a valid header can
+ * This method behaves like _detectInflater except that if a valid header can
  * not be found, an instance of zlib.InflateRaw is returned (rather than null)
- * for use in cases where all data is present and "undecided" is not an
- * option.
+ * for use in cases where all data is present and "undecided" is not an option.
  *
  * @protected
- * @param {buffer.Buffer} chunk Data from which to deduce the compression
- * type.
+ * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
+ * compression format.
  * @return {!(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw)} An instance of the
- * zlib type which will inflate chunk and following data.
- * @see #_chooseInflater()
+ * zlib type which will inflate chunk and subsequent data.
+ * @see #_detectInflater()
  */
-InflateAuto.prototype._chooseInflaterNow = function _chooseInflaterNow(chunk) {
-  return this._chooseInflater(chunk) || new zlib.InflateRaw(this._options);
+InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
+  return this._detectInflater(chunk) || new zlib.InflateRaw(this._options);
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -192,13 +197,13 @@ InflateAuto.prototype._chooseInflaterNow = function _chooseInflaterNow(chunk) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  if (this._buffered) {
+  if (this._writeBuf) {
     assert(!this._inflater);
 
     // Have insufficient data for header checks.  Must be raw.
-    this._setInflater(this._chooseInflaterNow(this._buffered));
-    var chunk = this._buffered;
-    delete this._buffered;
+    this._setInflater(this._detectInflaterNow(this._writeBuf));
+    var chunk = this._writeBuf;
+    delete this._writeBuf;
     return this._inflater.end(chunk, callback);
   }
 
@@ -215,9 +220,9 @@ InflateAuto.prototype._flush = function _flush(callback) {
 /** Sets the inflater class.
  *
  * @protected
- * @param {!stream.Duplex} inflater An instance of the class which will be
- * used to inflate the data.
- * @see #_chooseInflater()
+ * @param {!stream.Duplex} inflater Stream which will be used to inflate data
+ * written to this stream.
+ * @see #_detectInflater()
  */
 InflateAuto.prototype._setInflater = function _setInflater(inflater) {
   var self = this;
@@ -267,14 +272,14 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
   if (chunk === null || chunk.length === 0)
     return process.nextTick(callback);
 
-  if (this._buffered) {
-    chunk = Buffer.concat([this._buffered, chunk]);
-    delete this._buffered;
+  if (this._writeBuf) {
+    chunk = Buffer.concat([this._writeBuf, chunk]);
+    delete this._writeBuf;
   }
 
-  var inflater = this._chooseInflater(chunk);
+  var inflater = this._detectInflater(chunk);
   if (!inflater) {
-    this._buffered = chunk;
+    this._writeBuf = chunk;
     return process.nextTick(callback);
   }
 
@@ -300,12 +305,9 @@ InflateAuto.prototype.close = function close(callback) {
   process.nextTick(this.emit.bind(this), 'close');
 };
 
-/** Sets the type of flushing behavior of the writes to zlib.
+/** Flushes queued writes with a given zlib flush behavior.
  *
- * For inflate, this has no visible effect.  This method is kept for
- * compatibility only.
- *
- * @param {number} kind Flush behavior of writes to zlib.  Must be one of the
+ * @param {number=} kind Flush behavior of writes to zlib.  Must be one of the
  * zlib flush constant values.
  * @param {?function(Error)=} callback
  */
@@ -321,12 +323,12 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
  * For inflate, this has no effect.  This method is kept for compatibility
  * only.
  *
- * Note: Parameter checking is not performed if the type hasn't been
+ * Note: Parameter checking is not performed if the format hasn't been
  * determined.  Although this is currently possible (since parameters are
- * currently independent of type) it requires instantiating a zlib object with
- * bindings, which is heavy for checking args which haven't changed since this
- * method was added to the Node API.  If there is a use case for this, please
- * open an issue.
+ * currently independent of format) it requires instantiating a zlib object
+ * with bindings, which is heavy for checking args which haven't changed since
+ * this method was added to the Node API.  If there is a use case for such
+ * checking, please open an issue.
  *
  * @param {number} level Compression level (between zlib.Z_MIN_LEVEL and
  * zlib.Z_MAX_LEVEL).
@@ -343,7 +345,7 @@ InflateAuto.prototype.params = function params(level, strategy, callback) {
 
 /** Discards any buffered data and resets the decoder to its initial state.
  *
- * Note:  If a type has been detected, reset does not currently clear the
+ * Note:  If a format has been detected, reset does not currently clear the
  * detection (for performance and to reduce unnecessary complexity).  If there
  * is a real-world use case for this type of "full reset", please open an
  * issue.
@@ -353,7 +355,7 @@ InflateAuto.prototype.reset = function reset() {
     return this._inflater.reset.apply(this._inflater, arguments);
 
   assert(!this._closed, 'zlib binding closed');
-  delete this._buffered;
+  delete this._writeBuf;
 };
 
 /** Queues a method call for the inflater until one is set.
