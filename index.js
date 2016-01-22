@@ -120,6 +120,11 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
   return zlibBufferSync(new InflateAuto(opts), buffer);
 };
 
+/** Maximum number of bytes required for _detectInflater to conclusively
+ * determine the inflater to use.
+ */
+InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
+
 /** Detects which zlib inflater may be able to inflate data beginning with a
  * given Buffer, returning null when uncertain.
  *
@@ -272,18 +277,34 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
   if (chunk === null || chunk.length === 0)
     return process.nextTick(callback);
 
+  var signature;
   if (this._writeBuf) {
-    chunk = Buffer.concat([this._writeBuf, chunk]);
-    delete this._writeBuf;
+    // Only copy up to the max signature size to avoid needless huge copies
+    signature = new Buffer(Math.min(
+          this.SIGNATURE_MAX_LEN,
+          this._writeBuf.length + chunk.length));
+    this._writeBuf.copy(signature);
+    chunk.copy(signature, this._writeBuf.length);
+  } else {
+    signature = chunk;
   }
 
-  var inflater = this._detectInflater(chunk);
+  var inflater = this._detectInflater(signature);
   if (!inflater) {
-    this._writeBuf = chunk;
+    // If this fails, SIGNATURE_MAX_LEN doesn't match _detectInflaters
+    assert(signature.length ===
+        chunk.length + (this._writeBuf ? this._writeBuf.length : 0));
+    this._writeBuf = signature;
     return process.nextTick(callback);
   }
 
   this._setInflater(inflater);
+
+  if (this._writeBuf) {
+    this._inflater.write(this._writeBuf);
+    delete this._writeBuf;
+  }
+
   return this._inflater.write(chunk, encoding, callback);
 };
 
