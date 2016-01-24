@@ -134,7 +134,7 @@ describe('InflateAuto', function() {
     });
   });
 
-  it('treats partial deflate header as raw', function(done) {
+  it('treats partial zlib header as raw', function(done) {
     var partial = new Buffer([0x78]);
     zlib.inflateRaw(partial, function(errInflate, dataInflate) {
       InflateAuto.inflateAuto(partial, function(errAuto, dataAuto) {
@@ -256,7 +256,7 @@ describe('InflateAuto', function() {
       should.deepEqual(errInflate, errAuto);
     });
 
-    it('errors like InflateRaw for partial header', function() {
+    it('errors like InflateRaw for partial zlib header', function() {
       var partial = new Buffer([0x78]);
 
       var dataInflate, errInflate;
@@ -527,7 +527,7 @@ describe('InflateAuto', function() {
       });
     });
 
-    it('discards partial header', function(done) {
+    it('discards partial zlib header', function(done) {
       var input = new Buffer([0]);
       zlib.deflate(input, function(err, deflated) {
         should.not.exist(err);
@@ -551,7 +551,7 @@ describe('InflateAuto', function() {
       });
     });
 
-    it('discards post-header data', function(done) {
+    it('discards post-zlib-header data', function(done) {
       var input = new Buffer([0]);
       zlib.deflate(input, function(err, deflated) {
         should.not.exist(err);
