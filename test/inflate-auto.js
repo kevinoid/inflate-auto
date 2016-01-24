@@ -398,8 +398,6 @@ describe('InflateAuto', function() {
       auto.flush(done);
     });
 
-    // Note:  No good way to test functionality, since flush doesn't have a
-    // visible effect for inflate.
     it('doesn\'t cause error before write', function(done) {
       var input = new Buffer([0]);
       zlib.deflate(input, function(err, deflated) {
@@ -418,6 +416,30 @@ describe('InflateAuto', function() {
         });
 
         auto.flush();
+        auto.end(deflated);
+      });
+    });
+
+    // This behavior changed in node v5 and later due to
+    // https://github.com/nodejs/node/pull/2595
+    it('behaves like Inflate for Z_FINISH before write', function(done) {
+      var input = new Buffer([0]);
+      zlib.deflate(input, function(err, deflated) {
+        should.not.exist(err);
+
+        var auto = new InflateAuto();
+        auto.on('error', done);
+
+        var output = [];
+        auto.on('data', function(data) {
+          output.push(data);
+        });
+        auto.on('end', function() {
+          should.deepEqual(Buffer.concat(output), input);
+          done();
+        });
+
+        auto.flush(zlib.Z_FINISH);
         auto.end(deflated);
       });
     });
@@ -442,6 +464,58 @@ describe('InflateAuto', function() {
         auto.write(deflated.slice(0, 4));
         auto.flush();
         auto.end(deflated.slice(4));
+      });
+    });
+
+    // This behavior changed in node v5 and later due to
+    // https://github.com/nodejs/node/pull/2595
+    it('behaves like Inflate for Z_FINISH between writes', function(done) {
+      var input = new Buffer([0]);
+      zlib.deflate(input, function(errDeflate, deflated) {
+        should.not.exist(errDeflate);
+
+        var auto = new InflateAuto();
+        var inflate = new zlib.Inflate();
+
+        var autoOut = [];
+        auto.on('data', function(data) {
+          autoOut.push(data);
+        });
+
+        var inflateOut = [];
+        inflate.on('data', function(data) {
+          inflateOut.push(data);
+        });
+
+        var autoErr;
+        var inflateErr;
+        function oneDone(err) {
+          if (this === auto) {
+            autoErr = err || false;
+          } else {
+            inflateErr = err || false;
+          }
+
+          if (autoErr !== undefined && inflateErr !== undefined) {
+            should.deepEqual(autoErr, inflateErr);
+            should.deepEqual(autoOut, inflateOut);
+            done();
+          }
+        }
+        // Note:  May raise multiple errors (one for flush, one for end)
+        auto.once('error', oneDone);
+        inflate.once('error', oneDone);
+        auto.on('end', oneDone);
+        inflate.on('end', oneDone);
+
+        auto.write(deflated.slice(0, 4));
+        inflate.write(deflated.slice(0, 4));
+
+        auto.flush(zlib.Z_FINISH);
+        inflate.flush(zlib.Z_FINISH);
+
+        auto.end(deflated.slice(4));
+        inflate.end(deflated.slice(4));
       });
     });
   });
