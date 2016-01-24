@@ -12,8 +12,15 @@
 
 const Buffer = require('buffer').Buffer;
 const InflateAuto = require('..');
+const decapitalize = require('underscore.string/decapitalize');
 const should = require('should');
 const zlib = require('zlib');
+
+const SUPPORTED_TYPES = {
+  Gunzip: 'Gzip',
+  Inflate: 'Deflate',
+  InflateRaw: 'DeflateRaw'
+};
 
 describe('InflateAuto', function() {
   // Match constructor behavior of Gunzip/Inflate/InflateRaw
@@ -180,6 +187,29 @@ describe('InflateAuto', function() {
 
     inflate.write(true);
     inflate.end();
+  });
+
+  Object.keys(SUPPORTED_TYPES).forEach(function(typeName) {
+    var input = new Buffer([0]);
+    var inflateName = decapitalize(typeName);
+    var deflateName = decapitalize(SUPPORTED_TYPES[typeName]);
+
+    // This behavior changed in node v5 and later due to
+    // https://github.com/nodejs/node/pull/2595
+    it('behaves as ' + typeName + ' for truncated', function(done) {
+      zlib[deflateName](input, function(errDeflate, dataDeflated) {
+        should.not.exist(errDeflate);
+
+        var dataTruncated = dataDeflated.slice(0, 4);
+        zlib[inflateName](dataTruncated, function(errInflate, dataInflate) {
+          InflateAuto.inflateAuto(dataTruncated, function(errAuto, dataAuto) {
+            should.deepEqual(errInflate, errAuto);
+            should.deepEqual(dataInflate, dataAuto);
+            done();
+          });
+        });
+      });
+    });
   });
 
   it('emits same error as Gzip for 0-buffer', function(done) {
