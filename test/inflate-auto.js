@@ -255,6 +255,26 @@ describe('InflateAuto', function() {
     });
   });
 
+  Object.keys(SUPPORTED_TYPES).forEach(function(typeName) {
+    var input = new Buffer('test data');
+    var inflateName = decapitalize(typeName);
+    var deflateName = decapitalize(SUPPORTED_TYPES[typeName]);
+
+    it('behaves as ' + typeName + ' for missing dictionary', function(done) {
+      zlib[deflateName](input, {dictionary: input}, function(err, deflated) {
+        should.not.exist(err);
+
+        zlib[inflateName](deflated, function(errInflate, dataInflate) {
+          InflateAuto.inflateAuto(deflated, function(errAuto, dataAuto) {
+            should.deepEqual(errInflate, errAuto);
+            should.deepEqual(dataInflate, dataAuto);
+            done();
+          });
+        });
+      });
+    });
+  });
+
   // Analogous to Gunzip/Inflate/InflateRaw
   describe('.createInflateAuto()', function() {
     it('is a factory function', function() {
