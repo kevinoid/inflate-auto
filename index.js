@@ -202,18 +202,26 @@ InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
+  var chunk;
   if (this._writeBuf) {
     assert(!this._inflater);
 
-    // Have insufficient data for header checks.  Must be raw.
+    // Previous header checks inconclusive.  Must choose one now.
     this._setInflater(this._detectInflaterNow(this._writeBuf));
-    var chunk = this._writeBuf;
+    chunk = this._writeBuf;
     delete this._writeBuf;
-    return this._inflater.end(chunk, callback);
   }
 
-  if (this._inflater)
-    return this._inflater.end(callback);
+  if (this._inflater) {
+    // We need to call the callback after the inflater ends or errors.
+    // Therefore we can't use .end callback (which is called on 'finish' only)
+    //
+    // We also don't want to pass an error to the callback, since Transform
+    // would re-emit the error (which is already forwarded).
+    this._inflater.once('end', callback);
+    this._inflater.once('error', function() { callback(); });
+    return this._inflater.end(chunk);
+  }
 
   if (this._closed)
     return callback(new Error('zlib binding closed'));
