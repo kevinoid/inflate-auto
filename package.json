@@ -1,15 +1,17 @@
 {
   "name": "@kevinoid/inflate-auto",
   "version": "0.1.0",
-  "description": "Inflate stream which detects compression type from the compressed data",
+  "description": "Decompression stream which detects the compression format from the compressed data with minimal buffering.  Supports Gzip-, Deflate-, and DeflateRaw-compressed data.",
   "keywords": [
     "compression",
-    "compressor",
+    "decompress",
+    "decompression",
     "deflate",
     "gunzip",
     "gzip",
     "inflate",
     "stream",
+    "streams",
     "zlib"
   ],
   "license": "MIT",
