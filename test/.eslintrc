@@ -92,6 +92,11 @@ rules:
 
 # Test-related globals for mocha and should.js
 globals:
-  describe : false
-  it       : false
-  should   : false
+  after      : false
+  afterEach  : false
+  before     : false
+  beforeEach : false
+  describe   : false
+  it         : false
+  run        : false
+  should     : false
