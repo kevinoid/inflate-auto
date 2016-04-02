@@ -339,7 +339,7 @@ InflateAuto.prototype.close = function close(callback) {
 
   if (!this._closed) {
     this._closed = true;
-    process.nextTick(this.emit.bind(this), 'close');
+    process.nextTick(this.emit.bind(this, 'close'));
   }
 
   return undefined;
