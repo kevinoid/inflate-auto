@@ -20,6 +20,7 @@
 
 // Create StreamCompare class and refactor tests to use it
 
+var BBPromise = require('bluebird');
 var InflateAuto = require('..');
 var should = require('should');
 var zlib = require('zlib');
@@ -693,7 +694,7 @@ function defineTests(formats) {
 function compressValues(format, namedData) {
   var dataNames = Object.keys(namedData);
   var compressedP = dataNames.map(function(dataName) {
-    return new Promise(function(resolve, reject) {
+    return new BBPromise(function(resolve, reject) {
       var data = namedData[dataName];
       format.compress(data, function(err, compressed) {
         if (err) {
@@ -705,7 +706,7 @@ function compressValues(format, namedData) {
     });
   });
 
-  return Promise.all(compressedP)
+  return BBPromise.all(compressedP)
     .then(function(compressed) {
       return dataNames.reduce(function(compressedByName, dataName, i) {
         compressedByName[dataName] = compressed[i];
@@ -726,16 +727,10 @@ function prepareFormat(format, testData) {
 
 /** Prepares for testing (by pre-compressing data). */
 function prepareTests(formats, testData) {
-  return Promise.all(formats.map(function(format) {
+  return BBPromise.all(formats.map(function(format) {
     return prepareFormat(format, testData);
   }))
     .then(defineTests);
 }
 
-/** Called if an error occurs during test setup. */
-function onSetupError(err) {
-  console.error(err.stack);
-  process.exit(1);
-}
-
-prepareTests(SUPPORTED_FORMATS, TEST_DATA).then(run, onSetupError);
+prepareTests(SUPPORTED_FORMATS, TEST_DATA).done(run);
