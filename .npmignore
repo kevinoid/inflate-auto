@@ -1,0 +1,12 @@
+.editorconfig
+.eslintignore
+.eslintrc
+.npmignore
+.travis.yml
+/coverage/
+/doc-src/
+/doc/
+/scripts
+/test
+TODO.*
+jsdoc*.conf.json

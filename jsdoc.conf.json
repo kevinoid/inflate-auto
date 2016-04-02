@@ -1,0 +1,25 @@
+{
+  "//": "JSDoc configuration",
+  "opts": {
+    "destination": "doc/api",
+    "recurse": true
+  },
+  "source": {
+    "include": [
+      "README.md"
+    ],
+    "exclude": [
+      "coverage",
+      "doc",
+      "node_modules",
+      "test"
+    ]
+  },
+  "tags": {
+    "allowUnknownTags": false,
+    "dictionaries": [
+      "closure",
+      "jsdoc"
+    ]
+  }
+}

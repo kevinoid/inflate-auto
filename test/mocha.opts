@@ -1,5 +1,3 @@
 --check-leaks
 --delay
 --no-exit
---reporter spec
---timeout 2000
