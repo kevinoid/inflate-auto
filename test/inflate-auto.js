@@ -20,7 +20,6 @@
 
 // Create StreamCompare class and refactor tests to use it
 
-var Buffer = require('buffer').Buffer;
 var InflateAuto = require('..');
 var should = require('should');
 var zlib = require('zlib');
@@ -171,6 +170,7 @@ function defineTests(formats) {
   describe('InflateAuto', function() {
     // Match constructor behavior of Gunzip/Inflate/InflateRaw
     it('instantiates without new', function() {
+      // eslint-disable-next-line new-cap
       var auto = InflateAuto();
       should(auto).be.instanceof(InflateAuto);
     });

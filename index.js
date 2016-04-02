@@ -4,16 +4,16 @@
  */
 'use strict';
 
-var Buffer = require('buffer').Buffer;
 var Transform = require('stream').Transform;
 var assert = require('assert').ok;
 var inherits = require('util').inherits;
 var zlib = require('zlib');
 
-/////////////////////////////////////////////////////////////////////////////
+// //////////////////////////////////////////////////////////////////////////
 // Copied from lib/zlib.js @ v5.4.1
 // FIXME: Isn't there an npm module which does this?
 // get-stream is close, but only reads strings not read/write Buffers.
+/* eslint-disable curly, no-cond-assign, yoda */
 
 var kMaxLength = require('buffer').kMaxLength;
 var kRangeErrorMessage = 'Cannot create final Buffer. ' +
@@ -72,7 +72,8 @@ function zlibBufferSync(engine, buffer) {
   return inflater._processChunk(buffer, flushFlag);
 }
 
-/////////////////////////////////////////////////////////////////////////////
+/* eslint-enable curly, no-cond-assign, yoda */
+// //////////////////////////////////////////////////////////////////////////
 
 /**
  * @constructor
@@ -80,7 +81,9 @@ function zlibBufferSync(engine, buffer) {
  * @param {Object} opts Options to pass to the zlib constructor.
  */
 function InflateAuto(opts) {
-  if (!(this instanceof InflateAuto)) return new InflateAuto(opts);
+  if (!(this instanceof InflateAuto)) {
+    return new InflateAuto(opts);
+  }
 
   Transform.call(this, opts);
 
@@ -223,8 +226,9 @@ InflateAuto.prototype._flush = function _flush(callback) {
     return this._inflater.end(chunk);
   }
 
-  if (this._closed)
+  if (this._closed) {
     return callback(new Error('zlib binding closed'));
+  }
 
   // No data has been written and close has not been called.  Nothing to do.
   process.nextTick(callback);
@@ -273,17 +277,21 @@ InflateAuto.prototype._setInflater = function _setInflater(inflater) {
  */
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
     callback) {
-  if (this._inflater)
+  if (this._inflater) {
     return this._inflater.write(chunk, encoding, callback);
+  }
 
-  if (chunk !== null && !(chunk instanceof Buffer))
+  if (chunk !== null && !(chunk instanceof Buffer)) {
     return callback(new Error('invalid input'));
+  }
 
-  if (this._closed)
+  if (this._closed) {
     return callback(new Error('zlib binding closed'));
+  }
 
-  if (chunk === null || chunk.length === 0)
+  if (chunk === null || chunk.length === 0) {
     return process.nextTick(callback);
+  }
 
   var signature;
   if (this._writeBuf) {
@@ -321,17 +329,20 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype.close = function close(callback) {
-  if (this._inflater)
+  if (this._inflater) {
     return this._inflater.close.apply(this._inflater, arguments);
+  }
 
-  if (callback)
+  if (callback) {
     process.nextTick(callback);
+  }
 
-  if (this._closed)
-    return;
+  if (!this._closed) {
+    this._closed = true;
+    process.nextTick(this.emit.bind(this), 'close');
+  }
 
-  this._closed = true;
-  process.nextTick(this.emit.bind(this), 'close');
+  return undefined;
 };
 
 /** Flushes queued writes with a given zlib flush behavior.
@@ -341,10 +352,12 @@ InflateAuto.prototype.close = function close(callback) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype.flush = function flush(kind, callback) {
-  if (this._inflater)
+  if (this._inflater) {
     return this._inflater.flush.apply(this._inflater, arguments);
+  }
 
   this._queueMethodCall('flush', arguments);
+  return undefined;
 };
 
 /** Sets the deflate compression parameters.
@@ -366,10 +379,12 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype.params = function params(level, strategy, callback) {
-  if (this._inflater)
+  if (this._inflater) {
     return this._inflater.params.apply(this._inflater, arguments);
+  }
 
   this._queueMethodCall('params', arguments);
+  return undefined;
 };
 
 /** Discards any buffered data and resets the decoder to its initial state.
@@ -380,11 +395,13 @@ InflateAuto.prototype.params = function params(level, strategy, callback) {
  * issue.
  */
 InflateAuto.prototype.reset = function reset() {
-  if (this._inflater)
+  if (this._inflater) {
     return this._inflater.reset.apply(this._inflater, arguments);
+  }
 
   assert(!this._closed, 'zlib binding closed');
   delete this._writeBuf;
+  return undefined;
 };
 
 /** Queues a method call for the inflater until one is set.
