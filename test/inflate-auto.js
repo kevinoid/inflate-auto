@@ -209,6 +209,19 @@ function defineTests(formats) {
       });
     });
 
+    it('behaves like Inflate for incorrect checksum', function(done) {
+      var compressed = formats[1].compressedData.normal;
+      var invalid = new Buffer(compressed);
+      invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
+      zlib.inflate(invalid, function(errInflate, dataInflate) {
+        InflateAuto.inflateAuto(invalid, function(errAuto, dataAuto) {
+          should.deepEqual(errInflate, errAuto);
+          should.deepEqual(dataInflate, dataAuto);
+          done();
+        });
+      });
+    });
+
     // For objectMode: true validation is done in _transform.  Check we match.
     it('errors on write of invalid type', function(done) {
       var inflate = new zlib.Inflate({objectMode: true});
