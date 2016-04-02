@@ -20,13 +20,13 @@
 
 // Create StreamCompare class and refactor tests to use it
 
-const Buffer = require('buffer').Buffer;
-const InflateAuto = require('..');
-const should = require('should');
-const zlib = require('zlib');
+var Buffer = require('buffer').Buffer;
+var InflateAuto = require('..');
+var should = require('should');
+var zlib = require('zlib');
 
 // Note:  compressedData and uncompressedData are added before tests are run
-const SUPPORTED_FORMATS = [
+var SUPPORTED_FORMATS = [
   {
     compress: zlib.gzip,
     compressStream: zlib.Gzip,
@@ -56,7 +56,7 @@ const SUPPORTED_FORMATS = [
   }
 ];
 
-const TEST_DATA = {
+var TEST_DATA = {
   empty: new Buffer(0),
   // 'normal' is the default for not-data-specific tests
   normal: new Buffer('uncompressed data')

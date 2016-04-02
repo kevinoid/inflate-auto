@@ -4,19 +4,19 @@
  */
 'use strict';
 
-const Buffer = require('buffer').Buffer;
-const Transform = require('stream').Transform;
-const assert = require('assert').ok;
-const inherits = require('util').inherits;
-const zlib = require('zlib');
+var Buffer = require('buffer').Buffer;
+var Transform = require('stream').Transform;
+var assert = require('assert').ok;
+var inherits = require('util').inherits;
+var zlib = require('zlib');
 
 /////////////////////////////////////////////////////////////////////////////
 // Copied from lib/zlib.js @ v5.4.1
 // FIXME: Isn't there an npm module which does this?
 // get-stream is close, but only reads strings not read/write Buffers.
 
-const kMaxLength = require('buffer').kMaxLength;
-const kRangeErrorMessage = 'Cannot create final Buffer. ' +
+var kMaxLength = require('buffer').kMaxLength;
+var kRangeErrorMessage = 'Cannot create final Buffer. ' +
     'It would be larger than 0x' + kMaxLength.toString(16) + ' bytes';
 
 function zlibBuffer(engine, buffer, callback) {
