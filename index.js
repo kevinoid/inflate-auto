@@ -15,7 +15,7 @@ var zlib = require('zlib');
 // get-stream is close, but only reads strings not read/write Buffers.
 /* eslint-disable curly, no-cond-assign, yoda */
 
-var kMaxLength = require('buffer').kMaxLength;
+var kMaxLength = require('buffer').kMaxLength || 0x3fffffff;
 var kRangeErrorMessage = 'Cannot create final Buffer. ' +
     'It would be larger than 0x' + kMaxLength.toString(16) + ' bytes';
 
