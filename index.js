@@ -42,10 +42,23 @@ function InflateAuto(opts) {
 }
 inherits(InflateAuto, Transform);
 
+/** Creates an instance of {@link InflateAuto}.
+ * Analogous to {@link zlib.createInflate}.
+ *
+ * @param {Object=} opts Constructor options.
+ */
 InflateAuto.createInflateAuto = function createInflateAuto(opts) {
   return new InflateAuto(opts);
 };
 
+/** Decompresses a compressed Buffer.
+ * Analogous to {@link zlib.inflate}.
+ *
+ * @param {!Buffer} buffer Compressed data to decompress.
+ * @param {Object=} opts Decompression options.
+ * @param {!function(Error, Buffer=)} callback Callback which receives the
+ * decompressed data.
+ */
 InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
   if (typeof opts === 'function') {
     callback = opts;
@@ -55,6 +68,14 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
 };
 
 if (zlib.inflateSync) {
+  /** Decompresses a compressed Buffer synchronously.
+   * Analogous to {@link zlib.inflateSync}.
+   * Only defined when {@link zlib.inflateSync} is available.
+   *
+   * @param {!Buffer} buffer Compressed data to decompress.
+   * @param {Object=} opts Decompression options.
+   * @return {!Buffer} Decompressed data.
+   */
   InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
     return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
   };
@@ -62,6 +83,7 @@ if (zlib.inflateSync) {
 
 /** Maximum number of bytes required for _detectInflater to conclusively
  * determine the inflater to use.
+ * @const
  */
 InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
 
@@ -300,18 +322,19 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
 if (zlib.Inflate.prototype.params) {
   /** Sets the deflate compression parameters.
    *
-   * For inflate, this has no effect.  This method is kept for compatibility
-   * only.
+   * <p>For inflate, this has no effect.  This method is kept for compatibility
+   * only.  It is only defined when {@link Inflate.prototype.params} is
+   * defined.</p>
    *
-   * Note: Parameter checking is not performed if the format hasn't been
+   * <p>Note: Parameter checking is not performed if the format hasn't been
    * determined.  Although this is currently possible (since parameters are
    * currently independent of format) it requires instantiating a zlib object
    * with bindings, which is heavy for checking args which haven't changed since
    * this method was added to the Node API.  If there is a use case for such
-   * checking, please open an issue.
+   * checking, please open an issue.</p>
    *
-   * @param {number} level Compression level (between zlib.Z_MIN_LEVEL and
-   * zlib.Z_MAX_LEVEL).
+   * @param {number} level Compression level (between {@link zlib.Z_MIN_LEVEL}
+   * and {@link zlib.Z_MAX_LEVEL}).
    * @param {number} strategy Compression strategy (one of the zlib strategy
    * constant values).
    * @param {?function(Error)=} callback
