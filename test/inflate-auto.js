@@ -103,11 +103,13 @@ function defineFormatDataTests(format, dataName) {
     });
   });
 
-  it('works for ' + dataName + ' data synchronously', function(done) {
-    var inflated = InflateAuto.inflateAutoSync(compressed);
-    should.deepEqual(inflated, uncompressed);
-    done();
-  });
+  if (zlib.inflateSync) {
+    it('works for ' + dataName + ' data synchronously', function(done) {
+      var inflated = InflateAuto.inflateAutoSync(compressed);
+      should.deepEqual(inflated, uncompressed);
+      done();
+    });
+  }
 }
 
 /** Defines tests which are run for a given format. */
@@ -150,20 +152,22 @@ function defineFormatTests(format) {
     });
   });
 
-  it('handles missing dictionary', function(done) {
-    var options = {dictionary: uncompressed};
-    compress(uncompressed, options, function(err, compressedDict) {
-      should.ifError(err);
+  if (compress.length === 3) {
+    it('handles missing dictionary', function(done) {
+      var options = {dictionary: uncompressed};
+      compress(uncompressed, options, function(err, compressedDict) {
+        should.ifError(err);
 
-      decompress(compressedDict, function(errInflate, dataInflate) {
-        InflateAuto.inflateAuto(compressedDict, function(errAuto, dataAuto) {
-          should.deepEqual(errInflate, errAuto);
-          should.deepEqual(dataInflate, dataAuto);
-          done();
+        decompress(compressedDict, function(errInflate, dataInflate) {
+          InflateAuto.inflateAuto(compressedDict, function(errAuto, dataAuto) {
+            should.deepEqual(errInflate, errAuto);
+            should.deepEqual(dataInflate, dataAuto);
+            done();
+          });
         });
       });
     });
-  });
+  }
 }
 
 /** Defines tests for a given set of supported formats. */
@@ -257,55 +261,57 @@ function defineTests(formats) {
       });
     });
 
-    describe('.inflateAutoSync()', function() {
-      it('can inflate strings synchronously', function() {
-        var uncompressed = new Buffer([0]);
-        // Note:  deflateSync is invalid UTF-8.  deflateRawSync is ok.
-        var compressed = zlib.deflateRawSync(uncompressed);
-        var inflated = InflateAuto.inflateAutoSync(compressed.toString());
-        should.deepEqual(inflated, uncompressed);
+    if (zlib.inflateSync) {
+      describe('.inflateAutoSync()', function() {
+        it('can inflate strings synchronously', function() {
+          var uncompressed = new Buffer([0]);
+          // Note:  deflateSync is invalid UTF-8.  deflateRawSync is ok.
+          var compressed = zlib.deflateRawSync(uncompressed);
+          var inflated = InflateAuto.inflateAutoSync(compressed.toString());
+          should.deepEqual(inflated, uncompressed);
+        });
+
+        it('errors like Inflate for invalid type synchronously', function() {
+          var errInflate;
+          try {
+            zlib.inflateSync(true);
+          } catch (err) {
+            errInflate = err;
+          }
+
+          var errAuto;
+          try {
+            InflateAuto.inflateAutoSync(true);
+          } catch (err) {
+            errAuto = err;
+          }
+
+          should.exist(errInflate);
+          should.deepEqual(errInflate, errAuto);
+        });
+
+        it('errors like InflateRaw for partial zlib header', function() {
+          var partial = new Buffer([0x78]);
+
+          var dataInflate, errInflate;
+          try {
+            dataInflate = zlib.inflateRawSync(partial);
+          } catch (err) {
+            errInflate = err;
+          }
+
+          var dataAuto, errAuto;
+          try {
+            dataAuto = InflateAuto.inflateAutoSync(partial);
+          } catch (err) {
+            errAuto = err;
+          }
+
+          should.deepEqual(errInflate, errAuto);
+          should.deepEqual(dataInflate, dataAuto);
+        });
       });
-
-      it('errors like Inflate for invalid type synchronously', function() {
-        var errInflate;
-        try {
-          zlib.inflateSync(true);
-        } catch (err) {
-          errInflate = err;
-        }
-
-        var errAuto;
-        try {
-          InflateAuto.inflateAutoSync(true);
-        } catch (err) {
-          errAuto = err;
-        }
-
-        should.exist(errInflate);
-        should.deepEqual(errInflate, errAuto);
-      });
-
-      it('errors like InflateRaw for partial zlib header', function() {
-        var partial = new Buffer([0x78]);
-
-        var dataInflate, errInflate;
-        try {
-          dataInflate = zlib.inflateRawSync(partial);
-        } catch (err) {
-          errInflate = err;
-        }
-
-        var dataAuto, errAuto;
-        try {
-          dataAuto = InflateAuto.inflateAutoSync(partial);
-        } catch (err) {
-          errAuto = err;
-        }
-
-        should.deepEqual(errInflate, errAuto);
-        should.deepEqual(dataInflate, dataAuto);
-      });
-    });
+    }
 
     describe('#close()', function() {
       it('calls its callback immediately', function(done) {
@@ -549,63 +555,65 @@ function defineTests(formats) {
       });
     });
 
-    describe('#params()', function() {
-      // To prevent deadlocks of callers waiting for params before writing
-      it('calls its callback immediately', function(done) {
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);
-      });
-
-      // Note:  Params has no effect on inflate.  Tested only to avoid errors.
-      it('doesn\'t cause error before write', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
+    if (zlib.Inflate.prototype.params) {
+      describe('#params()', function() {
+        // To prevent deadlocks of callers waiting for params before writing
+        it('calls its callback immediately', function(done) {
           var auto = new InflateAuto();
           auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
-          auto.end(compressed);
+          auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);
         });
-      });
 
-      it('doesn\'t cause error between writes', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
+        // Note:  Params has no effect on inflate.  Tested only to avoid errors.
+        it('doesn\'t cause error before write', function(done) {
+          var uncompressed = new Buffer([0]);
+          zlib.deflate(uncompressed, function(err, compressed) {
+            should.ifError(err);
 
-          var auto = new InflateAuto();
-          auto.on('error', done);
+            var auto = new InflateAuto();
+            auto.on('error', done);
 
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
+            var output = [];
+            auto.on('data', function(data) {
+              output.push(data);
+            });
+            auto.on('end', function() {
+              should.deepEqual(Buffer.concat(output), uncompressed);
+              done();
+            });
+
+            auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+            auto.end(compressed);
           });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.write(compressed.slice(0, 4));
-          auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
-          auto.end(compressed.slice(4));
         });
-      });
 
-      // Note:  Argument errors behavior is not guaranteed.  See method comment
-      // for details.
-    });
+        it('doesn\'t cause error between writes', function(done) {
+          var uncompressed = new Buffer([0]);
+          zlib.deflate(uncompressed, function(err, compressed) {
+            should.ifError(err);
+
+            var auto = new InflateAuto();
+            auto.on('error', done);
+
+            var output = [];
+            auto.on('data', function(data) {
+              output.push(data);
+            });
+            auto.on('end', function() {
+              should.deepEqual(Buffer.concat(output), uncompressed);
+              done();
+            });
+
+            auto.write(compressed.slice(0, 4));
+            auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+            auto.end(compressed.slice(4));
+          });
+        });
+
+        // Note:  Argument errors behavior is not guaranteed.  See method
+        // comment for details.
+      });
+    }
 
     describe('#reset()', function() {
       it('does nothing pre-write', function(done) {

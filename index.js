@@ -119,9 +119,11 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
   return zlibBuffer(new InflateAuto(opts), buffer, callback);
 };
 
-InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
-  return zlibBufferSync(new InflateAuto(opts), buffer);
-};
+if (zlib.inflateSync) {
+  InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
+    return zlibBufferSync(new InflateAuto(opts), buffer);
+  };
+}
 
 /** Maximum number of bytes required for _detectInflater to conclusively
  * determine the inflater to use.
@@ -360,32 +362,34 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
   return undefined;
 };
 
-/** Sets the deflate compression parameters.
- *
- * For inflate, this has no effect.  This method is kept for compatibility
- * only.
- *
- * Note: Parameter checking is not performed if the format hasn't been
- * determined.  Although this is currently possible (since parameters are
- * currently independent of format) it requires instantiating a zlib object
- * with bindings, which is heavy for checking args which haven't changed since
- * this method was added to the Node API.  If there is a use case for such
- * checking, please open an issue.
- *
- * @param {number} level Compression level (between zlib.Z_MIN_LEVEL and
- * zlib.Z_MAX_LEVEL).
- * @param {number} strategy Compression strategy (one of the zlib strategy
- * constant values).
- * @param {?function(Error)=} callback
- */
-InflateAuto.prototype.params = function params(level, strategy, callback) {
-  if (this._inflater) {
-    return this._inflater.params.apply(this._inflater, arguments);
-  }
+if (zlib.Inflate.prototype.params) {
+  /** Sets the deflate compression parameters.
+   *
+   * For inflate, this has no effect.  This method is kept for compatibility
+   * only.
+   *
+   * Note: Parameter checking is not performed if the format hasn't been
+   * determined.  Although this is currently possible (since parameters are
+   * currently independent of format) it requires instantiating a zlib object
+   * with bindings, which is heavy for checking args which haven't changed since
+   * this method was added to the Node API.  If there is a use case for such
+   * checking, please open an issue.
+   *
+   * @param {number} level Compression level (between zlib.Z_MIN_LEVEL and
+   * zlib.Z_MAX_LEVEL).
+   * @param {number} strategy Compression strategy (one of the zlib strategy
+   * constant values).
+   * @param {?function(Error)=} callback
+   */
+  InflateAuto.prototype.params = function params(level, strategy, callback) {
+    if (this._inflater) {
+      return this._inflater.params.apply(this._inflater, arguments);
+    }
 
-  this._queueMethodCall('params', arguments);
-  return undefined;
-};
+    this._queueMethodCall('params', arguments);
+    return undefined;
+  };
+}
 
 /** Discards any buffered data and resets the decoder to its initial state.
  *
