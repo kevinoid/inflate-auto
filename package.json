@@ -51,12 +51,13 @@
     "eslint": "^2.3.0",
     "eslint-config-airbnb-base": "^1.0.3",
     "eslint-plugin-import": "^1.5.0",
+    "extend": "^3.0.0",
     "istanbul": "^0.4.1",
     "jsdoc": "^3.4.0",
     "mocha": "^2.3.4",
     "nodecat": "^0.1.0",
     "rimraf": "^2.2.0",
-    "should": "^8.0.2"
+    "stream-compare": "^0.2.0"
   },
   "engines": {
     "node": ">=0.10",

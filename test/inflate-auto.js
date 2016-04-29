@@ -4,57 +4,26 @@
  */
 'use strict';
 
-// Test writing null
-// Test writing 0 bytes
-// Test writing 1 byte
-// Test writing 2 bytes (deflate, gzip, and raw)
-// Test writing 3 bytes (deflate, gzip, and raw)
-// Test each of the above followed by close
-// Test each of the above followed by another write
-// Test corrupted data for deflate, gzip, and raw
-// Check close, flush, params, reset method functionality
-// Check close, flush, params, reset work when called before write
-
 // Test constructor options
 // Test {flush: zlib.Z_BLOCK} option match (doesn't output for 4-byte write)
 
-// Create StreamCompare class and refactor tests to use it
-
 var BBPromise = require('bluebird');
 var InflateAuto = require('..');
-var should = require('should');
+var assert = require('assert');
+var extend = require('extend');
+var streamCompare = require('stream-compare');
 var zlib = require('zlib');
 
-// Note:  compressedData and uncompressedData are added before tests are run
-var SUPPORTED_FORMATS = [
-  {
-    compress: zlib.gzip,
-    compressStream: zlib.Gzip,
-    compressSync: zlib.gzipSync,
-    decompress: zlib.gunzip,
-    decompressStream: zlib.Gunzip,
-    decompressSync: zlib.gunzipSync,
-    headerLen: 3
-  },
-  {
-    compress: zlib.deflate,
-    compressStream: zlib.Deflate,
-    compressSync: zlib.deflateSync,
-    decompress: zlib.inflate,
-    decompressStream: zlib.Inflate,
-    decompressSync: zlib.inflateSync,
-    headerLen: 2
-  },
-  {
-    compress: zlib.deflateRaw,
-    compressStream: zlib.DeflateRaw,
-    compressSync: zlib.deflateRawSync,
-    decompress: zlib.inflateRaw,
-    decompressStream: zlib.InflateRaw,
-    decompressSync: zlib.inflateRawSync,
-    headerLen: 0
-  }
-];
+var Promise = global.Promise || BBPromise;
+var deepEqual = assert.deepStrictEqual || assert.deepEqual;
+
+// streamCompare options to read in flowing mode with exact matching of
+// event data for all events listed in the API.
+var COMPARE_OPTIONS = {
+  compare: deepEqual,
+  events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
+  readPolicy: 'none'
+};
 
 var TEST_DATA = {
   empty: new Buffer(0),
@@ -62,240 +31,410 @@ var TEST_DATA = {
   normal: new Buffer('uncompressed data')
 };
 
-/** Inflate data by writing blocks of a given size. */
-function inflateBlocks(compressed, blocksize, cb) {
-  var auto = new InflateAuto();
-  auto.on('error', cb);
-
-  var output = [];
-  auto.on('data', function(data) {
-    output.push(data);
-  });
-  auto.on('end', function() {
-    cb(null, Buffer.concat(output));
-  });
-
-  for (var i = 0; i < compressed.length; i += blocksize) {
-    auto.write(compressed.slice(i, i + blocksize)).should.be.true();
+/* eslint-disable comma-spacing */
+var SUPPORTED_FORMATS = [
+  {
+    Compress: zlib.Gzip,
+    Decompress: zlib.Gunzip,
+    compress: zlib.gzip,
+    compressSync: zlib.gzipSync,
+    corruptChecksum: function corruptGzipChecksum(compressed) {
+      var invalid = new Buffer(compressed);
+      // gzip format has 4-byte CRC32 before 4-byte size at end
+      invalid[invalid.length - 5] = invalid[invalid.length - 5] ^ 0x1;
+      return invalid;
+    },
+    data: TEST_DATA,
+    dataCompressed: {
+      // zlib.gzipSync(data.empty)
+      empty: new Buffer([31,139,8,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0]),
+      // zlib.gzipSync(data.normal)
+      normal: new Buffer([31,139,8,0,0,0,0,0,0,3,43,205,75,206,207,45,40,74,45,
+        46,78,77,81,72,73,44,73,4,0,239,231,69,217,17,0,0,0])
+    },
+    decompress: zlib.gunzip,
+    decompressSync: zlib.gunzipSync,
+    header: new Buffer([31,139,8])
+  },
+  {
+    Compress: zlib.Deflate,
+    Decompress: zlib.Inflate,
+    compress: zlib.deflate,
+    compressSync: zlib.deflateSync,
+    corruptChecksum: function corruptZlibChecksum(compressed) {
+      var invalid = new Buffer(compressed);
+      // zlib format has 4-byte Adler-32 at end
+      invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
+      return invalid;
+    },
+    data: TEST_DATA,
+    dataCompressed: {
+      // zlib.deflateSync(data.empty)
+      empty: new Buffer([120,156,3,0,0,0,0,1]),
+      // zlib.deflateSync(data.normal)
+      normal: new Buffer([120,156,43,205,75,206,207,45,40,74,45,46,78,77,81,72,
+        73,44,73,4,0,63,144,6,211]),
+      // zlib.deflateSync(data.normal, {dictionary: data.normal})
+      normalWithDict:
+        new Buffer([120,187,63,144,6,211,43,69,23,0,0,63,144,6,211])
+    },
+    decompress: zlib.inflate,
+    decompressSync: zlib.inflateSync,
+    header: new Buffer([120,156])
+  },
+  {
+    Compress: zlib.DeflateRaw,
+    Decompress: zlib.InflateRaw,
+    compress: zlib.deflateRaw,
+    compressSync: zlib.deflateRawSync,
+    data: TEST_DATA,
+    dataCompressed: {
+      // zlib.deflateRawSync(data.empty)
+      empty: new Buffer([3,0]),
+      // zlib.deflateRawSync(data.normal)
+      normal: new Buffer([43,205,75,206,207,45,40,74,45,46,78,77,81,72,73,44,
+        73,4,0]),
+      // zlib.deflateRawSync(data.normal, {dictionary: data.normal})
+      normalWithDict: new Buffer([43,69,23,0,0])
+    },
+    decompress: zlib.inflateRaw,
+    decompressSync: zlib.inflateRawSync,
+    header: new Buffer(0),
+    isDefault: true
   }
-  auto.end();
-}
+];
+/* eslint-enable comma-spacing */
 
-/** Defines tests which are run for a given format and named data. */
-function defineFormatDataTests(format, dataName) {
-  var compressed = format.compressedData[dataName];
-  var uncompressed = format.uncompressedData[dataName];
-
-  it('works for ' + dataName + ' data', function(done) {
-    InflateAuto.inflateAuto(compressed, function(errAuto, output) {
-      should.ifError(errAuto);
-
-      should.deepEqual(output, uncompressed);
-      done();
-    });
-  });
-
-  it('works for ' + dataName + ' data - 1 byte writes', function(done) {
-    inflateBlocks(compressed, 1, function(errAuto, output) {
-      should.ifError(errAuto);
-      should.deepEqual(output, uncompressed);
-      done();
-    });
-  });
-
-  if (zlib.inflateSync) {
-    it('works for ' + dataName + ' data synchronously', function(done) {
-      var inflated = InflateAuto.inflateAutoSync(compressed);
-      should.deepEqual(inflated, uncompressed);
-      done();
-    });
+function assertInstanceOf(obj, ctor) {
+  if (!(obj instanceof ctor)) {
+    assert.fail(
+      obj,
+      ctor,
+      null,
+      'instanceof'
+    );
   }
 }
 
 /** Defines tests which are run for a given format. */
 function defineFormatTests(format) {
-  Object.keys(format.compressedData).forEach(function(dataName) {
-    defineFormatDataTests(format, dataName);
+  var emptyCompressed = format.dataCompressed.empty;
+  var emptyData = format.data.empty;
+
+  var compressed = format.dataCompressed.normal;
+  var uncompressed = format.data.normal;
+
+  var Decompress = format.Decompress;
+  var compress = format.compress;
+  var corruptChecksum = format.corruptChecksum;
+  var decompress = format.decompress;
+  var decompressSync = format.decompressSync;
+  var isDefaultFormat = format.isDefault;
+  var header = format.header;
+  var headerLen = header.length;
+
+  it('as function', function(done) {
+    decompress(compressed, function(errDecompress, dataDecompress) {
+      assert.ifError(errDecompress);
+      InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+        assert.ifError(errAuto);
+        deepEqual(dataAuto, dataDecompress);
+        done();
+      });
+    });
   });
 
-  var compressed = format.compressedData.normal;
-  var uncompressed = format.uncompressedData.normal;
+  if (decompressSync) {
+    it('as synchronous function', function() {
+      var dataDecompress = decompressSync(compressed);
+      var dataAuto = InflateAuto.inflateAutoSync(compressed);
+      deepEqual(dataAuto, dataDecompress);
+    });
+  }
 
-  var compress = format.compress;
-  var decompress = format.decompress;
+  it('single-write with immediate end', function() {
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    result.checkpoint();
+    zlibStream.end(compressed);
+    inflateAuto.end(compressed);
+    result.checkpoint();
+    return result;
+  });
+
+  it('single-write delayed end', function() {
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+    var zlibWriteP = BBPromise.promisify(zlibStream.write);
+    var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+    return Promise.all([
+      zlibWriteP.call(zlibStream, compressed),
+      autoWriteP.call(inflateAuto, compressed)
+    ]).then(function() {
+      result.checkpoint();
+      zlibStream.end();
+      inflateAuto.end();
+      result.checkpoint();
+
+      return result;
+    });
+  });
+
+  [1, 2, 3].forEach(function(blockSize) {
+    it(blockSize + ' byte writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      for (var i = 0; i < compressed.length; ++i) {
+        var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+        zlibStream.write(block);
+        inflateAuto.write(block);
+        result.checkpoint();
+      }
+
+      zlibStream.end();
+      inflateAuto.end();
+      result.checkpoint();
+
+      return result;
+    });
+  });
+
+  if (isDefaultFormat) {
+    it('no writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.end();
+      inflateAuto.end();
+      result.checkpoint();
+      return result;
+    });
+  }
+
+  it('no data after header', function() {
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(header);
+    inflateAuto.end(header);
+    result.checkpoint();
+    return result;
+  });
+
+  if (isDefaultFormat) {
+    SUPPORTED_FORMATS.forEach(function(supportedFormat) {
+      var formatName = supportedFormat.Compress.name;
+      var formatHeader = supportedFormat.header;
+      var formatHeaderLen = formatHeader.length;
+
+      function testPartialHeader(len) {
+        it(len + ' bytes of ' + formatName + ' header', function() {
+          var zlibStream = new Decompress();
+          var inflateAuto = new InflateAuto();
+          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+          var partial = formatHeader.slice(0, len);
+          zlibStream.end(partial);
+          inflateAuto.end(partial);
+          result.checkpoint();
+          return result;
+        });
+      }
+      for (var i = 1; i < formatHeaderLen; ++i) {
+        // eslint-disable-next-line no-loop-func
+        testPartialHeader(i);
+      }
+    });
+  }
+
+  it('compressed empty data', function() {
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(emptyCompressed);
+    inflateAuto.end(emptyCompressed);
+    result.checkpoint();
+    return result;
+  });
 
   // This behavior changed in node v5 and later due to
   // https://github.com/nodejs/node/pull/2595
-  it('handles truncated data', function(done) {
+  it('handles truncated compressed data', function() {
     // Truncate shortly after the header (if any) for type detection
-    var truncated = compressed.slice(0, format.headerLen + 1);
-    decompress(truncated, function(errInflate, dataInflate) {
-      InflateAuto.inflateAuto(truncated, function(errAuto, dataAuto) {
-        should.deepEqual(errInflate, errAuto);
-        should.deepEqual(dataInflate, dataAuto);
-        done();
-      });
-    });
+    var truncated = compressed.slice(0, headerLen + 1);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(truncated);
+    inflateAuto.end(truncated);
+    result.checkpoint();
+    return result;
   });
 
-  it('handles corrupted data', function(done) {
-    var zeroed = new Buffer(compressed);
+  // This behavior changed in node v6 and later due to
+  // https://github.com/nodejs/node/pull/5120
+  it('handles concatenated compressed data', function() {
+    var doubledata = Buffer.concat([compressed, compressed]);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(doubledata);
+    inflateAuto.end(doubledata);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles concatenated empty compressed data', function() {
+    var doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(doubleempty);
+    inflateAuto.end(doubleempty);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles concatenated 0', function() {
+    var zeros = new Buffer(20);
+    zeros.fill(0);
+    var compressedWithZeros = Buffer.concat([compressed, zeros]);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(compressedWithZeros);
+    inflateAuto.end(compressedWithZeros);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles concatenated garbage', function() {
+    var garbage = new Buffer(20);
+    garbage.fill(42);
+    var compressedWithGarbage = Buffer.concat([compressed, garbage]);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(compressedWithGarbage);
+    inflateAuto.end(compressedWithGarbage);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles corrupted compressed data', function() {
+    var corrupted = new Buffer(compressed);
     // Leave signature intact
-    zeroed.fill(0, format.headerLen);
-    decompress(zeroed, function(errInflate, dataInflate) {
-      InflateAuto.inflateAuto(zeroed, function(errAuto, dataAuto) {
-        should.exist(errInflate);
-        should.deepEqual(errInflate, errAuto);
-        should.deepEqual(dataInflate, dataAuto);
-        done();
-      });
-    });
+    corrupted.fill(42, headerLen);
+    var zlibStream = new Decompress();
+    var inflateAuto = new InflateAuto();
+    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(corrupted);
+    inflateAuto.end(corrupted);
+    result.checkpoint();
+    return result;
   });
 
-  if (compress.length === 3) {
-    it('handles missing dictionary', function(done) {
-      var options = {dictionary: uncompressed};
-      compress(uncompressed, options, function(err, compressedDict) {
-        should.ifError(err);
-
-        decompress(compressedDict, function(errInflate, dataInflate) {
-          InflateAuto.inflateAuto(compressedDict, function(errAuto, dataAuto) {
-            should.deepEqual(errInflate, errAuto);
-            should.deepEqual(dataInflate, dataAuto);
-            done();
-          });
-        });
-      });
+  if (corruptChecksum) {
+    it('corrupted checksum', function() {
+      var zlibStream = new zlib.Inflate();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      var invalid = corruptChecksum(compressed);
+      zlibStream.end(invalid);
+      inflateAuto.end(invalid);
+      result.checkpoint();
+      return result;
     });
   }
-}
 
-/** Defines tests for a given set of supported formats. */
-function defineTests(formats) {
-  describe('InflateAuto', function() {
-    // Match constructor behavior of Gunzip/Inflate/InflateRaw
-    it('instantiates without new', function() {
-      // eslint-disable-next-line new-cap
-      var auto = InflateAuto();
-      should(auto).be.instanceof(InflateAuto);
+  var compressedWithDict = format.dataCompressed.normalWithDict;
+  if (compressedWithDict && compress.length === 3) {
+    it('handles dictionary', function() {
+      var options = {dictionary: uncompressed};
+      var zlibStream = new Decompress(options);
+      var inflateAuto = new InflateAuto(options);
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.end(compressedWithDict);
+      inflateAuto.end(compressedWithDict);
+      result.checkpoint();
+      return result;
     });
 
-    it('behaves like InflateRaw for no data', function(done) {
-      var auto = new InflateAuto();
-      auto.on('error', done);
-      auto.end(done);
+    it('handles missing dictionary', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.end(compressedWithDict);
+      inflateAuto.end(compressedWithDict);
+      result.checkpoint();
+      return result;
     });
+  }
 
-    it('supports writing no data', function(done) {
-      var auto = new InflateAuto();
-      auto.on('error', done);
-      auto.end(new Buffer(0), done);
-    });
+  // For objectMode: true validation is done in _transform.  Check we match.
+  it('errors on write of invalid type', function() {
+    var options = {objectMode: true};
+    var zlibStream = new Decompress(options);
+    var inflateAuto = new InflateAuto(options);
+    var compareOptions = extend({}, COMPARE_OPTIONS);
+    compareOptions.endEvents = ['end'];
+    var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+    zlibStream.end(true);
+    inflateAuto.end(true);
+    result.checkpoint();
+    return result;
+  });
 
-    it('treats partial zlib header as raw', function(done) {
-      var partial = new Buffer([0x78]);
-      zlib.inflateRaw(partial, function(errInflate, dataInflate) {
-        InflateAuto.inflateAuto(partial, function(errAuto, dataAuto) {
-          should.deepEqual(errInflate, errAuto);
-          should.deepEqual(dataInflate, dataAuto);
-          done();
-        });
-      });
-    });
-
-    it('treats partial gzip header as raw', function(done) {
-      var partial = new Buffer([0x1f]);
-      zlib.inflateRaw(partial, function(errInflate, dataInflate) {
-        InflateAuto.inflateAuto(partial, function(errAuto, dataAuto) {
-          should.deepEqual(errInflate, errAuto);
-          should.deepEqual(dataInflate, dataAuto);
-          done();
-        });
-      });
-    });
-
-    it('behaves like Inflate for incorrect checksum', function(done) {
-      var compressed = formats[1].compressedData.normal;
-      var invalid = new Buffer(compressed);
-      invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
-      zlib.inflate(invalid, function(errInflate, dataInflate) {
-        InflateAuto.inflateAuto(invalid, function(errAuto, dataAuto) {
-          should.deepEqual(errInflate, errAuto);
-          should.deepEqual(dataInflate, dataAuto);
-          done();
-        });
-      });
-    });
-
-    // For objectMode: true validation is done in _transform.  Check we match.
-    it('errors on write of invalid type', function(done) {
-      var inflate = new zlib.Inflate({objectMode: true});
-      var haveErr1 = false;
-      inflate.on('error', function(errInflate) {
-        var auto = new InflateAuto({objectMode: true});
-        var haveErr2 = false;
-        auto.on('error', function(errAuto) {
-          should.deepEqual(errInflate, errAuto);
-          done();
-        });
-        auto.on('end', function() {
-          haveErr2.should.be.true();
-        });
-
-        auto.write(true);
-        auto.end();
-      });
-      inflate.on('end', function() {
-        haveErr1.should.be.true();
-      });
-
-      inflate.write(true);
-      inflate.end();
-    });
-
-    // Analogous to Gunzip/Inflate/InflateRaw
-    describe('.createInflateAuto()', function() {
-      it('is a factory function', function() {
-        var auto = InflateAuto.createInflateAuto();
-        should(auto).be.instanceof(InflateAuto);
-      });
-    });
-
-    if (zlib.inflateSync) {
-      describe('.inflateAutoSync()', function() {
+  if (zlib.inflateSync) {
+    describe('.inflateAutoSync()', function() {
+      // If the compressed-form can be round-tripped to String, use it to test
+      // If not, skip it (since we can't specify encoding to inflateAutoSync)
+      var emptyCompressedStr = emptyCompressed.toString();
+      if (new Buffer(emptyCompressedStr).equals(emptyCompressed)) {
         it('can inflate strings synchronously', function() {
-          var uncompressed = new Buffer([0]);
-          // Note:  deflateSync is invalid UTF-8.  deflateRawSync is ok.
-          var compressed = zlib.deflateRawSync(uncompressed);
-          var inflated = InflateAuto.inflateAutoSync(compressed.toString());
-          should.deepEqual(inflated, uncompressed);
+          var inflated = InflateAuto.inflateAutoSync(emptyCompressedStr);
+          deepEqual(inflated, emptyData);
         });
+      }
 
-        it('errors like Inflate for invalid type synchronously', function() {
-          var errInflate;
-          try {
-            zlib.inflateSync(true);
-          } catch (err) {
-            errInflate = err;
-          }
+      it('invalid type synchronously', function() {
+        var errInflate;
+        try {
+          decompressSync(true);
+        } catch (err) {
+          errInflate = err;
+        }
 
-          var errAuto;
-          try {
-            InflateAuto.inflateAutoSync(true);
-          } catch (err) {
-            errAuto = err;
-          }
+        var errAuto;
+        try {
+          InflateAuto.inflateAutoSync(true);
+        } catch (err) {
+          errAuto = err;
+        }
 
-          should.exist(errInflate);
-          should.deepEqual(errInflate, errAuto);
-        });
+        deepEqual(errAuto, errInflate);
+      });
+    });
 
-        it('errors like InflateRaw for partial zlib header', function() {
-          var partial = new Buffer([0x78]);
+    if (isDefaultFormat) {
+      SUPPORTED_FORMATS.forEach(function(supportedFormat) {
+        var formatName = supportedFormat.Compress.name;
+        var formatHeader = supportedFormat.header;
+        if (!formatHeader.length <= 1) {
+          return;
+        }
+
+        it('partial ' + formatName + ' header', function() {
+          var partial = formatHeader.slice(0, 1);
 
           var dataInflate, errInflate;
           try {
-            dataInflate = zlib.inflateRawSync(partial);
+            dataInflate = decompressSync(partial);
           } catch (err) {
             errInflate = err;
           }
@@ -307,438 +446,433 @@ function defineTests(formats) {
             errAuto = err;
           }
 
-          should.deepEqual(errInflate, errAuto);
-          should.deepEqual(dataInflate, dataAuto);
+          deepEqual(errAuto, errInflate);
+          deepEqual(dataAuto, dataInflate);
         });
       });
     }
+  }
 
-    describe('#close()', function() {
-      it('calls its callback immediately', function(done) {
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        auto.close(done);
-      });
+  describe('#close()', function() {
+    it('without writing', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      return new Promise(function(resolve, reject) {
+        zlibStream.close(function() {
+          var zlibArgs = arguments;
+          inflateAuto.close(function() {
+            var inflateArgs = arguments;
+            deepEqual(inflateArgs, zlibArgs);
 
-      it('emits the close event', function(done) {
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        auto.on('close', done);
-        auto.close();
-      });
-
-      it('only emits the close event once', function(done) {
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        var closeCount = 0;
-        auto.on('close', function() {
-          ++closeCount;
-          closeCount.should.equal(1);
-          auto.close();
-          setTimeout(done, 1);
+            setImmediate(function() {
+              result.end();
+              resolve(result);
+            });
+          });
         });
-        auto.close();
+      });
+    });
+
+    it('called multiple times', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.once('close', function() {
+        zlibStream.close();
+      });
+      inflateAuto.once('close', function() {
+        inflateAuto.close();
       });
 
-      it('emits error on #end() after #close()', function(done) {
-        var auto = new InflateAuto();
-        var inflate = new zlib.Inflate();
+      zlibStream.close();
+      inflateAuto.close();
+      result.checkpoint();
 
-        var autoErr;
-        var inflateErr;
-        function oneDone(err) {
-          if (this === auto) {
-            autoErr = err || false;
-          } else {
-            inflateErr = err || false;
-          }
+      zlibStream.close();
+      inflateAuto.close();
+      result.checkpoint();
 
-          if (autoErr !== undefined && inflateErr !== undefined) {
-            should.deepEqual(autoErr, inflateErr);
-            done();
+      return new Promise(function(resolve, reject) {
+        setImmediate(function() {
+          result.end();
+          resolve(result);
+        });
+      });
+    });
+
+    it('#end() after #close()', function() {
+      var zlibStream = new zlib.Inflate();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      zlibStream.close();
+      inflateAuto.close();
+      result.checkpoint();
+
+      zlibStream.end();
+      inflateAuto.end();
+      result.checkpoint();
+
+      return result;
+    });
+
+    it('#reset() after #close()', function() {
+      var zlibStream = new zlib.Inflate();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      zlibStream.close();
+      inflateAuto.close();
+      result.checkpoint();
+
+      var errInflate;
+      try { zlibStream.reset(); } catch (err) { errInflate = err; }
+      var errAuto;
+      try { inflateAuto.reset(); } catch (err) { errAuto = err; }
+      deepEqual(errAuto, errInflate);
+
+      result.end();
+      return result;
+    });
+
+    it('#write() after #close()', function() {
+      var zlibStream = new zlib.Inflate();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.close();
+      inflateAuto.close();
+      result.checkpoint();
+
+      return new Promise(function(resolve, reject) {
+        var writeArgs = [];
+        function onWrite() {
+          writeArgs.push(arguments);
+          if (writeArgs.length === 2) {
+            deepEqual(writeArgs[0], writeArgs[1]);
+            result.end();
+            resolve(result);
           }
         }
 
-        inflate.on('error', oneDone);
-        inflate.on('end', oneDone);
-        inflate.close();
-        inflate.end(function(inflateErr2) {
-          auto.on('error', oneDone);
-          auto.on('end', oneDone);
-          auto.close();
-          auto.end(function(autoErr2) {
-            should.deepEqual(inflateErr2, autoErr2);
-          });
-        });
-      });
-
-      it('throws on #reset() after #close()', function(done) {
-        var inflate = new zlib.Inflate();
-        inflate.on('error', done);
-        inflate.close();
-        var errInflate;
-        try { inflate.reset(); } catch (err) { errInflate = err; }
-
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        auto.close();
-        var errAuto;
-        try { auto.reset(); } catch (err) { errAuto = err; }
-
-        should.deepEqual(errInflate, errAuto);
-        // Wait for error event, if any
-        setTimeout(done, 1);
-      });
-
-      it('returns error on #write() after #close()', function(done) {
-        var auto = new InflateAuto();
-        var inflate = new zlib.Inflate();
-
-        var autoErr;
-        var inflateErr;
-        function oneDone(err) {
-          if (this === auto) {
-            autoErr = err || false;
-          } else {
-            inflateErr = err || false;
-          }
-
-          if (autoErr !== undefined && inflateErr !== undefined) {
-            should.deepEqual(autoErr, inflateErr);
-            done();
-          }
-        }
-
-        inflate.on('error', oneDone);
-        inflate.on('end', oneDone);
-        inflate.close();
-        inflate.write(new Buffer(0), function(inflateErr2) {
-          should.exist(inflateErr2);
-
-          auto.on('error', oneDone);
-          auto.on('end', oneDone);
-          auto.close();
-          auto.write(new Buffer(0), function(autoErr2) {
-            should.deepEqual(inflateErr2, autoErr2);
-          });
-        });
-      });
-    });
-
-    describe('#flush()', function() {
-      // To prevent deadlocks of callers waiting for flush before writing
-      it('calls its callback immediately', function(done) {
-        var auto = new InflateAuto();
-        auto.on('error', done);
-        auto.flush(done);
-      });
-
-      it('doesn\'t cause error before write', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.flush();
-          auto.end(compressed);
-        });
-      });
-
-      // This behavior changed in node v5 and later due to
-      // https://github.com/nodejs/node/pull/2595
-      it('behaves like Inflate for Z_FINISH before write', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.flush(zlib.Z_FINISH);
-          auto.end(compressed);
-        });
-      });
-
-      it('doesn\'t cause error between writes', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.write(compressed.slice(0, 4));
-          auto.flush();
-          auto.end(compressed.slice(4));
-        });
-      });
-
-      // This behavior changed in node v5 and later due to
-      // https://github.com/nodejs/node/pull/2595
-      it('behaves like Inflate for Z_FINISH between writes', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(errDeflate, compressed) {
-          should.ifError(errDeflate);
-
-          var auto = new InflateAuto();
-          var inflate = new zlib.Inflate();
-
-          var autoOut = [];
-          auto.on('data', function(data) {
-            autoOut.push(data);
-          });
-
-          var inflateOut = [];
-          inflate.on('data', function(data) {
-            inflateOut.push(data);
-          });
-
-          var autoErr;
-          var inflateErr;
-          function oneDone(err) {
-            if (this === auto) {
-              autoErr = err || false;
-            } else {
-              inflateErr = err || false;
-            }
-
-            if (autoErr !== undefined && inflateErr !== undefined) {
-              should.deepEqual(autoErr, inflateErr);
-              should.deepEqual(autoOut, inflateOut);
-              done();
-            }
-          }
-          // Note:  May raise multiple errors (one for flush, one for end)
-          auto.once('error', oneDone);
-          inflate.once('error', oneDone);
-          auto.on('end', oneDone);
-          inflate.on('end', oneDone);
-
-          auto.write(compressed.slice(0, 4));
-          inflate.write(compressed.slice(0, 4));
-
-          auto.flush(zlib.Z_FINISH);
-          inflate.flush(zlib.Z_FINISH);
-
-          auto.end(compressed.slice(4));
-          inflate.end(compressed.slice(4));
-        });
-      });
-    });
-
-    if (zlib.Inflate.prototype.params) {
-      describe('#params()', function() {
-        // To prevent deadlocks of callers waiting for params before writing
-        it('calls its callback immediately', function(done) {
-          var auto = new InflateAuto();
-          auto.on('error', done);
-          auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);
-        });
-
-        // Note:  Params has no effect on inflate.  Tested only to avoid errors.
-        it('doesn\'t cause error before write', function(done) {
-          var uncompressed = new Buffer([0]);
-          zlib.deflate(uncompressed, function(err, compressed) {
-            should.ifError(err);
-
-            var auto = new InflateAuto();
-            auto.on('error', done);
-
-            var output = [];
-            auto.on('data', function(data) {
-              output.push(data);
-            });
-            auto.on('end', function() {
-              should.deepEqual(Buffer.concat(output), uncompressed);
-              done();
-            });
-
-            auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
-            auto.end(compressed);
-          });
-        });
-
-        it('doesn\'t cause error between writes', function(done) {
-          var uncompressed = new Buffer([0]);
-          zlib.deflate(uncompressed, function(err, compressed) {
-            should.ifError(err);
-
-            var auto = new InflateAuto();
-            auto.on('error', done);
-
-            var output = [];
-            auto.on('data', function(data) {
-              output.push(data);
-            });
-            auto.on('end', function() {
-              should.deepEqual(Buffer.concat(output), uncompressed);
-              done();
-            });
-
-            auto.write(compressed.slice(0, 4));
-            auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
-            auto.end(compressed.slice(4));
-          });
-        });
-
-        // Note:  Argument errors behavior is not guaranteed.  See method
-        // comment for details.
-      });
-    }
-
-    describe('#reset()', function() {
-      it('does nothing pre-write', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.reset();
-          auto.end(compressed);
-        });
-      });
-
-      it('discards partial zlib header', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.write(compressed.slice(0, 1));
-          auto.reset();
-          auto.write(compressed);
-          auto.end();
-        });
-      });
-
-      it('discards post-zlib-header data', function(done) {
-        var uncompressed = new Buffer([0]);
-        zlib.deflate(uncompressed, function(err, compressed) {
-          should.ifError(err);
-
-          var auto = new InflateAuto();
-          auto.on('error', done);
-
-          var output = [];
-          auto.on('data', function(data) {
-            output.push(data);
-          });
-          auto.on('end', function() {
-            should.deepEqual(Buffer.concat(output), uncompressed);
-            done();
-          });
-
-          auto.write(compressed.slice(0, 3));
-          auto.reset();
-          auto.write(compressed);
-          auto.end();
-        });
-      });
-
-      // Note:  Behavior on compression type change after reset is not
-      // guaranteed.  See method comment for details.
-    });
-
-    SUPPORTED_FORMATS.forEach(function(format) {
-      describe(format.compressStream.name + ' support', function() {
-        defineFormatTests(format);
+        zlibStream.write(new Buffer(0), onWrite);
+        inflateAuto.write(new Buffer(0), onWrite);
+        result.checkpoint();
       });
     });
   });
-}
 
-/** Compresses the values of a given object for a given format. */
-function compressValues(format, namedData) {
-  var dataNames = Object.keys(namedData);
-  var compressedP = dataNames.map(function(dataName) {
-    return new BBPromise(function(resolve, reject) {
-      var data = namedData[dataName];
-      format.compress(data, function(err, compressed) {
-        if (err) {
-          reject(err);
+  describe('#flush()', function() {
+    it('before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.flush();
+      inflateAuto.flush();
+      result.checkpoint();
+
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+
+      return result;
+    });
+
+    // This behavior changed in node v5 and later due to
+    // https://github.com/nodejs/node/pull/2595
+    it('Z_FINISH before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.flush(zlib.Z_FINISH);
+      inflateAuto.flush(zlib.Z_FINISH);
+      result.checkpoint();
+
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+
+      return result;
+    });
+
+    it('between writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.write(compressed.slice(0, 4));
+      inflateAuto.write(compressed.slice(0, 4));
+      result.checkpoint();
+
+      zlibStream.flush();
+      inflateAuto.flush();
+      result.checkpoint();
+
+      zlibStream.end(compressed.slice(4));
+      inflateAuto.end(compressed.slice(4));
+      result.checkpoint();
+
+      return result;
+    });
+
+    // This behavior changed in node v5 and later due to
+    // https://github.com/nodejs/node/pull/2595
+    it('Z_FINISH between writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.write(compressed.slice(0, 4));
+      inflateAuto.write(compressed.slice(0, 4));
+      result.checkpoint();
+
+      zlibStream.flush(zlib.Z_FINISH);
+      inflateAuto.flush(zlib.Z_FINISH);
+      result.checkpoint();
+
+      zlibStream.end(compressed.slice(4));
+      inflateAuto.end(compressed.slice(4));
+      result.checkpoint();
+
+      return result;
+    });
+  });
+
+  if (Decompress.prototype.params) {
+    describe('#params()', function() {
+      // Note:  Params has no effect on inflate.  Tested only to avoid errors.
+
+      it('before write', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        zlibStream.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+        inflateAuto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+        result.checkpoint();
+
+        zlibStream.end(compressed);
+        inflateAuto.end(compressed);
+        result.checkpoint();
+        return result;
+      });
+
+      it('between writes', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        var zlibWriteP = BBPromise.promisify(zlibStream.write);
+        var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+        var partial = compressed.slice(0, 4);
+        return Promise.all([
+          zlibWriteP.call(zlibStream, partial),
+          autoWriteP.call(inflateAuto, partial)
+        ]).then(function() {
+          result.checkpoint();
+
+          // IMPORTANT:  Can't call Zlib.params() with write in progress
+          // Since write is run from uv work queue thread and params from main
+          zlibStream.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+          inflateAuto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+          result.checkpoint();
+
+          var remainder = compressed.slice(4);
+          zlibStream.end(remainder);
+          inflateAuto.end(remainder);
+          result.checkpoint();
+
+          return result;
+        });
+      });
+
+      // Zlib causes uncaughtException for params after close, so skip testing
+      // after end.
+
+      // Note:  Argument errors behavior is not guaranteed.  See method
+      // comment for details.
+    });
+  }
+
+  describe('#reset()', function() {
+    it('before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      zlibStream.reset();
+      inflateAuto.reset();
+      result.checkpoint();
+
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+
+      return result;
+    });
+
+    if (headerLen > 0) {
+      it('discards partial header', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        var dataAuto = [];
+        inflateAuto.on('data', function(data) {
+          dataAuto.push(data);
+        });
+
+        var zlibWriteP = BBPromise.promisify(zlibStream.write);
+        var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+        var partial = compressed.slice(0, 1);
+        return Promise.all([
+          zlibWriteP.call(zlibStream, partial),
+          autoWriteP.call(inflateAuto, partial)
+        ]).then(function() {
+          result.checkpoint();
+
+          // IMPORTANT:  Can't call Zlib.reset() with write in progress
+          // Since write is run from uv work queue thread and reset from main
+          zlibStream.reset();
+          inflateAuto.reset();
+          result.checkpoint();
+
+          zlibStream.end(compressed);
+          inflateAuto.end(compressed);
+          result.checkpoint();
+
+          // Gunzip gained reset in v6.0.0
+          // https://github.com/nodejs/node/commit/f380db23
+          // If zlib stream emits a header error, test for success instead of ==
+          return new Promise(function(resolve, reject) {
+            var headerError = false;
+            zlibStream.once('error', function(err) {
+              if (err.message === 'incorrect header check') {
+                headerError = true;
+              }
+            });
+            zlibStream.once('end', function() {
+              resolve(result);
+            });
+
+            inflateAuto.once('end', function() {
+              deepEqual(Buffer.concat(dataAuto), uncompressed);
+              if (headerError) {
+                resolve();
+              }
+            });
+          });
+        });
+      });
+
+      it('forgets partial header', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        // Write data with a different header before reset to check that reset
+        // clears any partial-header state.
+        var otherData;
+        if (format === SUPPORTED_FORMATS[0]) {
+          otherData = SUPPORTED_FORMATS[1].dataCompressed.normal;
         } else {
-          resolve(compressed);
+          otherData = SUPPORTED_FORMATS[0].dataCompressed.normal;
         }
+
+        // Note:  Only write to inflateAuto since zlib stream could error on
+        // first byte due to invalid header.
+        var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+        return autoWriteP.call(inflateAuto, otherData.slice(0, 1))
+          .then(function() {
+            // IMPORTANT:  Can't call Zlib.reset() with write in progress
+            // Since write is run from uv work queue thread and reset from main
+            zlibStream.reset();
+            inflateAuto.reset();
+            result.checkpoint();
+
+            zlibStream.end(compressed);
+            inflateAuto.end(compressed);
+            result.checkpoint();
+
+            return result;
+          });
       });
+    }
+
+    it('discards post-header data', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      var zlibWriteP = BBPromise.promisify(zlibStream.write);
+      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+      var partial = compressed.slice(0, headerLen + 1);
+      return Promise.all([
+        zlibWriteP.call(zlibStream, partial),
+        autoWriteP.call(inflateAuto, partial)
+      ]).then(function() {
+        result.checkpoint();
+
+        // IMPORTANT:  Can't call Zlib.reset() with write in progress
+        // Since write is run from uv work queue thread and reset from main
+        zlibStream.reset();
+        inflateAuto.reset();
+        result.checkpoint();
+
+        zlibStream.end(compressed);
+        inflateAuto.end(compressed);
+        result.checkpoint();
+
+        return result;
+      });
+    });
+
+    // Note:  Behavior on compression type change after reset is not
+    // guaranteed.  See method comment for details.
+  });
+}
+
+describe('InflateAuto', function() {
+  // Match constructor behavior of Gunzip/Inflate/InflateRaw
+  it('instantiates without new', function() {
+    // eslint-disable-next-line new-cap
+    var auto = InflateAuto();
+    assertInstanceOf(auto, InflateAuto);
+  });
+
+  // Analogous to Gunzip/Inflate/InflateRaw
+  describe('.createInflateAuto()', function() {
+    it('is a factory function', function() {
+      var auto = InflateAuto.createInflateAuto();
+      assertInstanceOf(auto, InflateAuto);
     });
   });
 
-  return BBPromise.all(compressedP)
-    .then(function(compressed) {
-      return dataNames.reduce(function(compressedByName, dataName, i) {
-        compressedByName[dataName] = compressed[i];
-        return compressedByName;
-      }, {});
+  describe('#flush()', function() {
+    // To prevent deadlocks of callers waiting for flush before writing
+    it('calls its callback before format detection', function(done) {
+      var auto = new InflateAuto();
+      auto.on('error', done);
+      auto.flush(done);
     });
-}
+  });
 
-/** Prepares a given format for testing (by pre-compressing data). */
-function prepareFormat(format, testData) {
-  return compressValues(format, testData)
-    .then(function(compressedData) {
-      format.compressedData = compressedData;
-      format.uncompressedData = testData;
-      return format;
+  if (InflateAuto.prototype.params) {
+    describe('#params()', function() {
+      // To prevent deadlocks of callers waiting for params before writing
+      it('calls its callback before format detection', function(done) {
+        var auto = new InflateAuto();
+        auto.on('error', done);
+        auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);
+      });
     });
-}
+  }
 
-/** Prepares for testing (by pre-compressing data). */
-function prepareTests(formats, testData) {
-  return BBPromise.all(formats.map(function(format) {
-    return prepareFormat(format, testData);
-  }))
-    .then(defineTests);
-}
-
-prepareTests(SUPPORTED_FORMATS, TEST_DATA).done(run);
+  SUPPORTED_FORMATS.forEach(function(format) {
+    describe(format.Compress.name + ' support', function() {
+      defineFormatTests(format);
+    });
+  });
+});
