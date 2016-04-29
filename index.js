@@ -175,13 +175,12 @@ InflateAuto.prototype._flush = function _flush(callback) {
   }
 
   if (this._inflater) {
-    // We need to call the callback after the inflater ends or errors.
-    // Therefore we can't use .end callback (which is called on 'finish' only)
+    // callback must not be called until all data has been written.
+    // So call on 'end', not 'finish'.
     //
-    // We also don't want to pass an error to the callback, since Transform
-    // would re-emit the error (which is already forwarded).
+    // Note:  Not called on 'error' since errors events already forwarded
+    // and should not emit 'end' after 'error'
     this._inflater.once('end', callback);
-    this._inflater.once('error', function() { callback(); });
     return this._inflater.end(chunk);
   }
 
