@@ -213,9 +213,22 @@ InflateAuto.prototype._setInflater = function _setInflater(inflater) {
   });
 
   // proxy important events from the inflater
-  // Note:  Same events as Readable.wrap except pause/unpause
-  ['close', 'destroy', 'error'].forEach(function(event) {
+  // Note:  Same events as Readable.wrap except pause/unpause and close.
+  ['destroy', 'error'].forEach(function(event) {
     inflater.on(event, self.emit.bind(self, event));
+  });
+
+  // 'close' handled specially to ensure correct order with 'end'
+  var endEmitted = false;
+  this.once('end', function() { endEmitted = true; });
+  var inflaterEndEmitted = false;
+  inflater.once('end', function() { inflaterEndEmitted = true; });
+  inflater.on('close', function() {
+    if (inflaterEndEmitted && !endEmitted) {
+      self.once('end', function() { self.emit('close'); });
+    } else {
+      self.emit('close');
+    }
   });
 
   if (this._queuedMethodCalls) {
