@@ -39,6 +39,9 @@ function InflateAuto(opts) {
    * At most one of _inflater or _writeBuf is non-null.
    * Since writes are being forwarded or buffered.
    */
+
+  // Behave like Zlib where close is unconditionally called on 'end'
+  this.once('end', this.close);
 }
 inherits(InflateAuto, Transform);
 
@@ -219,6 +222,7 @@ InflateAuto.prototype._setInflater = function _setInflater(inflater) {
   });
 
   // 'close' handled specially to ensure correct order with 'end'
+  this.removeListener('end', this.close);
   var endEmitted = false;
   this.once('end', function() { endEmitted = true; });
   var inflaterEndEmitted = false;
