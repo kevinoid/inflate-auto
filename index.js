@@ -37,7 +37,7 @@ function InflateAuto(opts) {
 
   /** Options to pass to the inflater when created.
    * @private {Object} */
-  this._options = opts;
+  this._opts = opts;
 
   /* Invariant:
    * At most one of _inflater or _writeBuf is non-null.
@@ -216,7 +216,7 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
 
   var inflater;
   try {
-    this._inflater = inflater = new Inflater(this._options);
+    this._inflater = inflater = new Inflater(this._opts);
   } catch (err) {
     self.emit('error', err);
     return;
