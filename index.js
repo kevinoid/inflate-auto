@@ -107,9 +107,10 @@ InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
  * @protected
  * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
  * compression format.
- * @return {zlib.Gunzip|zlib.Inflate|zlib.InflateRaw} An instance of the zlib
- * type which will inflate chunk and subsequent data, or null if chunk is too
- * short to deduce the format conclusively.
+ * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
+ * An instance of the zlib type which will inflate chunk and subsequent data,
+ * or <code>null</code> if chunk is too short to deduce the format
+ * conclusively.
  */
 InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
   if (!chunk || !chunk.length) {
@@ -126,7 +127,7 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
       return null;
     } else if ((chunk.readUInt16BE(0) % 31) === 0) {
       // Valid zlib header
-      return new zlib.Inflate(this._options);
+      return zlib.Inflate;
     }
   // Check for gzip header per Section 2.3.1 of RFC 1952
   } else if (chunk[0] === 0x1f) {
@@ -139,13 +140,13 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
         return null;
       } else if (chunk[2] === 8) {
         // Valid gzip header
-        return new zlib.Gunzip(this._options);
+        return zlib.Gunzip;
       }
     }
   }
 
   // Not a valid zlib or gzip header
-  return new zlib.InflateRaw(this._options);
+  return zlib.InflateRaw;
 };
 
 /** Detects which zlib inflater may be able to inflate data beginning with a
@@ -158,12 +159,12 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
  * @protected
  * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
  * compression format.
- * @return {!(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw)} An instance of the
- * zlib type which will inflate chunk and subsequent data.
+ * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
+ * An instance of the zlib type which will inflate chunk and subsequent data.
  * @see #_detectInflater()
  */
 InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
-  return this._detectInflater(chunk) || new zlib.InflateRaw(this._options);
+  return this._detectInflater(chunk) || zlib.InflateRaw;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -202,18 +203,24 @@ InflateAuto.prototype._flush = function _flush(callback) {
 /** Sets the inflater class.
  *
  * @protected
- * @param {!stream.Duplex} inflater Stream which will be used to inflate data
- * written to this stream.
+ * @param {function(new:stream.Duplex,Object=)} Inflater Constructor for the
+ * stream class which will be used to inflate data written to this stream.
  * @see #_detectInflater()
  */
-InflateAuto.prototype._setInflater = function _setInflater(inflater) {
+InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
   var self = this;
 
   // We would need to disconnect event handlers and close the previous
   // inflater to avoid leaking.  No current use case.
   assert(!this._inflater, 'changing inflater not supported');
 
-  this._inflater = inflater;
+  var inflater;
+  try {
+    this._inflater = inflater = new Inflater(this._options);
+  } catch (err) {
+    self.emit('error', err);
+    return;
+  }
 
   inflater.on('data', function(chunk) {
     self.push(chunk);
