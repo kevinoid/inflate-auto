@@ -22,6 +22,10 @@ function InflateAuto(opts) {
 
   Transform.call(this, opts);
 
+  // Note:  Copy validation code rather than calling Zlib constructor to avoid
+  // overhead of zlib binding initialization.
+  zlibInternal.validateOptions(opts);
+
   /** Whether #close() has been called.
    * @private {boolean} */
   this._closed = false;
