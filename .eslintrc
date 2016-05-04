@@ -24,6 +24,9 @@ rules:
   ## allow reassignment of function parameters
   # simplicity for optional arguments outweighs the perf advantage, usually
   no-param-reassign: 0
+  ## allow dangling underscores in identifiers
+  # this is the convention used in Zlib, so we adopt it for this project
+  no-underscore-dangle: 0
   ## disallow unnecessary use of Function.prototype.{apply,call}
   no-useless-call: 2
   ## allow vars anywhere that satisfies other linting constraints
