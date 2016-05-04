@@ -201,6 +201,24 @@ InflateAuto.prototype._flush = function _flush(callback) {
   process.nextTick(callback);
 };
 
+InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
+    cb) {
+  if (!this._inflater) {
+    this._writeEarly(chunk);
+  }
+
+  if (this._inflater) {
+    return this._inflater._processChunk.apply(this._inflater, arguments);
+  }
+
+  if (!cb) {
+    return new Buffer(0);
+  }
+
+  process.nextTick(cb);
+  return undefined;
+};
+
 /** Sets the inflater class.
  *
  * @protected
