@@ -30,6 +30,10 @@ function InflateAuto(opts) {
    * @private {boolean} */
   this._closed = false;
 
+  // For Zlib compatibility
+  this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined' ?
+    opts.finishFlush : zlib.Z_FINISH;
+
   /** The instance of a zlib class which does the inflating for the detected
    * compression format.
    * @private {zlib.Gunzip|zlib.Inflate|zlib.InflateRaw} */
