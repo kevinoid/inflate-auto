@@ -390,8 +390,10 @@ function defineFormatTests(format) {
     var compareOptions = extend({}, COMPARE_OPTIONS);
     compareOptions.endEvents = ['end'];
     var result = streamCompare(inflateAuto, zlibStream, compareOptions);
-    zlibStream.end(true);
-    inflateAuto.end(true);
+    zlibStream.write(true);
+    inflateAuto.write(true);
+    zlibStream.end(compressed);
+    inflateAuto.end(compressed);
     result.checkpoint();
     return result;
   });
