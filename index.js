@@ -172,14 +172,11 @@ InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  var chunk;
   if (this._writeBuf) {
     assert(!this._inflater);
 
     // Previous header checks inconclusive.  Must choose one now.
     this._setInflater(this._detectInflaterNow(this._writeBuf));
-    chunk = this._writeBuf;
-    delete this._writeBuf;
   }
 
   if (this._inflater) {
@@ -189,7 +186,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
     // Note:  Not called on 'error' since errors events already forwarded
     // and should not emit 'end' after 'error'
     this._inflater.once('end', callback);
-    return this._inflater.end(chunk);
+    return this._inflater.end();
   }
 
   if (this._closed) {
@@ -252,6 +249,12 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
     });
     delete this._queuedMethodCalls;
   }
+
+  if (this._writeBuf) {
+    var writeBuf = this._writeBuf;
+    delete this._writeBuf;
+    this._inflater.write(writeBuf);
+  }
 };
 
 /** Deflates a chunk of data.
@@ -263,20 +266,37 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
  */
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
     callback) {
+  if (!this._inflater) {
+    if (chunk !== null && !(chunk instanceof Buffer)) {
+      callback(new Error('invalid input'));
+      return;
+    }
+
+    if (this._closed) {
+      callback(new Error('zlib binding closed'));
+      return;
+    }
+
+    this._writeEarly(chunk);
+  }
+
   if (this._inflater) {
-    return this._inflater.write(chunk, encoding, callback);
+    this._inflater.write(chunk, encoding, callback);
+    return;
   }
 
-  if (chunk !== null && !(chunk instanceof Buffer)) {
-    return callback(new Error('invalid input'));
-  }
+  process.nextTick(callback);
+};
 
-  if (this._closed) {
-    return callback(new Error('zlib binding closed'));
-  }
-
+/** Writes data to this stream before the format has been detected, performing
+ * format detection and buffering as necessary.
+ *
+ * @private
+ * @param {Buffer} chunk Chunk of data to write.
+ */
+InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   if (chunk === null || chunk.length === 0) {
-    return process.nextTick(callback);
+    return;
   }
 
   var signature;
@@ -297,17 +317,10 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
     assert(signature.length ===
         chunk.length + (this._writeBuf ? this._writeBuf.length : 0));
     this._writeBuf = signature;
-    return process.nextTick(callback);
+    return;
   }
 
   this._setInflater(inflater);
-
-  if (this._writeBuf) {
-    this._inflater.write(this._writeBuf);
-    delete this._writeBuf;
-  }
-
-  return this._inflater.write(chunk, encoding, callback);
 };
 
 /** Closes this stream and its underlying resources (zlib handle).
