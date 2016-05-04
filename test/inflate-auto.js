@@ -392,16 +392,6 @@ function defineFormatTests(format) {
 
   if (zlib.inflateSync) {
     describe('.inflateAutoSync()', function() {
-      // If the compressed-form can be round-tripped to String, use it to test
-      // If not, skip it (since we can't specify encoding to inflateAutoSync)
-      var emptyCompressedStr = emptyCompressed.toString();
-      if (new Buffer(emptyCompressedStr).equals(emptyCompressed)) {
-        it('can inflate strings synchronously', function() {
-          var inflated = InflateAuto.inflateAutoSync(emptyCompressedStr);
-          deepEqual(inflated, emptyData);
-        });
-      }
-
       it('invalid type synchronously', function() {
         var errInflate;
         try {
