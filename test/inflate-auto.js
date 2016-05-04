@@ -4,9 +4,6 @@
  */
 'use strict';
 
-// Test constructor options
-// Test {flush: zlib.Z_BLOCK} option match (doesn't output for 4-byte write)
-
 var BBPromise = require('bluebird');
 var InflateAuto = require('..');
 var assert = require('assert');
@@ -27,9 +24,11 @@ var COMPARE_OPTIONS = {
 
 var TEST_DATA = {
   empty: new Buffer(0),
+  large: new Buffer(1024),
   // 'normal' is the default for not-data-specific tests
   normal: new Buffer('uncompressed data')
 };
+TEST_DATA.large.fill(0);
 
 /* eslint-disable comma-spacing */
 var SUPPORTED_FORMATS = [
@@ -48,6 +47,9 @@ var SUPPORTED_FORMATS = [
     dataCompressed: {
       // zlib.gzipSync(data.empty)
       empty: new Buffer([31,139,8,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0]),
+      // zlib.gzipSync(data.large)
+      large: new Buffer([31,139,8,0,0,0,0,0,0,3,99,96,24,5,163,96,20,140,84,0,
+        0,46,175,181,239,0,4,0,0]),
       // zlib.gzipSync(data.normal)
       normal: new Buffer([31,139,8,0,0,0,0,0,0,3,43,205,75,206,207,45,40,74,45,
         46,78,77,81,72,73,44,73,4,0,239,231,69,217,17,0,0,0])
@@ -71,6 +73,8 @@ var SUPPORTED_FORMATS = [
     dataCompressed: {
       // zlib.deflateSync(data.empty)
       empty: new Buffer([120,156,3,0,0,0,0,1]),
+      // zlib.deflateSync(data.large)
+      large: new Buffer([120,156,99,96,24,5,163,96,20,140,84,0,0,4,0,0,1]),
       // zlib.deflateSync(data.normal)
       normal: new Buffer([120,156,43,205,75,206,207,45,40,74,45,46,78,77,81,72,
         73,44,73,4,0,63,144,6,211]),
@@ -91,6 +95,8 @@ var SUPPORTED_FORMATS = [
     dataCompressed: {
       // zlib.deflateRawSync(data.empty)
       empty: new Buffer([3,0]),
+      // zlib.deflateRawSync(data.large)
+      large: new Buffer([99,96,24,5,163,96,20,140,84,0,0]),
       // zlib.deflateRawSync(data.normal)
       normal: new Buffer([43,205,75,206,207,45,40,74,45,46,78,77,81,72,73,44,
         73,4,0]),
@@ -119,7 +125,7 @@ function assertInstanceOf(obj, ctor) {
 /** Defines tests which are run for a given format. */
 function defineFormatTests(format) {
   var emptyCompressed = format.dataCompressed.empty;
-  var emptyData = format.data.empty;
+  var largeCompressed = format.dataCompressed.large;
 
   var compressed = format.dataCompressed.normal;
   var uncompressed = format.data.normal;
@@ -442,6 +448,43 @@ function defineFormatTests(format) {
       });
     }
   }
+
+  describe('Constructor', function() {
+    it('throws on invalid options', function() {
+      var options = {flush: {}};
+
+      var errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(options); } catch (err) { errInflate = err; }
+
+      var errAuto;
+      // eslint-disable-next-line no-new
+      try { new InflateAuto(options); } catch (err) { errAuto = err; }
+
+      deepEqual(errAuto, errInflate);
+    });
+
+    it('supports chunkSize', function() {
+      var options = {chunkSize: zlib.Z_MIN_CHUNK};
+      var zlibStream = new Decompress(options);
+      var inflateAuto = new InflateAuto(options);
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      zlibStream.end(largeCompressed);
+      inflateAuto.end(largeCompressed);
+      return result;
+    });
+
+    it('supports finishFlush', function() {
+      var options = {finishFlush: zlib.Z_SYNC_FLUSH};
+      var zlibStream = new Decompress(options);
+      var inflateAuto = new InflateAuto(options);
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      var truncated = largeCompressed.slice(0, -1);
+      zlibStream.end(truncated);
+      inflateAuto.end(truncated);
+      return result;
+    });
+  });
 
   describe('#close()', function() {
     it('without writing', function() {
