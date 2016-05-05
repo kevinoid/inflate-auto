@@ -176,29 +176,23 @@ InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
  * @param {?function(Error)=} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  if (this._writeBuf) {
-    assert(!this._inflater);
+  if (this._closed) {
+    callback(new Error('zlib binding closed'));
+    return;
+  }
 
+  if (!this._inflater) {
     // Previous header checks inconclusive.  Must choose one now.
     this._setInflater(this._detectInflaterNow(this._writeBuf));
   }
 
-  if (this._inflater) {
-    // callback must not be called until all data has been written.
-    // So call on 'end', not 'finish'.
-    //
-    // Note:  Not called on 'error' since errors events already forwarded
-    // and should not emit 'end' after 'error'
-    this._inflater.once('end', callback);
-    return this._inflater.end();
-  }
-
-  if (this._closed) {
-    return callback(new Error('zlib binding closed'));
-  }
-
-  // No data has been written and close has not been called.  Nothing to do.
-  process.nextTick(callback);
+  // callback must not be called until all data has been written.
+  // So call on 'end', not 'finish'.
+  //
+  // Note:  Not called on 'error' since errors events already forwarded
+  // and should not emit 'end' after 'error'
+  this._inflater.once('end', callback);
+  this._inflater.end();
 };
 
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,

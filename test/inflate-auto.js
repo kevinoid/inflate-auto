@@ -535,7 +535,7 @@ function defineFormatTests(format) {
       });
     });
 
-    it('#end() after #close()', function() {
+    it('before #end()', function() {
       var zlibStream = new zlib.Inflate();
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
