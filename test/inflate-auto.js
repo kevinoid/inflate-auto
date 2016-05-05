@@ -679,13 +679,18 @@ function defineFormatTests(format) {
         var inflateAuto = new InflateAuto();
         var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-        zlibStream.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
-        inflateAuto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED);
+        // Note:  Ending before params callback can cause "unexpected end of
+        // file" due to Z_FINISH flush type being set on empty write
+        var level = zlib.Z_BEST_COMPRESSION;
+        var strategy = zlib.Z_FILTERED;
+        zlibStream.params(level, strategy, function() {
+          zlibStream.end(compressed);
+        });
+        inflateAuto.params(level, strategy, function() {
+          inflateAuto.end(compressed);
+        });
         result.checkpoint();
 
-        zlibStream.end(compressed);
-        inflateAuto.end(compressed);
-        result.checkpoint();
         return result;
       });
 
