@@ -509,29 +509,28 @@ function defineFormatTests(format) {
       });
     });
 
-    it('called multiple times', function() {
-      var zlibStream = new Decompress();
+    // Zlib behavior changed in 8b43d3f5 (6.0.0) to emit on every call.
+    // InflateAuto implements the earlier behavior.
+    it('emits once for multiple calls', function() {
       var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-      zlibStream.once('close', function() {
-        zlibStream.close();
+
+      var closeEmitted = false;
+      inflateAuto.on('close', function() {
+        assert.strictEqual(closeEmitted, false);
+        closeEmitted = true;
       });
+
       inflateAuto.once('close', function() {
         inflateAuto.close();
       });
 
-      zlibStream.close();
       inflateAuto.close();
-      result.checkpoint();
-
-      zlibStream.close();
       inflateAuto.close();
-      result.checkpoint();
 
       return new Promise(function(resolve, reject) {
         setImmediate(function() {
-          result.end();
-          resolve(result);
+          assert.strictEqual(closeEmitted, true);
+          resolve();
         });
       });
     });
