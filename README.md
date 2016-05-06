@@ -18,6 +18,21 @@ corresponding type.
 ## Introductory Example
 
 ```js
+const InflateAuto = require('inflate-auto');
+const assert = require('assert');
+const zlib = require('zlib');
+
+var compressor = Math.random() < 0.5 ? zlib.deflate :
+      Math.random() < 0.5 ? zlib.deflateRaw :
+      zlib.gzip;
+compressor(new Buffer('example data'), function(errCompress, compressed) {
+  assert.ifError(errCompress);
+
+  InflateAuto.inflateAuto(compressed, function(errDecompress, decompressed) {
+    assert.ifError(errDecompress);
+    console.log('Decompressed: ' + decompressed);
+  });
+});
 ```
 
 
@@ -58,6 +73,68 @@ npm install inflate-auto
 
 
 ## Recipes
+
+### Deflate HTTP
+
+Compressed HTTP/HTTPS responses can be supported with code similar to the
+following:
+
+```js
+const InflateAuto = require('inflate-auto');
+const https = require('https');
+const url = require('url');
+const zlib = require('zlib');
+
+var options = url.parse('https://api.stackexchange.com/2.2/answers?order=desc&sort=activity&site=stackoverflow');
+options.headers = {
+  Accept: 'application/json',
+  'Accept-Encoding': 'gzip, deflate'
+};
+https.get(options, function(res) {
+  var encoding = res.headers['content-encoding'] || 'identity';
+  encoding = encoding.trim().toLowerCase();
+
+  // Note:  InflateAuto could be used for gzip, if desired.
+  var inflater;
+  if (encoding === 'deflate') {
+    inflater = new InflateAuto();
+  } else if (encoding === 'gzip') {
+    inflater = new zlib.Gunzip();
+  }
+
+  var bodyData;
+  if (inflater) {
+    inflater.on('error', function(err) {
+      console.error('Decompression error:', err);
+    });
+    bodyData = res.pipe(inflater);
+  } else {
+    bodyData = res;
+  }
+
+  bodyData.pipe(process.stdout, {end: false});
+})
+  .on('error', function(err) {
+    console.error('Request error:', err);
+  });
+```
+
+### Synchronous Inflate
+
+Data can be decompressed while blocking the main thread using
+`InflateAuto.inflateAutoSync` (analogously to `zlib.inflateSync`) as follows:
+
+```js
+const InflateAuto = require('inflate-auto');
+const zlib = require('zlib');
+
+var compressor = Math.random() < 0.5 ? zlib.deflateSync :
+      Math.random() < 0.5 ? zlib.deflateRawSync :
+      zlib.gzipSync;
+var compressed = compressor(new Buffer('example data'));
+var decompressed = InflateAuto.inflateAutoSync(compressed);
+console.log('Decompressed: ' + decompressed);
+```
 
 More examples can be found in the [test
 specifications](https://kevinoid.github.io/inflate-auto/specs).
