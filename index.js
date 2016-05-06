@@ -10,10 +10,17 @@ var inherits = require('util').inherits;
 var zlib = require('zlib');
 var zlibInternal = require('./lib/zlib-internal');
 
-/**
+/** Decompressor for DEFLATE compressed data in either zlib, gzip, or "raw"
+ * format.
+ *
+ * This class is intended to be a drop-in replacement for
+ * <code>zlib.Inflate</code>, <code>zlib.InflateRaw</code>, and/or
+ * <code>zlib.Gunzip</code>.
+ *
  * @constructor
  * @extends stream.Transform
- * @param {Object} opts Options to pass to the zlib constructor.
+ * @param {Object=} opts Options to pass to the constructor for the detected
+ * format.
  */
 function InflateAuto(opts) {
   if (!(this instanceof InflateAuto)) {
@@ -62,7 +69,7 @@ InflateAuto.createInflateAuto = function createInflateAuto(opts) {
   return new InflateAuto(opts);
 };
 
-/** Decompresses a compressed Buffer.
+/** Decompresses a compressed <code>Buffer</code>.
  * Analogous to {@link zlib.inflate}.
  *
  * @param {!Buffer} buffer Compressed data to decompress.
@@ -101,20 +108,28 @@ InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
 /** Detects which zlib inflater may be able to inflate data beginning with a
  * given Buffer, returning null when uncertain.
  *
- * This method detects the existence of a gzip or zlib header at the beginning
- * of the Buffer and returns an instance of the corresponding zlib class:
- * - If a valid gzip header is found, instance of zlib.Gunzip.
- * - If a valid zlib deflate header is found, an instance of zlib.Deflate.
- * - If a valid header of any type could be completed by more data, null.
- * - Otherwise, an instance of zlib.DeflateRaw.
+ * <p>This method detects the existence of a gzip or zlib header at the
+ * beginning of the <code>Buffer</code> and returns the constructor for the
+ * corresponding zlib class:</p>
+ *
+ * <ul>
+ * <li>If a valid gzip header is found, instance of
+ *   <code>zlib.Gunzip</code>.</li>
+ * <li>If a valid zlib deflate header is found, an instance of
+ *   <code>zlib.Deflate</code>.</li>
+ * <li>If a valid header of any type could be completed by more data,
+ *   <code>null</code>.</li>
+ * <li>Otherwise, an instance of <code>zlib.DeflateRaw</code>.</li>
+ * </ul>
  *
  * @protected
- * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
+ * @param {Buffer} chunk Beginning of data for which to deduce the
  * compression format.
  * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
- * An instance of the zlib type which will inflate chunk and subsequent data,
- * or <code>null</code> if chunk is too short to deduce the format
- * conclusively.
+ * An instance of the zlib type which will inflate <code>chunk</code> and
+ * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
+ * deduce the format conclusively.
+ * @see InflateAuto#SIGNATURE_MAX_LEN
  */
 InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
   if (!chunk || !chunk.length) {
@@ -154,15 +169,16 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
 };
 
 /** Detects which zlib inflater may be able to inflate data beginning with a
- * given Buffer, returning a default when uncertain.
+ * given <code>Buffer</code>, returning a default when uncertain.
  *
- * This method behaves like _detectInflater except that if a valid header can
- * not be found, an instance of zlib.InflateRaw is returned (rather than null)
- * for use in cases where all data is present and "undecided" is not an option.
+ * <p>This method behaves like {@link _detectInflater} except that if a valid
+ * header can not be found, <code>zlib.InflateRaw</code> is returned (rather
+ * than <code>null</code>).  This method is for use in cases where all data
+ * is present and "undecided" is not an option.</p>
  *
  * @protected
- * @param {buffer.Buffer} chunk Beginning of data for which to deduce the
- * compression format.
+ * @param {Buffer} chunk Beginning of data for which to deduce the compression
+ * format.
  * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
  * An instance of the zlib type which will inflate chunk and subsequent data.
  * @see #_detectInflater()
@@ -172,8 +188,9 @@ InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
 };
 
 /** Flushes any buffered data when the stream is ending.
+ *
  * @protected
- * @param {?function(Error)=} callback
+ * @param {function(Error=)} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
   if (this._closed) {
@@ -195,6 +212,15 @@ InflateAuto.prototype._flush = function _flush(callback) {
   this._inflater.end();
 };
 
+/** Process a chunk of data, synchronously or asynchronously.
+ *
+ * @protected
+ * @param {!Buffer} chunk Chunk of data to write.
+ * @param {number} flushFlag Flush flag with which to write the data.
+ * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
+ * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
+ * <code>undefined</code>.
+ */
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
     cb) {
   if (!this._inflater) {
@@ -273,12 +299,12 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
   }
 };
 
-/** Deflates a chunk of data.
+/** Inflates a chunk of data.
  *
  * @protected
- * @param {buffer.Buffer} chunk Chunk of data to deflate.
+ * @param {Buffer} chunk Chunk of data to inflate.
  * @param {?string} encoding Ignored.
- * @param {?function(Error)=} callback
+ * @param {?function(Error)=} callback Callback once chunk has been written.
  */
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
     callback) {
@@ -341,7 +367,8 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
 
 /** Closes this stream and its underlying resources (zlib handle).
  *
- * @param {?function(Error)=} callback
+ * @param {?function(Error)=} callback Callback once resources have been
+ * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
   if (this._inflater) {
@@ -364,7 +391,7 @@ InflateAuto.prototype.close = function close(callback) {
  *
  * @param {number=} kind Flush behavior of writes to zlib.  Must be one of the
  * zlib flush constant values.
- * @param {?function(Error)=} callback
+ * @param {?function(Error)=} callback Callback once data has been flushed.
  */
 InflateAuto.prototype.flush = function flush(kind, callback) {
   if (this._inflater) {
@@ -376,7 +403,7 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
 };
 
 if (zlib.Inflate.prototype.params) {
-  /** Sets the deflate compression parameters.
+  /** Sets the inflate compression parameters.
    *
    * <p>For inflate, this has no effect.  This method is kept for compatibility
    * only.  It is only defined when {@link Inflate.prototype.params} is
@@ -385,15 +412,16 @@ if (zlib.Inflate.prototype.params) {
    * <p>Note: Parameter checking is not performed if the format hasn't been
    * determined.  Although this is currently possible (since parameters are
    * currently independent of format) it requires instantiating a zlib object
-   * with bindings, which is heavy for checking args which haven't changed since
-   * this method was added to the Node API.  If there is a use case for such
-   * checking, please open an issue.</p>
+   * with bindings, which is heavy for checking args which haven't changed
+   * since this method was added to the Node API.  If there is a use case for
+   * such checking, please open an issue.</p>
    *
    * @param {number} level Compression level (between {@link zlib.Z_MIN_LEVEL}
    * and {@link zlib.Z_MAX_LEVEL}).
    * @param {number} strategy Compression strategy (one of the zlib strategy
    * constant values).
-   * @param {?function(Error)=} callback
+   * @param {?function(Error)=} callback Callback once parameters have been
+   * set.
    */
   InflateAuto.prototype.params = function params(level, strategy, callback) {
     if (this._inflater) {
@@ -407,10 +435,10 @@ if (zlib.Inflate.prototype.params) {
 
 /** Discards any buffered data and resets the decoder to its initial state.
  *
- * Note:  If a format has been detected, reset does not currently clear the
- * detection (for performance and to reduce unnecessary complexity).  If there
+ * <p><b>Note:</b>  If a format has been detected, reset does not currently
+ * clear the detection (for performance and to reduce complexity).  If there
  * is a real-world use case for this type of "full reset", please open an
- * issue.
+ * issue.</p>
  */
 InflateAuto.prototype.reset = function reset() {
   if (this._inflater) {
@@ -424,14 +452,14 @@ InflateAuto.prototype.reset = function reset() {
 
 /** Queues a method call for the inflater until one is set.
  *
- * In addition to queueing the method call, if the arguments includes a
+ * <p>In addition to queueing the method call, if the arguments includes a
  * callback function, that function is invoked immediately in order to
  * prevent deadlocks in existing code which doesn't write until the callback
- * completes.
+ * completes.</p>
  *
  * @protected
  * @param {string} name Name of the method to call.
- * @param {!(Arguments|Array)} args Arguments to apply to the method call.
+ * @param {!(Arguments|Array)} args Arguments to pass to the method call.
  */
 InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   assert(!this._inflater);
