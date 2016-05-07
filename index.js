@@ -41,17 +41,16 @@ function InflateAuto(opts) {
   this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined' ?
     opts.finishFlush : zlib.Z_FINISH;
 
-  /** The instance of a zlib class which does the inflating for the detected
-   * compression format.
-   * @private {zlib.Gunzip|zlib.Inflate|zlib.InflateRaw} */
-  this._inflater = null;
+  /** Instance of a class which does the decoding for the detected data format.
+   * @private {stream.Duplex} */
+  this._decoder = null;
 
-  /** Options to pass to the inflater when created.
+  /** Options to pass to the format constructor when created.
    * @private {Object} */
   this._opts = opts;
 
   /* Invariant:
-   * At most one of _inflater or _writeBuf is non-null.
+   * At most one of _decoder or _writeBuf is non-null.
    * Since writes are being forwarded or buffered.
    */
 
@@ -99,14 +98,14 @@ if (zlib.inflateSync) {
   };
 }
 
-/** Maximum number of bytes required for _detectInflater to conclusively
- * determine the inflater to use.
+/** Maximum number of bytes required for _detectFormat to conclusively
+ * determine the format to use.
  * @const
  */
 InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
 
-/** Detects which zlib inflater may be able to inflate data beginning with a
- * given Buffer, returning null when uncertain.
+/** Detects which zlib format may be able to decode data beginning with a
+ * given <code>Buffer</code>, returning <code>null</code> when uncertain.
  *
  * <p>This method detects the existence of a gzip or zlib header at the
  * beginning of the <code>Buffer</code> and returns the constructor for the
@@ -125,15 +124,15 @@ InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
  * @protected
  * @param {Buffer} chunk Beginning of data for which to deduce the
  * compression format.
- * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
- * An instance of the zlib type which will inflate <code>chunk</code> and
+ * @return {function(new:stream.Duplex, Object=)}
+ * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
  * deduce the format conclusively.
  * @see InflateAuto#SIGNATURE_MAX_LEN
  */
-InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
+InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
   if (!chunk || !chunk.length) {
-    // No data to determine inflater
+    // No data to determine format
     return null;
   }
 
@@ -168,10 +167,10 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
   return zlib.InflateRaw;
 };
 
-/** Detects which zlib inflater may be able to inflate data beginning with a
+/** Detects which zlib format may be able to decode data beginning with a
  * given <code>Buffer</code>, returning a default when uncertain.
  *
- * <p>This method behaves like {@link _detectInflater} except that if a valid
+ * <p>This method behaves like {@link _detectFormat} except that if a valid
  * header can not be found, <code>zlib.InflateRaw</code> is returned (rather
  * than <code>null</code>).  This method is for use in cases where all data
  * is present and "undecided" is not an option.</p>
@@ -179,12 +178,12 @@ InflateAuto.prototype._detectInflater = function _detectInflater(chunk) {
  * @protected
  * @param {Buffer} chunk Beginning of data for which to deduce the compression
  * format.
- * @return {function(new:(zlib.Gunzip|zlib.Inflate|zlib.InflateRaw), Object=)}
- * An instance of the zlib type which will inflate chunk and subsequent data.
- * @see #_detectInflater()
+ * @return {function(new:stream.Duplex, Object=)}
+ * An instance of the zlib type which will decode chunk and subsequent data.
+ * @see #_detectFormat()
  */
-InflateAuto.prototype._detectInflaterNow = function _detectInflaterNow(chunk) {
-  return this._detectInflater(chunk) || zlib.InflateRaw;
+InflateAuto.prototype._detectFormatNow = function _detectFormatNow(chunk) {
+  return this._detectFormat(chunk) || zlib.InflateRaw;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -198,9 +197,9 @@ InflateAuto.prototype._flush = function _flush(callback) {
     return;
   }
 
-  if (!this._inflater) {
+  if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
-    this._setInflater(this._detectInflaterNow(this._writeBuf));
+    this._setFormat(this._detectFormatNow(this._writeBuf));
   }
 
   // callback must not be called until all data has been written.
@@ -208,8 +207,8 @@ InflateAuto.prototype._flush = function _flush(callback) {
   //
   // Note:  Not called on 'error' since errors events already forwarded
   // and should not emit 'end' after 'error'
-  this._inflater.once('end', callback);
-  this._inflater.end();
+  this._decoder.once('end', callback);
+  this._decoder.end();
 };
 
 /** Process a chunk of data, synchronously or asynchronously.
@@ -223,12 +222,12 @@ InflateAuto.prototype._flush = function _flush(callback) {
  */
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
     cb) {
-  if (!this._inflater) {
+  if (!this._decoder) {
     this._writeEarly(chunk);
   }
 
-  if (this._inflater) {
-    return this._inflater._processChunk.apply(this._inflater, arguments);
+  if (this._decoder) {
+    return this._decoder._processChunk.apply(this._decoder, arguments);
   }
 
   if (!cb) {
@@ -239,46 +238,46 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
   return undefined;
 };
 
-/** Sets the inflater class.
+/** Sets the format which will be used to decode data written to this stream.
  *
  * @protected
- * @param {function(new:stream.Duplex,Object=)} Inflater Constructor for the
- * stream class which will be used to inflate data written to this stream.
- * @see #_detectInflater()
+ * @param {function(new:stream.Duplex,Object=)} Format Constructor for the
+ * stream class which will be used to decode data written to this stream.
+ * @see #_detectFormat()
  */
-InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
+InflateAuto.prototype._setFormat = function _setFormat(Format) {
   var self = this;
 
   // We would need to disconnect event handlers and close the previous
-  // inflater to avoid leaking.  No current use case.
-  assert(!this._inflater, 'changing inflater not supported');
+  // format to avoid leaking.  No current use case.
+  assert(!this._decoder, 'changing format not supported');
 
-  var inflater;
+  var format;
   try {
-    this._inflater = inflater = new Inflater(this._opts);
+    this._decoder = format = new Format(this._opts);
   } catch (err) {
     self.emit('error', err);
     return;
   }
 
-  inflater.on('data', function(chunk) {
+  format.on('data', function(chunk) {
     self.push(chunk);
   });
 
-  // proxy important events from the inflater
+  // proxy important events from the format
   // Note:  Same events as Readable.wrap except pause/unpause and close.
   ['destroy', 'error'].forEach(function(event) {
-    inflater.on(event, self.emit.bind(self, event));
+    format.on(event, self.emit.bind(self, event));
   });
 
   // 'close' handled specially to ensure correct order with 'end'
   this.removeListener('end', this.close);
   var endEmitted = false;
   this.once('end', function() { endEmitted = true; });
-  var inflaterEndEmitted = false;
-  inflater.once('end', function() { inflaterEndEmitted = true; });
-  inflater.on('close', function() {
-    if (inflaterEndEmitted && !endEmitted) {
+  var formatEndEmitted = false;
+  format.once('end', function() { formatEndEmitted = true; });
+  format.on('close', function() {
+    if (formatEndEmitted && !endEmitted) {
       self.once('end', function() { self.emit('close'); });
     } else {
       self.emit('close');
@@ -287,7 +286,7 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
 
   if (this._queuedMethodCalls) {
     this._queuedMethodCalls.forEach(function(mc) {
-      inflater[mc.name].apply(inflater, mc.args);
+      format[mc.name].apply(format, mc.args);
     });
     delete this._queuedMethodCalls;
   }
@@ -295,7 +294,7 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
   if (this._writeBuf) {
     var writeBuf = this._writeBuf;
     delete this._writeBuf;
-    this._inflater.write(writeBuf);
+    this._decoder.write(writeBuf);
   }
 };
 
@@ -308,7 +307,7 @@ InflateAuto.prototype._setInflater = function _setInflater(Inflater) {
  */
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
     callback) {
-  if (!this._inflater) {
+  if (!this._decoder) {
     if (chunk !== null && !(chunk instanceof Buffer)) {
       callback(new Error('invalid input'));
       return;
@@ -322,8 +321,8 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
     this._writeEarly(chunk);
   }
 
-  if (this._inflater) {
-    this._inflater.write(chunk, encoding, callback);
+  if (this._decoder) {
+    this._decoder.write(chunk, encoding, callback);
     return;
   }
 
@@ -353,16 +352,16 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
     signature = chunk;
   }
 
-  var inflater = this._detectInflater(signature);
-  if (!inflater) {
-    // If this fails, SIGNATURE_MAX_LEN doesn't match _detectInflaters
+  var format = this._detectFormat(signature);
+  if (!format) {
+    // If this fails, SIGNATURE_MAX_LEN doesn't match _detectFormat
     assert(signature.length ===
         chunk.length + (this._writeBuf ? this._writeBuf.length : 0));
     this._writeBuf = signature;
     return;
   }
 
-  this._setInflater(inflater);
+  this._setFormat(format);
 };
 
 /** Closes this stream and its underlying resources (zlib handle).
@@ -371,8 +370,8 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
-  if (this._inflater) {
-    return this._inflater.close.apply(this._inflater, arguments);
+  if (this._decoder) {
+    return this._decoder.close.apply(this._decoder, arguments);
   }
 
   if (callback) {
@@ -394,8 +393,8 @@ InflateAuto.prototype.close = function close(callback) {
  * @param {?function(Error)=} callback Callback once data has been flushed.
  */
 InflateAuto.prototype.flush = function flush(kind, callback) {
-  if (this._inflater) {
-    return this._inflater.flush.apply(this._inflater, arguments);
+  if (this._decoder) {
+    return this._decoder.flush.apply(this._decoder, arguments);
   }
 
   this._queueMethodCall('flush', arguments);
@@ -424,8 +423,8 @@ if (zlib.Inflate.prototype.params) {
    * set.
    */
   InflateAuto.prototype.params = function params(level, strategy, callback) {
-    if (this._inflater) {
-      return this._inflater.params.apply(this._inflater, arguments);
+    if (this._decoder) {
+      return this._decoder.params.apply(this._decoder, arguments);
     }
 
     this._queueMethodCall('params', arguments);
@@ -441,8 +440,8 @@ if (zlib.Inflate.prototype.params) {
  * issue.</p>
  */
 InflateAuto.prototype.reset = function reset() {
-  if (this._inflater) {
-    return this._inflater.reset.apply(this._inflater, arguments);
+  if (this._decoder) {
+    return this._decoder.reset.apply(this._decoder, arguments);
   }
 
   assert(!this._closed, 'zlib binding closed');
@@ -450,7 +449,7 @@ InflateAuto.prototype.reset = function reset() {
   return undefined;
 };
 
-/** Queues a method call for the inflater until one is set.
+/** Queues a method call for the format until one is set.
  *
  * <p>In addition to queueing the method call, if the arguments includes a
  * callback function, that function is invoked immediately in order to
@@ -462,7 +461,7 @@ InflateAuto.prototype.reset = function reset() {
  * @param {!(Arguments|Array)} args Arguments to pass to the method call.
  */
 InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
-  assert(!this._inflater);
+  assert(!this._decoder);
 
   // Ideally we would let the proxied method call the callback,
   // but callers may depend on a reply before the next write.
