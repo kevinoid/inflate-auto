@@ -199,7 +199,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
 
   if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
-    this._setFormat(this._detectFormatNow(this._writeBuf));
+    this.setFormat(this._detectFormatNow(this._writeBuf));
   }
 
   // callback must not be called until all data has been written.
@@ -240,17 +240,25 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
 
 /** Sets the format which will be used to decode data written to this stream.
  *
- * @protected
+ * Note:  The current implementation only allows the format to be set once.
+ * Calling this method after the format has been set will throw an exception.
+ *
  * @param {function(new:stream.Duplex,Object=)} Format Constructor for the
  * stream class which will be used to decode data written to this stream.
  * @see #_detectFormat()
  */
-InflateAuto.prototype._setFormat = function _setFormat(Format) {
+InflateAuto.prototype.setFormat = function setFormat(Format) {
   var self = this;
+
+  if (this._decoder && Format === this._decoder.constructor) {
+    return;
+  }
 
   // We would need to disconnect event handlers and close the previous
   // format to avoid leaking.  No current use case.
-  assert(!this._decoder, 'changing format not supported');
+  if (this._decoder) {
+    throw new Error('Changing format is not supported');
+  }
 
   var format;
   try {
@@ -352,8 +360,8 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
     signature = chunk;
   }
 
-  var format = this._detectFormat(signature);
-  if (!format) {
+  var Format = this._detectFormat(signature);
+  if (!Format) {
     // If this fails, SIGNATURE_MAX_LEN doesn't match _detectFormat
     assert(signature.length ===
         chunk.length + (this._writeBuf ? this._writeBuf.length : 0));
@@ -361,7 +369,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
     return;
   }
 
-  this._setFormat(format);
+  this.setFormat(Format);
 };
 
 /** Closes this stream and its underlying resources (zlib handle).

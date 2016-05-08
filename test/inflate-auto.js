@@ -127,6 +127,16 @@ function defineFormatTests(format) {
   var emptyCompressed = format.dataCompressed.empty;
   var largeCompressed = format.dataCompressed.large;
 
+  // Data with a different header than the expected one
+  var otherCompressed, otherHeader;
+  if (format === SUPPORTED_FORMATS[0]) {
+    otherCompressed = SUPPORTED_FORMATS[1].dataCompressed.normal;
+    otherHeader = SUPPORTED_FORMATS[1].header;
+  } else {
+    otherCompressed = SUPPORTED_FORMATS[0].dataCompressed.normal;
+    otherHeader = SUPPORTED_FORMATS[0].header;
+  }
+
   var compressed = format.dataCompressed.normal;
   var uncompressed = format.data.normal;
 
@@ -809,20 +819,13 @@ function defineFormatTests(format) {
         var inflateAuto = new InflateAuto();
         var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-        // Write data with a different header before reset to check that reset
-        // clears any partial-header state.
-        var otherData;
-        if (format === SUPPORTED_FORMATS[0]) {
-          otherData = SUPPORTED_FORMATS[1].dataCompressed.normal;
-        } else {
-          otherData = SUPPORTED_FORMATS[0].dataCompressed.normal;
-        }
-
         // Note:  Only write to inflateAuto since zlib stream could error on
         // first byte due to invalid header.
         var autoWriteP = BBPromise.promisify(inflateAuto.write);
 
-        return autoWriteP.call(inflateAuto, otherData.slice(0, 1))
+        // Write data with a different header before reset to check that reset
+        // clears any partial-header state.
+        return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
           .then(function() {
             // IMPORTANT:  Can't call Zlib.reset() with write in progress
             // Since write is run from uv work queue thread and reset from main
@@ -870,6 +873,67 @@ function defineFormatTests(format) {
 
     // Note:  Behavior on compression type change after reset is not
     // guaranteed.  See method comment for details.
+  });
+
+  describe('#setFormat()', function() {
+    it('can set correct format before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      inflateAuto.setFormat(Decompress);
+      result.checkpoint();
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+      return result;
+    });
+
+    it('can set incorrect format before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      inflateAuto.setFormat(Decompress);
+      result.checkpoint();
+      zlibStream.end(otherCompressed);
+      inflateAuto.end(otherCompressed);
+      result.checkpoint();
+      return result;
+    });
+
+    it('can set same format twice', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      inflateAuto.setFormat(Decompress);
+      inflateAuto.setFormat(Decompress);
+      result.checkpoint();
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+      return result;
+    });
+
+    it('throws if changing format', function() {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.setFormat(zlib.Inflate);
+      try {
+        inflateAuto.setFormat(zlib.Gunzip);
+        throw new Error('Should have thrown');
+      } catch (err) {
+        assert(/\bformat\b/i.test(err.message));
+      }
+    });
+
+    it('throws if changing detected format', function() {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.write(otherHeader);
+      try {
+        inflateAuto.setFormat(Decompress);
+        throw new Error('Should have thrown');
+      } catch (err) {
+        assert(/\bformat\b/i.test(err.message));
+      }
+    });
   });
 }
 
