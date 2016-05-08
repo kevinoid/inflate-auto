@@ -268,6 +268,11 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     return;
   }
 
+  // Ensure .constructor is set properly by Format constructor
+  if (format.constructor !== Format) {
+    format.constructor = Format;
+  }
+
   format.on('data', function(chunk) {
     self.push(chunk);
   });
