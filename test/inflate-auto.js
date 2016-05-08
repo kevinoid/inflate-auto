@@ -607,6 +607,12 @@ function defineFormatTests(format) {
   });
 
   describe('#getFormat()', function() {
+    it('returns format set by #setFormat()', function() {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.setFormat(Decompress);
+      assert.strictEqual(inflateAuto.getFormat(), Decompress);
+    });
+
     it('returns the detected format', function(done) {
       var inflateAuto = new InflateAuto();
       inflateAuto.on('format', function() {
@@ -985,12 +991,6 @@ describe('InflateAuto', function() {
     it('returns null before format detection', function() {
       var inflateAuto = new InflateAuto();
       assert.strictEqual(inflateAuto.getFormat(), null);
-    });
-
-    it('returns format set by #setFormat()', function() {
-      var inflateAuto = new InflateAuto();
-      inflateAuto.setFormat(zlib.Gunzip);
-      assert.strictEqual(inflateAuto.getFormat(), zlib.Gunzip);
     });
   });
 
