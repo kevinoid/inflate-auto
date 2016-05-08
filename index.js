@@ -399,6 +399,22 @@ InflateAuto.prototype.close = function close(callback) {
   return undefined;
 };
 
+/** Gets the constructor for the format used to decode data written to this
+ * stream.
+ *
+ * <p>If {@link #setFormat()} has not been called, the returned value will be
+ * {@link zlib.Inflate}, {@link zlib.InflateRaw}, or {@link zlib.Gunzip}.</p>
+ *
+ * @return {function(new:stream.Duplex,Object=)} Constructor for the stream
+ * class which is used to decode data written to this stream, or
+ * <code>null</code> if the format has not been detected or set.
+ * @see #_detectFormat()
+ * @see #setFormat()
+ */
+InflateAuto.prototype.getFormat = function getFormat() {
+  return this._decoder && this._decoder.constructor;
+};
+
 /** Flushes queued writes with a given zlib flush behavior.
  *
  * @param {number=} kind Flush behavior of writes to zlib.  Must be one of the

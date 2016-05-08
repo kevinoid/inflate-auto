@@ -606,6 +606,17 @@ function defineFormatTests(format) {
     });
   });
 
+  describe('#getFormat()', function() {
+    it('returns the detected format', function(done) {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.write(compressed);
+      setImmediate(function() {
+        assert.strictEqual(inflateAuto.getFormat(), Decompress);
+        done();
+      });
+    });
+  });
+
   describe('#flush()', function() {
     it('before write', function() {
       var zlibStream = new Decompress();
@@ -959,6 +970,19 @@ describe('InflateAuto', function() {
       var auto = new InflateAuto();
       auto.on('error', done);
       auto.flush(done);
+    });
+  });
+
+  describe('#getFormat()', function() {
+    it('returns null before format detection', function() {
+      var inflateAuto = new InflateAuto();
+      assert.strictEqual(inflateAuto.getFormat(), null);
+    });
+
+    it('returns format set by #setFormat()', function() {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.setFormat(zlib.Gunzip);
+      assert.strictEqual(inflateAuto.getFormat(), zlib.Gunzip);
     });
   });
 
