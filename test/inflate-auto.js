@@ -609,11 +609,11 @@ function defineFormatTests(format) {
   describe('#getFormat()', function() {
     it('returns the detected format', function(done) {
       var inflateAuto = new InflateAuto();
-      inflateAuto.write(compressed);
-      setImmediate(function() {
+      inflateAuto.on('format', function() {
         assert.strictEqual(inflateAuto.getFormat(), Decompress);
         done();
       });
+      inflateAuto.write(compressed);
     });
   });
 
@@ -887,6 +887,14 @@ function defineFormatTests(format) {
   });
 
   describe('#setFormat()', function() {
+    it('emits \'format\' event', function() {
+      var inflateAuto = new InflateAuto();
+      var gotFormat = false;
+      inflateAuto.on('format', function() { gotFormat = true; });
+      inflateAuto.setFormat(Decompress);
+      assert.strictEqual(gotFormat, true);
+    });
+
     it('can set correct format before write', function() {
       var zlibStream = new Decompress();
       var inflateAuto = new InflateAuto();

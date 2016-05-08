@@ -13,9 +13,13 @@ var zlibInternal = require('./lib/zlib-internal');
 /** Decompressor for DEFLATE compressed data in either zlib, gzip, or "raw"
  * format.
  *
- * This class is intended to be a drop-in replacement for
+ * <p>This class is intended to be a drop-in replacement for
  * <code>zlib.Inflate</code>, <code>zlib.InflateRaw</code>, and/or
- * <code>zlib.Gunzip</code>.
+ * <code>zlib.Gunzip</code>.</p>
+ *
+ * <p>This class emits the additional event <code>'format'</code> when the
+ * compression format has been set or detected.  The event includes the
+ * constructor for the format.</p>
  *
  * @constructor
  * @extends stream.Transform
@@ -303,6 +307,8 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     });
     delete this._queuedMethodCalls;
   }
+
+  self.emit('format', Format);
 
   if (this._writeBuf) {
     var writeBuf = this._writeBuf;
