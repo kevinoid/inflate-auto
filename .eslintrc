@@ -64,6 +64,8 @@ rules:
   }]
   ## require parens for Constructor
   new-parens: 2
+  ## allow use of bitwise operators
+  no-bitwise: 0
   ## allow nested ternary expressions
   # if they are indented one-expression-per-line, they are clear enough for me
   no-nested-ternary: 0
