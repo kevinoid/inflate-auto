@@ -18,15 +18,27 @@ function isFunction(val) {
 /** A function which detects the format for a given chunk of data.
  *
  * The function may be called any number of times with non-<code>null</code>,
- * non-empty <code>Buffer</code>s.  The function may return the constructor
- * for a <code>stream.Duplex</code> class, in which case an instance of that
- * class will be used to decode data written to this stream.  It may also
- * return <code>null</code>, in which case the function will not be called
- * again for the same data.  Finally it may return <code>undefined</code> to
- * indicate that there is insufficient data to make a determination.
+ * non-empty <code>Buffer</code>s.  The return value can be any of the
+ * following:
+ * <ol>
+ * <li>If a format can be definitively determined:  A constructor for the
+ * <code>stream.Duplex</code> class of the format which takes the
+ * <code>options</code> Object as an argument.  An instance of the class will
+ * be used to decode data written to this stream.</li>
+ * <li>If all formats supported by this detector can be definitively ruled out:
+ * <code>null</code>.  This function will not be called again unless the
+ * stream is reset.</li>
+ * <li>None of the above: <code>undefined</code>.  This function will be called
+ * again when more data is available.</li>
+ * </ol>
  *
- * @typedef {function(!Buffer): ?function(new:stream.Duplex, Object=)}
- * FormatDetector
+ * @callback InflateAuto.FormatDetector
+ * @param {!Buffer} chunk Non-empty chunk of data to check.
+ * @return {?function(new:stream.Duplex, Object=)|undefined} Constructor for a
+ * <code>stream.Duplex</code> class to decode <code>chunk</code> and subsequent
+ * data written to the stream, <code>null</code> if the format is
+ * unrecognized/unsupported, <code>undefined</code> if format detection requires
+ * more data.
  */
 
 /** Options for {@link InflateAuto}.
@@ -37,14 +49,15 @@ function isFunction(val) {
  *
  * @typedef {{
  *   defaultFormat: function(new:stream.Duplex, Object=)|undefined,
- *   detectors: Array<!FormatDetector>|undefined
- * }} InflateAutoOptions
+ *   detectors: Array<!InflateAuto.FormatDetector>|undefined
+ * }} InflateAuto.InflateAutoOptions
+ * @extends zlib.Zlib.options
  * @property {function(new:stream.Duplex, Object=)=} defaultFormat Constructor
  * of the format which is used if no detectors match.
- * @property {Array<!FormatDetector>=} detectors Functions which detect the
- * data format for a chunk of data and return the constructor for a class to
- * decode the data.  If any detector requires large amounts of data, adjust
- * <code>highWaterMark</code> appropriately.
+ * @property {Array<!InflateAuto.FormatDetector>=} detectors Functions which
+ * detect the data format for a chunk of data and return the constructor for a
+ * class to decode the data.  If any detector requires large amounts of data,
+ * adjust <code>highWaterMark</code> appropriately.
  */
 // var InflateAutoOptions;
 
@@ -61,8 +74,8 @@ function isFunction(val) {
  *
  * @constructor
  * @extends stream.Transform
- * @param {InflateAutoOptions=} opts Combined options for this class and for
- * the detected format.
+ * @param {InflateAuto.InflateAutoOptions=} opts Combined options for this
+ * class and for the detected format.
  */
 function InflateAuto(opts) {
   if (!(this instanceof InflateAuto)) {
@@ -88,7 +101,7 @@ function InflateAuto(opts) {
   this._decoder = null;
 
   /** Detectors for formats supported by this instance.
-   * @private {!Array<FormatDetector>}
+   * @private {!Array<InflateAuto.FormatDetector>}
    */
   this._detectors = null;
   if (opts && opts.detectors) {
@@ -109,7 +122,7 @@ function InflateAuto(opts) {
   }
 
   /** Detectors which are still plausible given previous data.
-   * @private {!Array<FormatDetector>}
+   * @private {!Array<InflateAuto.FormatDetector>}
    */
   this._detectorsLeft = this._detectors;
 
@@ -150,15 +163,14 @@ InflateAuto.createInflateAuto = function createInflateAuto(opts) {
 };
 
 /**
- * @const
+ * @enum {InflateAuto.FormatDetector}
  */
 InflateAuto.detectors = {
   /** Detects the ZLIB DEFLATE format, as specified in RFC 1950.
-   * @const
    * @param {!Buffer} chunk Chunk of data to check.
-   * @return {?zlib.Inflate} <code>zlib.Inflate</code> if the data conforms
-   * to RFC 1950 Section 2.2, <code>undefined</code> if the data may conform,
-   * <code>null</code> if it does not conform.
+   * @return {?zlib.Inflate|undefined} <code>zlib.Inflate</code> if the data
+   * conforms to RFC 1950 Section 2.2, <code>undefined</code> if the data may
+   * conform, <code>null</code> if it does not conform.
    */
   deflate: function detectDeflate(chunk) {
     // CM field (least-significant 4 bits) must be 8
@@ -175,10 +187,9 @@ InflateAuto.detectors = {
     return null;
   },
   /** Detects the GZIP format, as specified in RFC 1952.
-   * @const
    * @param {!Buffer} chunk Chunk of data to check.
-   * @return {?zlib.Gunzip} <code>zlib.Gunzip</code> if the data conforms
-   * to RFC 1952, <code>undefined</code> if the data may conform,
+   * @return {?zlib.Gunzip|undefined} <code>zlib.Gunzip</code> if the data
+   * conforms to RFC 1952, <code>undefined</code> if the data may conform,
    * <code>null</code> if it does not conform.
    */
   gzip: function detectGzip(chunk) {
@@ -513,10 +524,7 @@ InflateAuto.prototype.close = function close(callback) {
 /** Gets the constructor for the format used to decode data written to this
  * stream.
  *
- * <p>If {@link #setFormat()} has not been called, the returned value will be
- * {@link zlib.Inflate}, {@link zlib.InflateRaw}, or {@link zlib.Gunzip}.</p>
- *
- * @return {function(new:stream.Duplex,Object=)} Constructor for the stream
+ * @return {?function(new:stream.Duplex,Object=)} Constructor for the stream
  * class which is used to decode data written to this stream, or
  * <code>null</code> if the format has not been detected or set.
  * @see #_detectFormat()
