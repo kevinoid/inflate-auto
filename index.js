@@ -10,6 +10,43 @@ var inherits = require('util').inherits;
 var zlib = require('zlib');
 var zlibInternal = require('./lib/zlib-internal');
 
+function isFunction(val) {
+  return typeof val === 'function';
+}
+
+/** A function which detects the format for a given chunk of data.
+ *
+ * The function may be called any number of times with non-<code>null</code>,
+ * non-empty <code>Buffer</code>s.  The function may return the constructor
+ * for a <code>stream.Duplex</code> class, in which case an instance of that
+ * class will be used to decode data written to this stream.  It may also
+ * return <code>null</code>, in which case the function will not be called
+ * again for the same data.  Finally it may return <code>undefined</code> to
+ * indicate that there is insufficient data to make a determination.
+ *
+ * @typedef {function(!Buffer): ?function(new:stream.Duplex, Object=)}
+ * FormatDetector
+ */
+
+/** Options for {@link InflateAuto}.
+ *
+ * Note that the InflateAuto options object is passed to the constructor for
+ * the detected data format to allow drop-in replacement.  It may have
+ * additional properties to the ones defined here.
+ *
+ * @typedef {{
+ *   defaultFormat: function(new:stream.Duplex, Object=)|undefined,
+ *   detectors: Array<!FormatDetector>|undefined
+ * }} InflateAutoOptions
+ * @property {function(new:stream.Duplex, Object=)=} defaultFormat Constructor
+ * of the format which is used if no detectors match.
+ * @property {Array<!FormatDetector>=} detectors Functions which detect the
+ * data format for a chunk of data and return the constructor for a class to
+ * decode the data.  If any detector requires large amounts of data, adjust
+ * <code>highWaterMark</code> appropriately.
+ */
+// var InflateAutoOptions;
+
 /** Decompressor for DEFLATE compressed data in either zlib, gzip, or "raw"
  * format.
  *
@@ -23,8 +60,8 @@ var zlibInternal = require('./lib/zlib-internal');
  *
  * @constructor
  * @extends stream.Transform
- * @param {Object=} opts Options to pass to the constructor for the detected
- * format.
+ * @param {InflateAutoOptions=} opts Combined options for this class and for
+ * the detected format.
  */
 function InflateAuto(opts) {
   if (!(this instanceof InflateAuto)) {
@@ -49,6 +86,45 @@ function InflateAuto(opts) {
    * @private {stream.Duplex} */
   this._decoder = null;
 
+  /** Detectors for formats supported by this instance.
+   * @private {!Array<FormatDetector>}
+   */
+  this._detectors = null;
+  if (opts && opts.detectors) {
+    if (!Array.isArray(opts.detectors)) {
+      throw new TypeError('detectors must be an Array');
+    }
+
+    if (!opts.detectors.every(isFunction)) {
+      throw new TypeError('All detectors must be functions');
+    }
+
+    this._detectors = opts.detectors.slice();
+  } else {
+    this._detectors = [
+      InflateAuto.detectors.deflate,
+      InflateAuto.detectors.gzip
+    ];
+  }
+
+  /** Detectors which are still plausible given previous data.
+   * @private {!Array<FormatDetector>}
+   */
+  this._detectorsLeft = this._detectors;
+
+  /** Default format which is used if no detectors match.
+   * @private {function(new:stream.Duplex, Object=)}
+   */
+  this._defaultFormat = null;
+  if (opts && opts.defaultFormat) {
+    if (typeof opts.defaultFormat !== 'function') {
+      throw new TypeError('defaultFormat must be a constructor function');
+    }
+    this._defaultFormat = opts.defaultFormat;
+  } else {
+    this._defaultFormat = zlib.InflateRaw;
+  }
+
   /** Options to pass to the format constructor when created.
    * @private {Object} */
   this._opts = opts;
@@ -70,6 +146,58 @@ inherits(InflateAuto, Transform);
  */
 InflateAuto.createInflateAuto = function createInflateAuto(opts) {
   return new InflateAuto(opts);
+};
+
+/**
+ * @const
+ */
+InflateAuto.detectors = {
+  /** Detects the ZLIB DEFLATE format, as specified in RFC 1950.
+   * @const
+   * @param {!Buffer} chunk Chunk of data to check.
+   * @return {?zlib.Inflate} <code>zlib.Inflate</code> if the data conforms
+   * to RFC 1950 Section 2.2, <code>undefined</code> if the data may conform,
+   * <code>null</code> if it does not conform.
+   */
+  deflate: function detectDeflate(chunk) {
+    // CM field (least-significant 4 bits) must be 8
+    // FCHECK field ensures first 16-bit BE int is a multiple of 31
+    if ((chunk[0] & 0x0f) === 8) {
+      if (chunk.length === 1) {
+        // Can't know yet whether header is valid
+        return undefined;
+      } else if ((chunk.readUInt16BE(0) % 31) === 0) {
+        // Valid ZLIB header
+        return zlib.Inflate;
+      }
+    }
+    return null;
+  },
+  /** Detects the GZIP format, as specified in RFC 1952.
+   * @const
+   * @param {!Buffer} chunk Chunk of data to check.
+   * @return {?zlib.Gunzip} <code>zlib.Gunzip</code> if the data conforms
+   * to RFC 1952, <code>undefined</code> if the data may conform,
+   * <code>null</code> if it does not conform.
+   */
+  gzip: function detectGzip(chunk) {
+    // Check for gzip header per Section 2.3.1 of RFC 1952
+    if (chunk[0] === 0x1f) {
+      if (chunk.length === 1) {
+        // Can't know yet whether header is valid
+        return undefined;
+      } else if (chunk[1] === 0x8b) {
+        if (chunk.length === 2) {
+          // Can't know yet whether header is valid
+          return undefined;
+        } else if (chunk[2] === 8) {
+          // Valid gzip header
+          return zlib.Gunzip;
+        }
+      }
+    }
+    return null;
+  }
 };
 
 /** Decompresses a compressed <code>Buffer</code>.
@@ -102,12 +230,6 @@ if (zlib.inflateSync) {
   };
 }
 
-/** Maximum number of bytes required for _detectFormat to conclusively
- * determine the format to use.
- * @const
- */
-InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
-
 /** Detects which zlib format may be able to decode data beginning with a
  * given <code>Buffer</code>, returning <code>null</code> when uncertain.
  *
@@ -132,7 +254,6 @@ InflateAuto.prototype.SIGNATURE_MAX_LEN = 3;
  * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
  * deduce the format conclusively.
- * @see InflateAuto#SIGNATURE_MAX_LEN
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
   if (!chunk || !chunk.length) {
@@ -140,35 +261,25 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
     return null;
   }
 
-  // Check for zlib header per Section 2.2 of RFC 1950
-  // CM field (least-significant 4 bits) must be 8
-  // FCHECK field ensures first 16-bit BE int is a multiple of 31
-  if ((chunk[0] & 0x0f) === 8) {
-    if (chunk.length === 1) {
-      // Can't know yet whether header is valid
-      return null;
-    } else if ((chunk.readUInt16BE(0) % 31) === 0) {
-      // Valid zlib header
-      return zlib.Inflate;
+  var detectors = this._detectorsLeft;
+  var plausible = [];
+  for (var i = 0; i < detectors.length; ++i) {
+    var detector = detectors[i];
+    var format = detector(chunk);
+    if (format) {
+      return format;
     }
-  // Check for gzip header per Section 2.3.1 of RFC 1952
-  } else if (chunk[0] === 0x1f) {
-    if (chunk.length === 1) {
-      // Can't know yet whether header is valid
-      return null;
-    } else if (chunk[1] === 0x8b) {
-      if (chunk.length === 2) {
-        // Can't know yet whether header is valid
-        return null;
-      } else if (chunk[2] === 8) {
-        // Valid gzip header
-        return zlib.Gunzip;
-      }
+    if (format === undefined) {
+      plausible.push(detector);
     }
   }
 
-  // Not a valid zlib or gzip header
-  return zlib.InflateRaw;
+  if (plausible.length === 0) {
+    return this._defaultFormat;
+  }
+
+  this._detectorsLeft = plausible;
+  return null;
 };
 
 /** Detects which zlib format may be able to decode data beginning with a
@@ -187,7 +298,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
  * @see #_detectFormat()
  */
 InflateAuto.prototype._detectFormatNow = function _detectFormatNow(chunk) {
-  return this._detectFormat(chunk) || zlib.InflateRaw;
+  return this._detectFormat(chunk) || this._defaultFormat;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -361,21 +472,13 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
 
   var signature;
   if (this._writeBuf) {
-    // Only copy up to the max signature size to avoid needless huge copies
-    signature = new Buffer(Math.min(
-          this.SIGNATURE_MAX_LEN,
-          this._writeBuf.length + chunk.length));
-    this._writeBuf.copy(signature);
-    chunk.copy(signature, this._writeBuf.length);
+    signature = Buffer.concat([this._writeBuf, chunk]);
   } else {
     signature = chunk;
   }
 
   var Format = this._detectFormat(signature);
   if (!Format) {
-    // If this fails, SIGNATURE_MAX_LEN doesn't match _detectFormat
-    assert(signature.length ===
-        chunk.length + (this._writeBuf ? this._writeBuf.length : 0));
     this._writeBuf = signature;
     return;
   }
@@ -481,6 +584,7 @@ InflateAuto.prototype.reset = function reset() {
 
   assert(!this._closed, 'zlib binding closed');
   delete this._writeBuf;
+  this._detectorsLeft = this._detectors;
   return undefined;
 };
 
