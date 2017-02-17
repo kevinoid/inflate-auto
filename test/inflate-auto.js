@@ -2,6 +2,7 @@
  * @copyright Copyright 2016 Kevin Locke <kevin@kevinlocke.name>
  * @license MIT
  */
+
 'use strict';
 
 var BBPromise = require('bluebird');
@@ -206,7 +207,7 @@ function defineFormatTests(format) {
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      for (var i = 0; i < compressed.length; ++i) {
+      for (var i = 0; i < compressed.length; i += 1) {
         var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
         zlibStream.write(block);
         inflateAuto.write(block);
@@ -261,8 +262,7 @@ function defineFormatTests(format) {
           return result;
         });
       }
-      for (var i = 1; i < formatHeaderLen; ++i) {
-        // eslint-disable-next-line no-loop-func
+      for (var i = 1; i < formatHeaderLen; i += 1) {
         testPartialHeader(i);
       }
     });

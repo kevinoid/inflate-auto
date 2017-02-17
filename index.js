@@ -264,7 +264,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
 
   var detectors = this._detectorsLeft;
   var plausible = [];
-  for (var i = 0; i < detectors.length; ++i) {
+  for (var i = 0; i < detectors.length; i += 1) {
     var detector = detectors[i];
     var format = detector(chunk);
     if (format) {
@@ -337,7 +337,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
  * <code>undefined</code>.
  */
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
-    cb) {
+  cb) {
   if (!this._decoder) {
     this._writeEarly(chunk);
   }
@@ -378,7 +378,8 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
 
   var format;
   try {
-    this._decoder = format = new Format(this._opts);
+    format = new Format(this._opts);
+    this._decoder = format;
   } catch (err) {
     self.emit('error', err);
     return;
@@ -437,7 +438,7 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
  * @param {?function(Error)=} callback Callback once chunk has been written.
  */
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
-    callback) {
+  callback) {
   if (!this._decoder) {
     if (chunk !== null && !(chunk instanceof Buffer)) {
       callback(new Error('invalid input'));
