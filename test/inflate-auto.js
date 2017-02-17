@@ -574,6 +574,14 @@ function defineFormatTests(format) {
       try { zlibStream.reset(); } catch (err) { errInflate = err; }
       var errAuto;
       try { inflateAuto.reset(); } catch (err) { errAuto = err; }
+
+      // nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
+      // which is null rather than false in this case.  It's not worth
+      // complicating the code to mimic this.  Ignore the difference
+      if (errInflate) {
+        errInflate.actual = false;
+      }
+
       deepEqual(errAuto, errInflate);
 
       result.end();
