@@ -23,15 +23,17 @@ const InflateAuto = require('inflate-auto');
 const assert = require('assert');
 const zlib = require('zlib');
 
-var compressor = Math.random() < 0.5 ? zlib.deflate :
+const testData = new Buffer('example data');
+const compressor = Math.random() < 0.33 ? zlib.deflate :
       Math.random() < 0.5 ? zlib.deflateRaw :
       zlib.gzip;
-compressor(new Buffer('example data'), function(errCompress, compressed) {
+compressor(testData, (errCompress, compressed) => {
   assert.ifError(errCompress);
 
   InflateAuto.inflateAuto(compressed, function(errDecompress, decompressed) {
     assert.ifError(errDecompress);
-    console.log('Decompressed: ' + decompressed);
+    assert.deepStrictEqual(decompressed, testData);
+    console.log('Data compressed with random format and auto-decompressed.');
   });
 });
 ```
@@ -41,11 +43,11 @@ compressor(new Buffer('example data'), function(errCompress, compressed) {
 
 `InflateAuto` should behave identically to any of the `zlib` decompression
 types, with the exception of `instanceof` and `.constructor` checks.  Using
-the class should be as simple as replacing `zlib.Inflate` with `InflateAuto`
+the class should be as simple as `s/Inflate\(Raw\)?/InflateAuto/g`
 in existing code.  If any real-world which code requires modification (other
-than mentioned above) to work with `InflateAuto` is considered to be a bug in
-`InflateAuto`.  Please report the issue so that `InflateAuto` can be fixed to
-work seamlessly.
+than mentioned above) to work with `InflateAuto` it is considered a bug in
+`InflateAuto`.  Please [report any such
+issues](https://github.com/kevinoid/inflate-auto/issues/new).
 
 
 ## Use Cases
@@ -55,7 +57,7 @@ responses which declare `Content-Encoding: deflate`.  As noted in [Section
 4.2.2 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.2.2) "Some
 non-conformant implementations send the `"deflate"` compressed data without
 the zlib wrapper."  This has been attributed to [early Microsoft
-servers](http://stackoverflow.com/a/9186091) and to [old Apache
+servers](https://stackoverflow.com/a/9186091) and to [old Apache
 mod\_deflate](https://mxr.mozilla.org/mozilla-esr38/source/netwerk/streamconv/converters/nsHTTPCompressConv.cpp#214),
 and is almost certainly an issue in less common servers.  Regardless of the
 most common cause, it is observed in real-world behavior and poses a
@@ -66,7 +68,7 @@ compatibility risk for HTTP clients which support deflate encoding.  Using
 ## Installation
 
 [This package](https://www.npmjs.com/package/inflate-auto) can be installed
-using [npm](https://www.npmjs.com/), either globally or locally, by running:
+using [npm](https://www.npmjs.com/) by running:
 
 ```sh
 npm install inflate-auto
@@ -86,22 +88,19 @@ const https = require('https');
 const url = require('url');
 const zlib = require('zlib');
 
-var options = url.parse('https://api.stackexchange.com/2.2/answers?order=desc&sort=activity&site=stackoverflow');
+const options = url.parse('https://api.stackexchange.com/2.2/answers?order=desc&sort=activity&site=stackoverflow');
 options.headers = {
   Accept: 'application/json',
   'Accept-Encoding': 'gzip, deflate'
 };
 https.get(options, function(res) {
-  var encoding = res.headers['content-encoding'] || 'identity';
-  encoding = encoding.trim().toLowerCase();
+  const encoding =
+    (res.headers['content-encoding'] || 'identity').trim().toLowerCase();
 
-  // Note:  InflateAuto could be used for gzip, if desired.
-  var inflater;
-  if (encoding === 'deflate') {
-    inflater = new InflateAuto();
-  } else if (encoding === 'gzip') {
-    inflater = new zlib.Gunzip();
-  }
+  // InflateAuto could be used for gzip to accept deflate data declared as gzip
+  const inflater = encoding === 'deflate' ? new InflateAuto() :
+    encoding === 'gzip' ? new zlib.Gunzip() :
+    null;
 
   var bodyData;
   if (inflater) {
@@ -127,14 +126,16 @@ Data can be decompressed while blocking the main thread using
 
 ```js
 const InflateAuto = require('inflate-auto');
+const assert = require('assert');
 const zlib = require('zlib');
 
-var compressor = Math.random() < 0.5 ? zlib.deflateSync :
+const compressor = Math.random() < 0.33 ? zlib.deflateSync :
       Math.random() < 0.5 ? zlib.deflateRawSync :
       zlib.gzipSync;
-var compressed = compressor(new Buffer('example data'));
-var decompressed = InflateAuto.inflateAutoSync(compressed);
-console.log('Decompressed: ' + decompressed);
+const testData = new Buffer('example data');
+const compressed = compressor(testData);
+const decompressed = InflateAuto.inflateAutoSync(compressed);
+assert.deepStrictEqual(decompressed, testData);
 ```
 
 More examples can be found in the [test
