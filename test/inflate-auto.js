@@ -151,13 +151,27 @@ function defineFormatTests(format) {
   var header = format.header;
   var headerLen = header.length;
 
-  it('as function', function(done) {
-    decompress(compressed, function(errDecompress, dataDecompress) {
-      assert.ifError(errDecompress);
-      InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
-        assert.ifError(errAuto);
-        deepEqual(dataAuto, dataDecompress);
-        done();
+  describe('.inflateAuto', function() {
+    it('decompresses all data in a single call', function(done) {
+      decompress(compressed, function(errDecompress, dataDecompress) {
+        assert.ifError(errDecompress);
+        InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+          assert.ifError(errAuto);
+          deepEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
+
+    it('passes any Error to the callback', function(done) {
+      var zeros = new Buffer(20);
+      decompress(zeros, function(errDecompress, dataDecompress) {
+        assert(errDecompress, 'expected Error to test');
+        InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+          deepEqual(errAuto, errDecompress);
+          deepEqual(dataAuto, dataDecompress);
+          done();
+        });
       });
     });
   });
