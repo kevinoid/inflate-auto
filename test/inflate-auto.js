@@ -10,6 +10,7 @@ var InflateAuto = require('..');
 var assert = require('assert');
 var extend = require('extend');
 var streamCompare = require('stream-compare');
+var util = require('util');
 var zlib = require('zlib');
 
 var Promise = global.Promise || BBPromise;
@@ -462,18 +463,52 @@ function defineFormatTests(format) {
   }
 
   describe('Constructor', function() {
-    it('throws on invalid options', function() {
-      var options = {flush: {}};
+    describe('validation', function() {
+      var optionsTestCases = [
+        null,
+        true,
+        {chunkSize: zlib.Z_MAX_CHUNK + 1},
+        {chunkSize: zlib.Z_MAX_CHUNK},
+        {chunkSize: zlib.Z_MIN_CHUNK - 1},
+        {chunkSize: zlib.Z_MIN_CHUNK},
+        {dictionary: []},
+        {dictionary: true},
+        {finishFlush: -1},
+        {finishFlush: String(zlib.Z_FULL_FLUSH)},
+        {finishFlush: zlib.Z_FULL_FLUSH},
+        {flush: -1},
+        {flush: String(zlib.Z_FULL_FLUSH)},
+        {flush: zlib.Z_FULL_FLUSH},
+        {level: zlib.Z_MAX_LEVEL + 1},
+        {level: zlib.Z_MAX_LEVEL},
+        {level: zlib.Z_MIN_LEVEL - 1},
+        {level: zlib.Z_MIN_LEVEL},
+        {memLevel: zlib.Z_MAX_MEMLEVEL + 1},
+        {memLevel: zlib.Z_MAX_MEMLEVEL},
+        {memLevel: zlib.Z_MIN_MEMLEVEL - 1},
+        {memLevel: zlib.Z_MIN_MEMLEVEL},
+        {strategy: -1},
+        {strategy: String(zlib.Z_FILTERED)},
+        {strategy: zlib.Z_FILTERED},
+        {windowBits: zlib.Z_MAX_WINDOWBITS + 1},
+        {windowBits: zlib.Z_MAX_WINDOWBITS},
+        {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
+        {windowBits: zlib.Z_MIN_WINDOWBITS}
+      ];
 
-      var errInflate;
-      // eslint-disable-next-line no-new
-      try { new Decompress(options); } catch (err) { errInflate = err; }
+      optionsTestCases.forEach(function(options) {
+        it('same for ' + util.inspect(options), function() {
+          var errInflate;
+          // eslint-disable-next-line no-new
+          try { new Decompress(options); } catch (err) { errInflate = err; }
 
-      var errAuto;
-      // eslint-disable-next-line no-new
-      try { new InflateAuto(options); } catch (err) { errAuto = err; }
+          var errAuto;
+          // eslint-disable-next-line no-new
+          try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
-      deepEqual(errAuto, errInflate);
+          deepEqual(errAuto, errInflate);
+        });
+      });
     });
 
     it('supports chunkSize', function() {
