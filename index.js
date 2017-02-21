@@ -531,7 +531,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
-  if (this._decoder) {
+  if (this._decoder && typeof this._decoder.close === 'function') {
     return this._decoder.close.apply(this._decoder, arguments);
   }
 
