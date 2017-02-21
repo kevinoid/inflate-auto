@@ -380,7 +380,33 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
   }
 
   if (this._decoder) {
-    return this._decoder._processChunk(chunk, flushFlag, cb);
+    if (typeof this._decoder._processChunk === 'function') {
+      return this._decoder._processChunk(chunk, flushFlag, cb);
+    }
+
+    // Fallback to _transform, where possible.
+    // Only works synchronously when callback is called with data immediately.
+    if (typeof this._decoder._transform === 'function') {
+      var needCb = false;
+      var retVal;
+      if (typeof cb !== 'function') {
+        needCb = true;
+        cb = function(err, result) {
+          if (err) {
+            throw err;
+          }
+          retVal = result;
+        };
+      }
+      this._decoder._transform(chunk, null, cb);
+      if (!needCb || retVal) {
+        return retVal;
+      }
+    }
+
+    var formatName =
+      (this._decoder.constructor && this._decoder.constructor.name) || 'format';
+    throw new Error(formatName + ' does not support _processChunk');
   }
 
   this._writeBuf = chunk;

@@ -520,6 +520,12 @@ function defineFormatTests(format) {
           });
         });
       }
+
+      it('can use PassThrough as defaultFormat', function() {
+        var opts = {defaultFormat: stream.PassThrough};
+        var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+        deepEqual(dataAuto, uncompressed);
+      });
     });
   }
 
