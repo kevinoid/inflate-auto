@@ -454,6 +454,20 @@ function defineFormatTests(format) {
     });
   }
 
+  if (!isDefaultFormat) {
+    it('emits error for format error in _flush', function(done) {
+      var inflateAuto = new InflateAuto({defaultFormat: null});
+      var truncated = compressed.slice(0, 1);
+      inflateAuto.on('error', function(err) {
+        assert(err, 'expected format error');
+        assert(/format/i.test(err.message));
+        deepEqual(err.data, truncated);
+        done();
+      });
+      inflateAuto.end(truncated);
+    });
+  }
+
   // For objectMode: true validation is done in _transform.  Check we match.
   it('errors on write of invalid type', function() {
     var options = {objectMode: true};
@@ -1110,6 +1124,41 @@ function defineFormatTests(format) {
       }
     });
   });
+
+  // _processChunk is a semi-public API since it is called externally for
+  // synchronous operation.  Other code may rely on this.
+  describe('#_processChunk()', function() {
+    describe('with cb', function() {
+      it('yields format error', function(done) {
+        var inflateAuto = new InflateAuto({defaultFormat: null});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+          assert(err, 'expected format error');
+          assert(/format/i.test(err.message));
+          deepEqual(err.data, zeros);
+          done();
+        });
+      });
+    });
+
+    describe('without cb', function() {
+      it('throws format errors', function() {
+        var inflateAuto = new InflateAuto({defaultFormat: null});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        assert.throws(function() {
+          inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+        });
+      });
+    });
+  });
 }
 
 describe('InflateAuto', function() {
@@ -1152,6 +1201,32 @@ describe('InflateAuto', function() {
       function() { new InflateAuto({defaultFormat: true}); },
       TypeError
     );
+  });
+
+  it('defaultFormat null disables default', function(done) {
+    var auto = new InflateAuto({defaultFormat: null});
+    var testData = new Buffer(10);
+    testData.fill(0);
+    auto.on('error', function(err) {
+      assert(err, 'expected format mismatch error');
+      assert(/format/i.test(err.message));
+      deepEqual(err.data, testData);
+      done();
+    });
+    auto.write(testData);
+  });
+
+  it('emits error for format detection error in _transform', function(done) {
+    var inflateAuto = new InflateAuto({defaultFormat: null});
+    var zeros = new Buffer(10);
+    zeros.fill(0);
+    inflateAuto.once('error', function(err) {
+      assert(err, 'expected format error');
+      assert(/format/i.test(err.message));
+      deepEqual(err.data, zeros);
+      done();
+    });
+    inflateAuto.write(zeros);
   });
 
   // Analogous to Gunzip/Inflate/InflateRaw

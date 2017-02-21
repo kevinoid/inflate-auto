@@ -48,16 +48,18 @@ function isFunction(val) {
  * additional properties to the ones defined here.
  *
  * @typedef {{
- *   defaultFormat: function(new:stream.Duplex, Object=)|undefined,
+ *   defaultFormat: ?function(new:stream.Duplex, Object=)|false|undefined,
  *   detectors: Array<!InflateAuto.FormatDetector>|undefined
  * }} InflateAuto.InflateAutoOptions
  * @extends zlib.Zlib.options
  * @property {function(new:stream.Duplex, Object=)=} defaultFormat Constructor
- * of the format which is used if no detectors match.
+ * of the format which is used if no detectors match.  Pass <code>null</code>
+ * or <code>false</code> for no default. (default: <code>InflateRaw</code>)
  * @property {Array<!InflateAuto.FormatDetector>=} detectors Functions which
  * detect the data format for a chunk of data and return the constructor for a
  * class to decode the data.  If any detector requires large amounts of data,
- * adjust <code>highWaterMark</code> appropriately.
+ * adjust <code>highWaterMark</code> appropriately.  (default:
+ * <code>[detectDeflate, detectGzip]</code>)
  */
 // var InflateAutoOptions;
 
@@ -135,7 +137,7 @@ function InflateAuto(opts) {
       throw new TypeError('defaultFormat must be a constructor function');
     }
     this._defaultFormat = opts.defaultFormat;
-  } else {
+  } else if (!opts || opts.defaultFormat === undefined) {
     this._defaultFormat = zlib.InflateRaw;
   }
 
@@ -243,76 +245,54 @@ if (zlib.inflateSync) {
   };
 }
 
-/** Detects which zlib format may be able to decode data beginning with a
- * given <code>Buffer</code>, returning <code>null</code> when uncertain.
+/** Detects the format of a given <code>Buffer</code>.
  *
- * <p>This method detects the existence of a gzip or zlib header at the
- * beginning of the <code>Buffer</code> and returns the constructor for the
- * corresponding zlib class:</p>
- *
- * <ul>
- * <li>If a valid gzip header is found, instance of
- *   <code>zlib.Gunzip</code>.</li>
- * <li>If a valid zlib deflate header is found, an instance of
- *   <code>zlib.Deflate</code>.</li>
- * <li>If a valid header of any type could be completed by more data,
- *   <code>null</code>.</li>
- * <li>Otherwise, an instance of <code>zlib.DeflateRaw</code>.</li>
- * </ul>
+ * This method passes <code>chunk</code> to each of the {@link
+ * InflateAutoOptions.detectors}.  The first detector to match is returned.
+ * If at least one detector is indeterminate and <code>end</code> is
+ * <code>false</code>, <code>null</code> is returned.  Otherwise
+ * {@link InflateAutoOptions.defaultFormat} is returned or an <code>Error</code>
+ * is thrown.
  *
  * @protected
- * @param {Buffer} chunk Beginning of data for which to deduce the
+ * @param {Buffer} chunk Beginning of data for which to detect the
  * compression format.
- * @return {function(new:stream.Duplex, Object=)}
+ * @param {boolean} end Is <code>chunk</code> the end of the data stream?
+ * @return {?function(new:stream.Duplex, Object=)}
  * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
- * deduce the format conclusively.
- * @throws If any detector throws.
+ * deduce the format conclusively and <code>end</code> is <code>false</code>.
+ * @throws If any detector throws or <code>end</code> is <code>true</code> and
+ * no default format is given.
  */
-InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
-  if (!chunk || !chunk.length) {
-    // No data to determine format
-    return null;
-  }
-
-  var detectors = this._detectorsLeft;
-  var plausible = [];
-  for (var i = 0; i < detectors.length; i += 1) {
-    var detector = detectors[i];
-    var format = detector(chunk);
-    if (format) {
-      return format;
+InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
+  if (chunk && chunk.length > 0) {
+    var detectors = this._detectorsLeft;
+    var plausible = [];
+    for (var i = 0; i < detectors.length; i += 1) {
+      var detector = detectors[i];
+      var format = detector(chunk);
+      if (format) {
+        return format;
+      }
+      if (format === undefined) {
+        plausible.push(detector);
+      }
     }
-    if (format === undefined) {
-      plausible.push(detector);
+    this._detectorsLeft = plausible;
+  }
+
+  if (this._detectorsLeft.length === 0 || end) {
+    if (this._defaultFormat) {
+      return this._defaultFormat;
     }
+
+    var err = new Error('data did not match any supported formats');
+    err.data = chunk;
+    throw err;
   }
 
-  if (plausible.length === 0) {
-    return this._defaultFormat;
-  }
-
-  this._detectorsLeft = plausible;
   return null;
-};
-
-/** Detects which zlib format may be able to decode data beginning with a
- * given <code>Buffer</code>, returning a default when uncertain.
- *
- * <p>This method behaves like {@link _detectFormat} except that if a valid
- * header can not be found, <code>zlib.InflateRaw</code> is returned (rather
- * than <code>null</code>).  This method is for use in cases where all data
- * is present and "undecided" is not an option.</p>
- *
- * @protected
- * @param {Buffer} chunk Beginning of data for which to deduce the compression
- * format.
- * @return {function(new:stream.Duplex, Object=)}
- * An instance of the zlib type which will decode chunk and subsequent data.
- * @see #_detectFormat()
- */
-InflateAuto.prototype._detectFormatNow = function _detectFormatNow(chunk) {
-  return this._detectFormat(chunk) || this._defaultFormat;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -329,7 +309,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
   if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
     try {
-      this.setFormat(this._detectFormatNow(this._writeBuf));
+      this.setFormat(this._detectFormat(this._writeBuf, true));
     } catch (err) {
       callback(err);
       return;
@@ -375,7 +355,7 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
 
     if (!this._decoder && typeof cb !== 'function') {
       // Synchronous calls operate on complete buffer.  Choose format now.
-      this.setFormat(this._detectFormatNow(chunk));
+      this.setFormat(this._detectFormat(chunk, true));
     }
   }
 
