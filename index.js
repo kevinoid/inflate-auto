@@ -147,6 +147,7 @@ function InflateAuto(opts) {
    * At most one of _decoder or _writeBuf is non-null.
    * Since writes are being forwarded or buffered.
    */
+  this._writeBuf = null;
 
   // Behave like Zlib where close is unconditionally called on 'end'
   this.once('end', this.close);
@@ -335,7 +336,10 @@ InflateAuto.prototype._flush = function _flush(callback) {
   // Note:  Not called on 'error' since errors events already forwarded
   // and should not emit 'end' after 'error'
   this._decoder.once('end', callback);
-  this._decoder.end();
+
+  var chunk = this._writeBuf;
+  this._writeBuf = null;
+  this._decoder.end(chunk);
 };
 
 /** Process a chunk of data, synchronously or asynchronously.
@@ -350,17 +354,19 @@ InflateAuto.prototype._flush = function _flush(callback) {
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
   cb) {
   if (!this._decoder) {
-    this._writeEarly(chunk);
+    chunk = this._writeEarly(chunk);
+
+    if (!this._decoder && typeof cb !== 'function') {
+      // Synchronous calls operate on complete buffer.  Choose format now.
+      this.setFormat(this._detectFormatNow(chunk));
+    }
   }
 
   if (this._decoder) {
-    return this._decoder._processChunk.apply(this._decoder, arguments);
+    return this._decoder._processChunk(chunk, flushFlag, cb);
   }
 
-  if (!cb) {
-    return new Buffer(0);
-  }
-
+  this._writeBuf = chunk;
   process.nextTick(cb);
   return undefined;
 };
@@ -433,12 +439,6 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   }
 
   self.emit('format', Format);
-
-  if (this._writeBuf) {
-    var writeBuf = this._writeBuf;
-    delete this._writeBuf;
-    this._decoder.write(writeBuf);
-  }
 };
 
 /** Inflates a chunk of data.
@@ -461,42 +461,44 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
       return;
     }
 
-    this._writeEarly(chunk);
+    chunk = this._writeEarly(chunk);
   }
 
   if (this._decoder) {
     this._decoder.write(chunk, encoding, callback);
-    return;
+  } else {
+    this._writeBuf = chunk;
+    process.nextTick(callback);
   }
-
-  process.nextTick(callback);
 };
 
 /** Writes data to this stream before the format has been detected, performing
- * format detection and buffering as necessary.
+ * format detection and returning the combined write buffer.
  *
  * @private
  * @param {Buffer} chunk Chunk of data to write.
+ * @return {Buffer} <code>chunk</code> appended to any previously buffered
+ * data.
  */
 InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   if (chunk === null || chunk.length === 0) {
-    return;
+    return chunk;
   }
 
   var signature;
   if (this._writeBuf) {
     signature = Buffer.concat([this._writeBuf, chunk]);
+    this._writeBuf = null;
   } else {
     signature = chunk;
   }
 
   var Format = this._detectFormat(signature);
-  if (!Format) {
-    this._writeBuf = signature;
-    return;
+  if (Format) {
+    this.setFormat(Format);
   }
 
-  this.setFormat(Format);
+  return signature;
 };
 
 /** Closes this stream and its underlying resources (zlib handle).
@@ -593,7 +595,7 @@ InflateAuto.prototype.reset = function reset() {
   }
 
   assert(!this._closed, 'zlib binding closed');
-  delete this._writeBuf;
+  this._writeBuf = null;
   this._detectorsLeft = this._detectors;
   return undefined;
 };
