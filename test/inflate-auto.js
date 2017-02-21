@@ -1130,6 +1130,30 @@ describe('InflateAuto', function() {
     deepEqual(auto._detectors, [zlib.Gunzip]);
   });
 
+  it('throws TypeError for non-Array-like detectors', function() {
+    assert.throws(
+      // eslint-disable-next-line no-new
+      function() { new InflateAuto({detectors: true}); },
+      TypeError
+    );
+  });
+
+  it('throws TypeError for non-function detector', function() {
+    assert.throws(
+      // eslint-disable-next-line no-new
+      function() { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
+      TypeError
+    );
+  });
+
+  it('throws TypeError for non-function defaultFormat', function() {
+    assert.throws(
+      // eslint-disable-next-line no-new
+      function() { new InflateAuto({defaultFormat: true}); },
+      TypeError
+    );
+  });
+
   // Analogous to Gunzip/Inflate/InflateRaw
   describe('.createInflateAuto()', function() {
     it('is a factory function', function() {
