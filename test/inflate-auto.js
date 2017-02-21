@@ -1120,6 +1120,16 @@ describe('InflateAuto', function() {
     assertInstanceOf(auto, InflateAuto);
   });
 
+  it('accepts Array-like detectors', function() {
+    var auto = new InflateAuto({
+      detectors: {
+        0: zlib.Gunzip,
+        length: 1
+      }
+    });
+    deepEqual(auto._detectors, [zlib.Gunzip]);
+  });
+
   // Analogous to Gunzip/Inflate/InflateRaw
   describe('.createInflateAuto()', function() {
     it('is a factory function', function() {

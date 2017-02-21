@@ -105,15 +105,15 @@ function InflateAuto(opts) {
    */
   this._detectors = null;
   if (opts && opts.detectors) {
-    if (!Array.isArray(opts.detectors)) {
-      throw new TypeError('detectors must be an Array');
+    if (Math.floor(opts.detectors.length) !== opts.detectors.length) {
+      throw new TypeError('detectors must be Array-like');
     }
 
-    if (!opts.detectors.every(isFunction)) {
+    if (!Array.prototype.every.call(opts.detectors, isFunction)) {
       throw new TypeError('All detectors must be functions');
     }
 
-    this._detectors = opts.detectors.slice();
+    this._detectors = Array.prototype.slice.call(opts.detectors);
   } else {
     this._detectors = [
       InflateAuto.detectors.deflate,
