@@ -267,6 +267,7 @@ if (zlib.inflateSync) {
  * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
  * deduce the format conclusively.
+ * @throws If any detector throws.
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk) {
   if (!chunk || !chunk.length) {
@@ -327,7 +328,12 @@ InflateAuto.prototype._flush = function _flush(callback) {
 
   if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
-    this.setFormat(this._detectFormatNow(this._writeBuf));
+    try {
+      this.setFormat(this._detectFormatNow(this._writeBuf));
+    } catch (err) {
+      callback(err);
+      return;
+    }
   }
 
   // callback must not be called until all data has been written.
@@ -350,11 +356,22 @@ InflateAuto.prototype._flush = function _flush(callback) {
  * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
  * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
  * <code>undefined</code>.
+ * @throws If a detector or format constructor throws and <code>cb</code> is
+ * not a function.
  */
 InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
   cb) {
   if (!this._decoder) {
-    chunk = this._writeEarly(chunk);
+    try {
+      chunk = this._writeEarly(chunk);
+    } catch (err) {
+      if (typeof cb === 'function') {
+        cb(err);
+        return undefined;
+      }
+
+      throw err;
+    }
 
     if (!this._decoder && typeof cb !== 'function') {
       // Synchronous calls operate on complete buffer.  Choose format now.
@@ -378,6 +395,8 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
  *
  * @param {function(new:stream.Duplex,Object=)} Format Constructor for the
  * stream class which will be used to decode data written to this stream.
+ * @throws If previously set to a different <code>Format</code> or
+ * <code>Format</code> constructor throws.
  * @see #_detectFormat()
  */
 InflateAuto.prototype.setFormat = function setFormat(Format) {
@@ -393,14 +412,8 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     throw new Error('Changing format is not supported');
   }
 
-  var format;
-  try {
-    format = new Format(this._opts);
-    this._decoder = format;
-  } catch (err) {
-    self.emit('error', err);
-    return;
-  }
+  var format = new Format(this._opts);
+  this._decoder = format;
 
   // Ensure .constructor is set properly by Format constructor
   if (format.constructor !== Format) {
@@ -461,7 +474,12 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
       return;
     }
 
-    chunk = this._writeEarly(chunk);
+    try {
+      chunk = this._writeEarly(chunk);
+    } catch (err) {
+      callback(err);
+      return;
+    }
   }
 
   if (this._decoder) {
@@ -479,6 +497,8 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
  * @param {Buffer} chunk Chunk of data to write.
  * @return {Buffer} <code>chunk</code> appended to any previously buffered
  * data.
+ * @throws If a detector or format constructor throws.  In this case the data
+ * will be saved in <code>_writeBuf</code>.
  */
 InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   if (chunk === null || chunk.length === 0) {
@@ -488,16 +508,20 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   var signature;
   if (this._writeBuf) {
     signature = Buffer.concat([this._writeBuf, chunk]);
-    this._writeBuf = null;
   } else {
     signature = chunk;
   }
+
+  // If _detectFormat or setFormat throw, data will be buffered
+  this._writeBuf = signature;
 
   var Format = this._detectFormat(signature);
   if (Format) {
     this.setFormat(Format);
   }
 
+  // Caller is responsible for writing or buffering returned data
+  this._writeBuf = null;
   return signature;
 };
 
