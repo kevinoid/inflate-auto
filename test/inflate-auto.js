@@ -165,6 +165,7 @@ function defineFormatTests(format) {
 
     it('passes any Error to the callback', function(done) {
       var zeros = new Buffer(20);
+      zeros.fill(0);
       decompress(zeros, function(errDecompress, dataDecompress) {
         assert(errDecompress, 'expected Error to test');
         InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
