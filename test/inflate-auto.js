@@ -187,6 +187,17 @@ function defineFormatTests(format) {
         });
       });
     });
+
+    it('handles string argument like zlib', function(done) {
+      var compressedStr = compressed.toString('binary');
+      decompress(compressedStr, function(errDecompress, dataDecompress) {
+        InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+          deepEqual(errAuto, errDecompress);
+          deepEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
   });
 
   if (decompressSync) {
