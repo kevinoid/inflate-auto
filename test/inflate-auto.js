@@ -163,7 +163,19 @@ function defineFormatTests(format) {
       });
     });
 
-    it('passes any Error to the callback', function(done) {
+    it('can accept options argument', function(done) {
+      var opts = {chunkSize: zlib.Z_MIN_CHUNK};
+      decompress(compressed, opts, function(errDecompress, dataDecompress) {
+        assert.ifError(errDecompress);
+        InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+          assert.ifError(errAuto);
+          deepEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
+
+    it('passes format Error to the callback', function(done) {
       var zeros = new Buffer(20);
       zeros.fill(0);
       decompress(zeros, function(errDecompress, dataDecompress) {
