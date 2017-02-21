@@ -188,6 +188,19 @@ function defineFormatTests(format) {
       });
     });
 
+    if (isDefaultFormat) {
+      it('handles truncated header like zlib', function(done) {
+        var trunc = compressed.slice(0, 1);
+        decompress(trunc, function(errDecompress, dataDecompress) {
+          InflateAuto.inflateAuto(trunc, function(errAuto, dataAuto) {
+            deepEqual(errAuto, errDecompress);
+            deepEqual(dataAuto, dataDecompress);
+            done();
+          });
+        });
+      });
+    }
+
     it('handles string argument like zlib', function(done) {
       var compressedStr = compressed.toString('binary');
       decompress(compressedStr, function(errDecompress, dataDecompress) {
