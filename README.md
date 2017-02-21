@@ -134,6 +134,25 @@ inflater.on(
 inflater.write(compressedData);
 ```
 
+### Inflate Possibly-Compressed Data
+
+By specifying `PassThrough` as the default format, `InflateAuto` can be used
+to inflate compressed data and pass through other data unchanged as follows:
+
+```js
+const InflateAuto = require('inflate-auto');
+const stream = require('stream');
+const inflater = new InflateAuto({defaultFormat: stream.PassThrough});
+inflater.pipe(process.stdout);
+inflater.end(compressedOrUncompressedData);
+```
+
+Note that the above code would treat "raw" DEFLATE data as uncompressed since
+`InflateRaw` is normally the default format and is overridden with
+`PassThrough`.  Feel free to [open an
+issue](https://github.com/kevinoid/inflate-auto/issues/new) to request support
+for detecting "raw" DEFLATE if this is desired.
+
 ### Synchronous Inflate
 
 Data can be decompressed while blocking the main thread using
