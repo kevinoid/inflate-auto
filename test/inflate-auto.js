@@ -479,38 +479,38 @@ function defineFormatTests(format) {
 
         deepEqual(errAuto, errInflate);
       });
-    });
 
-    if (isDefaultFormat) {
-      SUPPORTED_FORMATS.forEach(function(supportedFormat) {
-        var formatName = supportedFormat.Compress.name;
-        var formatHeader = supportedFormat.header;
-        if (!formatHeader.length <= 1) {
-          return;
-        }
-
-        it('partial ' + formatName + ' header', function() {
-          var partial = formatHeader.slice(0, 1);
-
-          var dataInflate, errInflate;
-          try {
-            dataInflate = decompressSync(partial);
-          } catch (err) {
-            errInflate = err;
+      if (isDefaultFormat) {
+        SUPPORTED_FORMATS.forEach(function(supportedFormat) {
+          var formatName = supportedFormat.Compress.name;
+          var formatHeader = supportedFormat.header;
+          if (formatHeader.length <= 1) {
+            return;
           }
 
-          var dataAuto, errAuto;
-          try {
-            dataAuto = InflateAuto.inflateAutoSync(partial);
-          } catch (err) {
-            errAuto = err;
-          }
+          it('partial ' + formatName + ' header', function() {
+            var partial = formatHeader.slice(0, 1);
 
-          deepEqual(errAuto, errInflate);
-          deepEqual(dataAuto, dataInflate);
+            var dataInflate, errInflate;
+            try {
+              dataInflate = decompressSync(partial);
+            } catch (err) {
+              errInflate = err;
+            }
+
+            var dataAuto, errAuto;
+            try {
+              dataAuto = InflateAuto.inflateAutoSync(partial);
+            } catch (err) {
+              errAuto = err;
+            }
+
+            deepEqual(errAuto, errInflate);
+            deepEqual(dataAuto, dataInflate);
+          });
         });
-      });
-    }
+      }
+    });
   }
 
   describe('Constructor', function() {
