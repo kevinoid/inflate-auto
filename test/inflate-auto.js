@@ -707,6 +707,18 @@ function defineFormatTests(format) {
       assert.strictEqual(inflateAuto.getFormat(), Decompress);
     });
 
+    function MyDecompress() {
+      Decompress.apply(this, arguments);
+    }
+    // Note:  MyDecompress.prototype.constructor intentionally not set
+    MyDecompress.prototype = Object.create(Decompress.prototype);
+
+    it('returns custom format set by #setFormat()', function() {
+      var inflateAuto = new InflateAuto();
+      inflateAuto.setFormat(MyDecompress);
+      assert.strictEqual(inflateAuto.getFormat(), MyDecompress);
+    });
+
     it('returns the detected format', function(done) {
       var inflateAuto = new InflateAuto();
       inflateAuto.on('format', function() {
