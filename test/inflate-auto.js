@@ -9,6 +9,7 @@ var BBPromise = require('bluebird');
 var InflateAuto = require('..');
 var assert = require('assert');
 var extend = require('extend');
+var stream = require('stream');
 var streamCompare = require('stream-compare');
 var util = require('util');
 var zlib = require('zlib');
@@ -172,6 +173,15 @@ function defineFormatTests(format) {
           deepEqual(dataAuto, dataDecompress);
           done();
         });
+      });
+    });
+
+    it('can use PassThrough as defaultFormat', function(done) {
+      var opts = {defaultFormat: stream.PassThrough};
+      InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
+        assert.ifError(errAuto);
+        deepEqual(dataAuto, uncompressed);
+        done();
       });
     });
 
