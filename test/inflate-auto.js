@@ -1012,10 +1012,13 @@ function defineFormatTests(format) {
   });
 
   describe('#setFormat()', function() {
-    it('emits \'format\' event', function() {
+    it('emits \'format\' event with decoder', function() {
       var inflateAuto = new InflateAuto();
       var gotFormat = false;
-      inflateAuto.on('format', function() { gotFormat = true; });
+      inflateAuto.on('format', function(decoder) {
+        assert(decoder instanceof Decompress);
+        gotFormat = true;
+      });
       inflateAuto.setFormat(Decompress);
       assert.strictEqual(gotFormat, true);
     });

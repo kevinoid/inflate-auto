@@ -69,8 +69,8 @@ function isFunction(val) {
  * <code>zlib.Gunzip</code>.</p>
  *
  * <p>This class emits the additional event <code>'format'</code> when the
- * compression format has been set or detected.  The event includes the
- * constructor for the format.</p>
+ * compression format has been set or detected with the instance of the format
+ * class which will be used to decode the data.</p>
  *
  * @constructor
  * @extends stream.Transform
@@ -444,14 +444,14 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     }
   });
 
+  self.emit('format', format);
+
   if (this._queuedMethodCalls) {
     this._queuedMethodCalls.forEach(function(mc) {
       format[mc.name].apply(format, mc.args);
     });
     delete this._queuedMethodCalls;
   }
-
-  self.emit('format', Format);
 };
 
 /** Inflates a chunk of data.
