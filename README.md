@@ -119,6 +119,21 @@ https.get(options, function(res) {
   });
 ```
 
+### Log Compression Format
+
+To be notified when the compression format is determined, listen for the
+`'format'` event as follows:
+
+```js
+const InflateAuto = require('inflate-auto');
+const inflater = new InflateAuto();
+inflater.on(
+  'format',
+  decoder => console.log('Compression format: ' + decoder.constructor.name)
+);
+inflater.write(compressedData);
+```
+
 ### Synchronous Inflate
 
 Data can be decompressed while blocking the main thread using
