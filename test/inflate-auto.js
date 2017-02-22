@@ -1143,6 +1143,41 @@ function defineFormatTests(format) {
           done();
         });
       });
+
+      it('works if _transform does not yield synchronously', function(done) {
+        function AsyncTransform() { stream.Transform.apply(this, arguments); }
+        AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+        AsyncTransform.prototype.constructor = AsyncTransform;
+        AsyncTransform.prototype._transform = function(data, enc, cb) {
+          process.nextTick(function() {
+            cb(null, data);
+          });
+        };
+
+        var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
+          deepEqual(data, zeros);
+          done();
+        });
+      });
+
+      it('buffers inconclusive data', function(done) {
+        var inflateAuto = new InflateAuto();
+        var trunc = compressed.slice(0, 1);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, function(err, data) {
+          assert.ifError(err);
+          assert.strictEqual(data, undefined);
+          done();
+        });
+      });
     });
 
     describe('without cb', function() {
@@ -1156,6 +1191,66 @@ function defineFormatTests(format) {
         assert.throws(function() {
           inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
         });
+      });
+
+      it('throws if format lacks _processChunk and _transform', function() {
+        var inflateAuto = new InflateAuto({defaultFormat: stream.Duplex});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        assert.throws(
+          function() {
+            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          },
+          /Duplex.*_processChunk/
+        );
+      });
+
+      it('throws if _transform does not yield synchronously', function() {
+        function AsyncTransform() { stream.Transform.apply(this, arguments); }
+        AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+        AsyncTransform.prototype.constructor = AsyncTransform;
+        AsyncTransform.prototype._transform = function() {};
+
+        var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        assert.throws(
+          function() {
+            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          },
+          /AsyncTransform.*_processChunk/
+        );
+      });
+
+      it('throws if _transform yields Error', function() {
+        var errTest = new Error('test');
+        function ErrorTransform() { stream.Transform.apply(this, arguments); }
+        ErrorTransform.prototype = Object.create(stream.Transform.prototype);
+        ErrorTransform.prototype.constructor = ErrorTransform;
+        ErrorTransform.prototype._transform = function(data, enc, cb) {
+          cb(errTest);
+        };
+
+        var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        inflateAuto.on('error', function() {
+          throw new Error('error should not be emitted');
+        });
+        assert.throws(
+          function() {
+            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          },
+          function(err) {
+            return err === errTest;
+          }
+        );
       });
     });
   });
