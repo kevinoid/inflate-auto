@@ -1220,6 +1220,21 @@ function defineFormatTests(format) {
   // _processChunk is a semi-public API since it is called externally for
   // synchronous operation.  Other code may rely on this.
   describe('#_processChunk()', function() {
+    // existence check
+    it('has the same type', function() {
+      var autoType = typeof InflateAuto.prototype._processChunk;
+      var zlibType = typeof Decompress.prototype._processChunk;
+      assert.strictEqual(autoType, zlibType);
+
+      autoType = typeof new InflateAuto()._processChunk;
+      zlibType = typeof new Decompress()._processChunk;
+      assert.strictEqual(autoType, zlibType);
+    });
+
+    if (!Decompress.prototype._processChunk) {
+      return;
+    }
+
     describe('with cb', function() {
       // Note:  When called with callback without 'error' listener on 0.12
       // 'error' is emitted asynchronously causing unhandledException.

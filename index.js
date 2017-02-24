@@ -330,85 +330,88 @@ InflateAuto.prototype._flush = function _flush(callback) {
   this._decoder.end(chunk);
 };
 
-/** Process a chunk of data, synchronously or asynchronously.
- *
- * @protected
- * @param {!Buffer} chunk Chunk of data to write.
- * @param {number} flushFlag Flush flag with which to write the data.
- * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
- * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
- * <code>undefined</code>.
- * @throws If a detector or format constructor throws and <code>cb</code> is
- * not a function.
- */
-InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
-  cb) {
-  if (!this._decoder) {
-    try {
-      chunk = this._writeEarly(chunk);
-    } catch (err) {
-      if (typeof cb === 'function') {
-        cb(err);
-        return undefined;
-      }
-
-      throw err;
-    }
-
-    if (!this._decoder && typeof cb !== 'function') {
-      // Synchronous calls operate on complete buffer.  Choose format now.
-      this.setFormat(this._detectFormat(chunk, true));
-    }
-  }
-
-  if (this._decoder) {
-    if (typeof this._decoder._processChunk === 'function') {
-      // Suppress throwing for unhandled 'error' event when called without cb.
-      // zlib classes emit and listen for 'error' internally (in Node 0.12)
-      var errorListener;
-      if (typeof cb !== 'function') {
-        errorListener = function() {};
-        this.on('error', errorListener);
-      }
-
+if (zlib.Inflate.prototype._processChunk) {
+  /** Process a chunk of data, synchronously or asynchronously.
+   *
+   * @protected
+   * @param {!Buffer} chunk Chunk of data to write.
+   * @param {number} flushFlag Flush flag with which to write the data.
+   * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
+   * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
+   * <code>undefined</code>.
+   * @throws If a detector or format constructor throws and <code>cb</code> is
+   * not a function.
+   */
+  InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
+    cb) {
+    if (!this._decoder) {
       try {
-        return this._decoder._processChunk(chunk, flushFlag, cb);
-      } finally {
-        if (errorListener) {
-          this.removeListener('error', errorListener);
+        chunk = this._writeEarly(chunk);
+      } catch (err) {
+        if (typeof cb === 'function') {
+          cb(err);
+          return undefined;
+        }
+
+        throw err;
+      }
+
+      if (!this._decoder && typeof cb !== 'function') {
+        // Synchronous calls operate on complete buffer.  Choose format now.
+        this.setFormat(this._detectFormat(chunk, true));
+      }
+    }
+
+    if (this._decoder) {
+      if (typeof this._decoder._processChunk === 'function') {
+        // Suppress throwing for unhandled 'error' event when called without cb.
+        // zlib classes emit and listen for 'error' internally (in Node 0.12)
+        var errorListener;
+        if (typeof cb !== 'function') {
+          errorListener = function() {};
+          this.on('error', errorListener);
+        }
+
+        try {
+          return this._decoder._processChunk(chunk, flushFlag, cb);
+        } finally {
+          if (errorListener) {
+            this.removeListener('error', errorListener);
+          }
         }
       }
+
+      // Fallback to _transform, where possible.
+      // Only works synchronously when callback is called with data immediately.
+      if (typeof this._decoder._transform === 'function') {
+        var needCb = false;
+        var retVal;
+        if (typeof cb !== 'function') {
+          needCb = true;
+          cb = function(err, result) {
+            if (err) {
+              throw err;
+            }
+            retVal = result;
+          };
+        }
+        this._decoder._transform(chunk, null, cb);
+        if (!needCb || retVal) {
+          return retVal;
+        }
+      }
+
+      var formatName =
+        (this._decoder.constructor && this._decoder.constructor.name) ||
+        'format';
+      throw new Error(formatName + ' does not support _processChunk');
     }
 
-    // Fallback to _transform, where possible.
-    // Only works synchronously when callback is called with data immediately.
-    if (typeof this._decoder._transform === 'function') {
-      var needCb = false;
-      var retVal;
-      if (typeof cb !== 'function') {
-        needCb = true;
-        cb = function(err, result) {
-          if (err) {
-            throw err;
-          }
-          retVal = result;
-        };
-      }
-      this._decoder._transform(chunk, null, cb);
-      if (!needCb || retVal) {
-        return retVal;
-      }
-    }
-
-    var formatName =
-      (this._decoder.constructor && this._decoder.constructor.name) || 'format';
-    throw new Error(formatName + ' does not support _processChunk');
-  }
-
-  this._writeBuf = chunk;
-  process.nextTick(cb);
-  return undefined;
-};
+    this._writeBuf = chunk;
+    process.nextTick(cb);
+    return undefined;
+  };
+}
 
 /** Sets the format which will be used to decode data written to this stream.
  *
