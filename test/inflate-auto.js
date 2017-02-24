@@ -1221,6 +1221,27 @@ function defineFormatTests(format) {
   // synchronous operation.  Other code may rely on this.
   describe('#_processChunk()', function() {
     describe('with cb', function() {
+      // Note:  When called with callback without 'error' listener on 0.12
+      // 'error' is emitted asynchronously causing unhandledException.
+      // Not currently tested.
+
+      it('emits error without calling callback', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        function neverCalled() {
+          throw new Error('should not be called');
+        }
+
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+        zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+        inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+        result.checkpoint();
+        return result;
+      });
+
       it('yields format error', function(done) {
         var inflateAuto = new InflateAuto({defaultFormat: null});
         var zeros = new Buffer(10);
@@ -1273,6 +1294,56 @@ function defineFormatTests(format) {
     });
 
     describe('without cb', function() {
+      it('throws without error listener', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+
+        var errInflate;
+        try {
+          zlibStream._processChunk(zeros, zlib.Z_FINISH);
+        } catch (err) {
+          errInflate = err;
+        }
+
+        var errAuto;
+        try {
+          inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+        } catch (err) {
+          errAuto = err;
+        }
+
+        deepEqual(errAuto, errInflate);
+      });
+
+      it('throws with error listener', function() {
+        var zlibStream = new Decompress();
+        var inflateAuto = new InflateAuto();
+        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+        var zeros = new Buffer(10);
+        zeros.fill(0);
+
+        var errInflate;
+        try {
+          zlibStream._processChunk(zeros, zlib.Z_FINISH);
+        } catch (err) {
+          errInflate = err;
+        }
+
+        var errAuto;
+        try {
+          inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+        } catch (err) {
+          errAuto = err;
+        }
+
+        deepEqual(errAuto, errInflate);
+        result.checkpoint();
+      });
+
       it('throws format errors', function() {
         var inflateAuto = new InflateAuto({defaultFormat: null});
         var zeros = new Buffer(10);

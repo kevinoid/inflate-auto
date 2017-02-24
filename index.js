@@ -363,7 +363,21 @@ InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
 
   if (this._decoder) {
     if (typeof this._decoder._processChunk === 'function') {
-      return this._decoder._processChunk(chunk, flushFlag, cb);
+      // Suppress throwing for unhandled 'error' event when called without cb.
+      // zlib classes emit and listen for 'error' internally (in Node 0.12)
+      var errorListener;
+      if (typeof cb !== 'function') {
+        errorListener = function() {};
+        this.on('error', errorListener);
+      }
+
+      try {
+        return this._decoder._processChunk(chunk, flushFlag, cb);
+      } finally {
+        if (errorListener) {
+          this.removeListener('error', errorListener);
+        }
+      }
     }
 
     // Fallback to _transform, where possible.
