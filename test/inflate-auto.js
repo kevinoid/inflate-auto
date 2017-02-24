@@ -877,92 +877,105 @@ function defineFormatTests(format) {
     });
   });
 
-  if (Decompress.prototype.params) {
-    describe('#params()', function() {
-      // Note:  Params have no effect on inflate, but calling .params() has
-      // effects due to 0-byte Z_FINISH flush call.
+  describe('#params()', function() {
+    // existence check
+    it('has the same type', function() {
+      var autoType = typeof InflateAuto.prototype.params;
+      var zlibType = typeof Decompress.prototype.params;
+      assert.strictEqual(autoType, zlibType);
 
-      // FIXME: Calling .params() immediately before or after .write()/.end()
-      // can have differing behavior between InflateAuto and Zlib because the
-      // write queue is held in Zlib and because Zlib._transform() cheats and
-      // checks ._writableState and sets Z_FINISH before ._flush() is called.
-      // So .write(chunk) .end() has different behavior from .end(chunk) when
-      // the write is buffered. (e.g. .params() .end(chunk)).
-      //
-      // This appears as "unexpected end of file" error when .end() is called
-      // immediately after .params() due to Z_FINISH flush type being set on
-      // empty write.
-      //
-      // This can't be fixed without abusing stream.Transform (e.g. by calling
-      // _decoder.end() from this.end() before this._flush()).  Since this is
-      // an edge case without known use cases, delay this risky fix for now.
+      autoType = typeof new InflateAuto().params;
+      zlibType = typeof new Decompress().params;
+      assert.strictEqual(autoType, zlibType);
+    });
 
-      it('before write', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    if (!Decompress.prototype.params) {
+      return;
+    }
 
-        var level = zlib.Z_BEST_COMPRESSION;
-        var strategy = zlib.Z_FILTERED;
-        zlibStream.params(level, strategy, function(err) {
-          assert.ifError(err);
-          zlibStream.end(compressed);
-        });
-        inflateAuto.params(level, strategy, function(err) {
-          assert.ifError(err);
-          inflateAuto.end(compressed);
-        });
+    // Note:  Params have no effect on inflate, but calling .params() has
+    // effects due to 0-byte Z_FINISH flush call.
+
+    // FIXME: Calling .params() immediately before or after .write()/.end()
+    // can have differing behavior between InflateAuto and Zlib because the
+    // write queue is held in Zlib and because Zlib._transform() cheats and
+    // checks ._writableState and sets Z_FINISH before ._flush() is called.
+    // So .write(chunk) .end() has different behavior from .end(chunk) when
+    // the write is buffered. (e.g. .params() .end(chunk)).
+    //
+    // This appears as "unexpected end of file" error when .end() is called
+    // immediately after .params() due to Z_FINISH flush type being set on
+    // empty write.
+    //
+    // This can't be fixed without abusing stream.Transform (e.g. by calling
+    // _decoder.end() from this.end() before this._flush()).  Since this is
+    // an edge case without known use cases, delay this risky fix for now.
+
+    it('before write', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      var level = zlib.Z_BEST_COMPRESSION;
+      var strategy = zlib.Z_FILTERED;
+      zlibStream.params(level, strategy, function(err) {
+        assert.ifError(err);
+        zlibStream.end(compressed);
+      });
+      inflateAuto.params(level, strategy, function(err) {
+        assert.ifError(err);
+        inflateAuto.end(compressed);
+      });
+      result.checkpoint();
+
+      return result;
+    });
+
+    it('between writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      var zlibWriteP = BBPromise.promisify(zlibStream.write);
+      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+      var partial = compressed.slice(0, 4);
+      return Promise.all([
+        zlibWriteP.call(zlibStream, partial),
+        autoWriteP.call(inflateAuto, partial)
+      ]).then(function() {
+        result.checkpoint();
+
+        var remainder = compressed.slice(4);
+
+        zlibStream.params(
+          zlib.Z_BEST_COMPRESSION,
+          zlib.Z_FILTERED,
+          function(err) {
+            assert.ifError(err);
+            zlibStream.end(remainder);
+          }
+        );
+        inflateAuto.params(
+          zlib.Z_BEST_COMPRESSION,
+          zlib.Z_FILTERED,
+          function(err) {
+            assert.ifError(err);
+            inflateAuto.end(remainder);
+          }
+        );
         result.checkpoint();
 
         return result;
       });
-
-      it('between writes', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-
-        var zlibWriteP = BBPromise.promisify(zlibStream.write);
-        var autoWriteP = BBPromise.promisify(inflateAuto.write);
-
-        var partial = compressed.slice(0, 4);
-        return Promise.all([
-          zlibWriteP.call(zlibStream, partial),
-          autoWriteP.call(inflateAuto, partial)
-        ]).then(function() {
-          result.checkpoint();
-
-          var remainder = compressed.slice(4);
-
-          zlibStream.params(
-            zlib.Z_BEST_COMPRESSION,
-            zlib.Z_FILTERED,
-            function(err) {
-              assert.ifError(err);
-              zlibStream.end(remainder);
-            }
-          );
-          inflateAuto.params(
-            zlib.Z_BEST_COMPRESSION,
-            zlib.Z_FILTERED,
-            function(err) {
-              assert.ifError(err);
-              inflateAuto.end(remainder);
-            }
-          );
-          result.checkpoint();
-
-          return result;
-        });
-      });
-
-      // Zlib causes uncaughtException for params after close, so skip testing
-      // after end.
-
-      // Note:  Argument errors behavior is not guaranteed.  See method
-      // comment for details.
     });
-  }
+
+    // Zlib causes uncaughtException for params after close, so skip testing
+    // after end.
+
+    // Note:  Argument errors behavior is not guaranteed.  See method
+    // comment for details.
+  });
 
   describe('#reset()', function() {
     it('before write', function() {
