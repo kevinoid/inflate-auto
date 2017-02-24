@@ -1020,6 +1020,8 @@ function defineFormatTests(format) {
             zlibStream.once('error', function(err) {
               if (err.message === 'incorrect header check') {
                 headerError = true;
+                // Comparison result ignored.  Suppress unhandled rejection.
+                result.catch(function(errResult) {});
               }
             });
             zlibStream.once('end', function() {
