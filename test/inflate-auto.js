@@ -540,6 +540,27 @@ function defineFormatTests(format) {
         var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
         deepEqual(dataAuto, uncompressed);
       });
+
+      it('handles string argument like zlib', function() {
+        var compressedStr = compressed.toString('binary');
+
+        var dataInflate, errInflate;
+        try {
+          dataInflate = decompressSync(compressedStr);
+        } catch (err) {
+          errInflate = err;
+        }
+
+        var dataAuto, errAuto;
+        try {
+          dataAuto = InflateAuto.inflateAutoSync(compressedStr);
+        } catch (err) {
+          errAuto = err;
+        }
+
+        deepEqual(errAuto, errInflate);
+        deepEqual(dataAuto, dataInflate);
+      });
     });
   }
 
