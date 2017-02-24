@@ -118,8 +118,8 @@ function InflateAuto(opts) {
     this._detectors = Array.prototype.slice.call(opts.detectors);
   } else {
     this._detectors = [
-      InflateAuto.detectors.deflate,
-      InflateAuto.detectors.gzip
+      InflateAuto.detectors.detectDeflate,
+      InflateAuto.detectors.detectGzip
     ];
   }
 
@@ -166,6 +166,8 @@ InflateAuto.createInflateAuto = function createInflateAuto(opts) {
 };
 
 /**
+ * Format detectors supported by default.
+ * @const
  * @enum {InflateAuto.FormatDetector}
  */
 InflateAuto.detectors = {
@@ -175,7 +177,7 @@ InflateAuto.detectors = {
    * conforms to RFC 1950 Section 2.2, <code>undefined</code> if the data may
    * conform, <code>null</code> if it does not conform.
    */
-  deflate: function detectDeflate(chunk) {
+  detectDeflate: function detectDeflate(chunk) {
     // CM field (least-significant 4 bits) must be 8
     // FCHECK field ensures first 16-bit BE int is a multiple of 31
     if ((chunk[0] & 0x0f) === 8) {
@@ -195,7 +197,7 @@ InflateAuto.detectors = {
    * conforms to RFC 1952, <code>undefined</code> if the data may conform,
    * <code>null</code> if it does not conform.
    */
-  gzip: function detectGzip(chunk) {
+  detectGzip: function detectGzip(chunk) {
     // Check for gzip header per Section 2.3.1 of RFC 1952
     if (chunk[0] === 0x1f) {
       if (chunk.length === 1) {
