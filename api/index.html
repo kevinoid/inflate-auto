@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>JSDoc: Home</title>
+
+    <script src="scripts/prettify/prettify.js"> </script>
+    <script src="scripts/prettify/lang-css.js"> </script>
+    <!--[if lt IE 9]>
+      <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <link type="text/css" rel="stylesheet" href="styles/prettify-tomorrow.css">
+    <link type="text/css" rel="stylesheet" href="styles/jsdoc-default.css">
+</head>
+
+<body>
+
+<div id="main">
+
+    <h1 class="page-title">Home</h1>
+
+    
+
+
+
+    
+
+
+    <h3> </h3>
+
+
+
+
+
+
+
+
+
+
+    
+
+
+
+
+    <section>
+        <article><h1>InflateAuto</h1><p><a href="https://travis-ci.org/kevinoid/inflate-auto"><img src="https://img.shields.io/travis/kevinoid/inflate-auto.svg?style=flat-square&amp;label=build+on+linux" alt="Build Status: Linux"></a>
+<a href="https://ci.appveyor.com/project/kevinoid/inflate-auto"><img src="https://img.shields.io/appveyor/ci/kevinoid/inflate-auto.svg?style=flat&amp;label=build+on+windows" alt="Build Status: Windows"></a>
+<a href="https://codecov.io/github/kevinoid/inflate-auto?branch=master"><img src="https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat-square" alt="Coverage"></a>
+<a href="https://david-dm.org/kevinoid/inflate-auto"><img src="https://img.shields.io/david/kevinoid/inflate-auto.svg?style=flat-square" alt="Dependency Status"></a>
+<a href="https://www.npmjs.com/package/inflate-auto"><img src="https://img.shields.io/node/v/inflate-auto.svg?style=flat" alt="Supported Node Version"></a>
+<a href="https://www.npmjs.com/package/inflate-auto"><img src="https://img.shields.io/npm/v/inflate-auto.svg?style=flat" alt="Version on NPM"></a></p>
+<p>The <code>InflateAuto</code> class is designed to function as a drop-in replacement for
+<code>zlib.Gunzip</code>, <code>zlib.Inflate</code>, and <code>zlib.InflateRaw</code> when the method of
+compression is not known in advance.  <code>InflateAuto</code> uses the first few bytes
+of data to determine the compression method (by checking for a valid gzip or
+zlib deflate header) then delegating the decompression work to the
+corresponding type.</p>
+<h2>Introductory Example</h2><pre class="prettyprint source lang-js"><code>const InflateAuto = require('inflate-auto');
+const assert = require('assert');
+const zlib = require('zlib');
+
+const testData = new Buffer('example data');
+const compressor = Math.random() &lt; 0.33 ? zlib.deflate :
+      Math.random() &lt; 0.5 ? zlib.deflateRaw :
+      zlib.gzip;
+compressor(testData, (errCompress, compressed) => {
+  assert.ifError(errCompress);
+
+  InflateAuto.inflateAuto(compressed, function(errDecompress, decompressed) {
+    assert.ifError(errDecompress);
+    assert.deepStrictEqual(decompressed, testData);
+    console.log('Data compressed with random format and auto-decompressed.');
+  });
+});</code></pre><h2>Compatibility</h2><p><code>InflateAuto</code> should behave identically to any of the <code>zlib</code> decompression
+types, with the exception of <code>instanceof</code> and <code>.constructor</code> checks.  Using
+the class should be as simple as <code>s/Inflate(Raw)?/InflateAuto/g</code>
+in existing code.  If any real-world which code requires modification (other
+than mentioned above) to work with <code>InflateAuto</code> it is considered a bug in
+<code>InflateAuto</code>.  Please <a href="https://github.com/kevinoid/inflate-auto/issues/new">report any such
+issues</a>.</p>
+<h2>Installation</h2><p><a href="https://www.npmjs.com/package/inflate-auto">This package</a> can be installed
+using <a href="https://www.npmjs.com/">npm</a> by running:</p>
+<pre class="prettyprint source lang-sh"><code>npm install inflate-auto</code></pre><h2>Recipes</h2><h3>Deflate HTTP</h3><p>The primary use case for which this module was created is decompressing HTTP
+responses which declare <code>Content-Encoding: deflate</code>.  As noted in <a href="https://tools.ietf.org/html/rfc7230#section-4.2.2">Section
+4.2.2 of RFC 7230</a> &quot;Some
+non-conformant implementations send the <code>&quot;deflate&quot;</code> compressed data without
+the zlib wrapper.&quot;  This has been attributed to <a href="https://stackoverflow.com/a/9186091">early Microsoft
+servers</a> and to <a href="https://mxr.mozilla.org/mozilla-esr38/source/netwerk/streamconv/converters/nsHTTPCompressConv.cpp#214">old Apache
+mod_deflate</a>,
+and is an issue in several less common servers.  Regardless of the most common
+cause, it is observed in real-world behavior and poses a compatibility risk
+for HTTP clients which support deflate encoding.  Using <code>InflateAuto</code> is one
+way to address the issue.</p>
+<p>Compressed HTTP/HTTPS responses can be supported with code similar to the
+following:</p>
+<pre class="prettyprint source lang-js"><code>const InflateAuto = require('inflate-auto');
+const https = require('https');
+const url = require('url');
+const zlib = require('zlib');
+
+const options = url.parse('https://api.stackexchange.com/2.2/answers?order=desc&sort=activity&site=stackoverflow');
+options.headers = {
+  Accept: 'application/json',
+  'Accept-Encoding': 'gzip, deflate'
+};
+https.get(options, function(res) {
+  const encoding =
+    (res.headers['content-encoding'] || 'identity').trim().toLowerCase();
+
+  // InflateAuto could be used for gzip to accept deflate data declared as gzip
+  const inflater = encoding === 'deflate' ? new InflateAuto() :
+    encoding === 'gzip' ? new zlib.Gunzip() :
+    null;
+
+  res.on('error', err => console.error('Response error:', err));
+
+  let bodyData;
+  if (inflater) {
+    inflater.on('error', err => console.error('Decompression error:', err));
+    bodyData = res.pipe(inflater);
+  } else {
+    bodyData = res;
+  }
+
+  bodyData.pipe(process.stdout, {end: false});
+})
+  .on('error', err => console.error('Request error:', err));</code></pre><h3>Log Compression Format</h3><p>To be notified when the compression format is determined, listen for the
+<code>'format'</code> event as follows:</p>
+<pre class="prettyprint source lang-js"><code>const InflateAuto = require('inflate-auto');
+const inflater = new InflateAuto();
+inflater.on(
+  'format',
+  decoder => console.log('Compression format: ' + decoder.constructor.name)
+);
+inflater.write(compressedData);</code></pre><h3>Inflate Possibly-Compressed Data</h3><p>By specifying <code>PassThrough</code> as the default format, <code>InflateAuto</code> can be used
+to inflate compressed data and pass through other data unchanged as follows:</p>
+<pre class="prettyprint source lang-js"><code>const InflateAuto = require('inflate-auto');
+const stream = require('stream');
+const inflater = new InflateAuto({defaultFormat: stream.PassThrough});
+inflater.pipe(process.stdout);
+inflater.end(compressedOrUncompressedData);</code></pre><p>Note that the above code would treat &quot;raw&quot; DEFLATE data as uncompressed since
+<code>InflateRaw</code> is normally the default format and is overridden with
+<code>PassThrough</code>.  Feel free to <a href="https://github.com/kevinoid/inflate-auto/issues/new">open an
+issue</a> to request support
+for detecting &quot;raw&quot; DEFLATE if this is desired.</p>
+<h3>Synchronous Inflate</h3><p>Data can be decompressed while blocking the main thread using
+<code>InflateAuto.inflateAutoSync</code> (analogously to <code>zlib.inflateSync</code>) as follows:</p>
+<pre class="prettyprint source lang-js"><code>const InflateAuto = require('inflate-auto');
+const assert = require('assert');
+const zlib = require('zlib');
+
+const compressor = Math.random() &lt; 0.33 ? zlib.deflateSync :
+      Math.random() &lt; 0.5 ? zlib.deflateRawSync :
+      zlib.gzipSync;
+const testData = new Buffer('example data');
+const compressed = compressor(testData);
+const decompressed = InflateAuto.inflateAutoSync(compressed);
+assert.deepStrictEqual(decompressed, testData);</code></pre><p>More examples can be found in the <a href="https://kevinoid.github.io/inflate-auto/specs">test
+specifications</a>.</p>
+<h2>API Docs</h2><p>For the details of using this module as a library, see the <a href="https://kevinoid.github.io/inflate-auto/api">API
+Documentation</a>.</p>
+<h2>Contributing</h2><p>Contributions are welcome and very much appreciated!  Please add tests to
+cover any changes and ensure <code>npm test</code> passes.</p>
+<p>If the desired change is large, complex, backwards-incompatible, can have
+significantly differing implementations, or may not be in scope for this
+project, opening an issue before writing the code can avoid frustration and
+save a lot of time and effort.</p>
+<h2>License</h2><p>This package is available under the terms of the
+<a href="https://opensource.org/licenses/MIT">MIT License</a>.</p></article>
+    </section>
+
+
+
+
+
+
+</div>
+
+<nav>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="InflateAuto.html">InflateAuto</a></li></ul>
+</nav>
+
+<br class="clear">
+
+<footer>
+    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Fri Feb 24 2017 14:14:31 GMT-0700 (MST)
+</footer>
+
+<script> prettyPrint(); </script>
+<script src="scripts/linenumber.js"> </script>
+</body>
+</html>

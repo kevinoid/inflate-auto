@@ -1,0 +1,3669 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en-US" lang="en-US">
+<head>
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Specifications in Mocha</title>
+  <meta name="generator" content="Mocha &lt;https://mochajs.org/&gt;" />
+  <meta name="license" content="MIT" />
+  <meta name="copyright" content="&#169; 2016-2017 Kevin Locke &lt;kevin@kevinlocke.name&gt;" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap.min.css" integrity="sha384-1q8mTJOASx8j1Au+a5WDVnPi2lkFfwwEAa8hDDdjZlpLegxhjVME1fgjWPGmkzs7" crossorigin="anonymous" />
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/css/bootstrap-theme.min.css" integrity="sha384-fLW2N01lMqjakBkx3l/M9EahuwpSfeNvV63J5ezn3uZzapT0u7EYsXMjQV+0En5r" crossorigin="anonymous" />
+  <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/highlight.js/9.1.0/styles/github.min.css" />
+  <style type="text/css">
+section section {
+  margin-left: 1em;
+}
+section section section section {
+  margin-left: 0;
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <section class="suite">
+      <h1>InflateAuto</h1>
+      <dl>
+        <dt>instantiates without new</dt>
+        <dd><pre><code>// eslint-disable-next-line new-cap
+var auto = InflateAuto();
+assertInstanceOf(auto, InflateAuto);</code></pre></dd>
+        <dt>accepts Array-like detectors</dt>
+        <dd><pre><code>var auto = new InflateAuto({
+  detectors: {
+    0: zlib.Gunzip,
+    length: 1
+  }
+});
+deepEqual(auto._detectors, [zlib.Gunzip]);</code></pre></dd>
+        <dt>throws TypeError for non-Array-like detectors</dt>
+        <dd><pre><code>assert.throws(
+  // eslint-disable-next-line no-new
+  function() { new InflateAuto({detectors: true}); },
+  TypeError
+);</code></pre></dd>
+        <dt>throws TypeError for non-function detector</dt>
+        <dd><pre><code>assert.throws(
+  // eslint-disable-next-line no-new
+  function() { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
+  TypeError
+);</code></pre></dd>
+        <dt>throws TypeError for non-function defaultFormat</dt>
+        <dd><pre><code>assert.throws(
+  // eslint-disable-next-line no-new
+  function() { new InflateAuto({defaultFormat: true}); },
+  TypeError
+);</code></pre></dd>
+        <dt>defaultFormat null disables default</dt>
+        <dd><pre><code>var auto = new InflateAuto({defaultFormat: null});
+var testData = new Buffer(10);
+testData.fill(0);
+auto.on('error', function(err) {
+  assert(err, 'expected format mismatch error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, testData);
+  done();
+});
+auto.write(testData);</code></pre></dd>
+        <dt>emits error for format detection error in _transform</dt>
+        <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.once('error', function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, zeros);
+  done();
+});
+inflateAuto.write(zeros);</code></pre></dd>
+        <section class="suite">
+          <h1>.createInflateAuto()</h1>
+          <dl>
+            <dt>is a factory function</dt>
+            <dd><pre><code>var auto = InflateAuto.createInflateAuto();
+assertInstanceOf(auto, InflateAuto);</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>#flush()</h1>
+          <dl>
+            <dt>calls its callback before format detection</dt>
+            <dd><pre><code>var auto = new InflateAuto();
+auto.on('error', done);
+auto.flush(done);</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>#getFormat()</h1>
+          <dl>
+            <dt>returns null before format detection</dt>
+            <dd><pre><code>var inflateAuto = new InflateAuto();
+assert.strictEqual(inflateAuto.getFormat(), null);</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>#params()</h1>
+          <dl>
+            <dt>calls its callback before format detection</dt>
+            <dd><pre><code>var auto = new InflateAuto();
+auto.on('error', done);
+auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);</code></pre></dd>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>Gzip support</h1>
+          <dl>
+            <dt>as synchronous function</dt>
+            <dd><pre><code>var dataDecompress = decompressSync(compressed);
+var dataAuto = InflateAuto.inflateAutoSync(compressed);
+deepEqual(dataAuto, dataDecompress);</code></pre></dd>
+            <dt>single-write with immediate end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>single-write delayed end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+return Promise.all([
+  zlibWriteP.call(zlibStream, compressed),
+  autoWriteP.call(inflateAuto, compressed)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.end();
+  inflateAuto.end();
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+            <dt>1 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>2 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>3 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>no data after header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(header);
+inflateAuto.end(header);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>compressed empty data</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(emptyCompressed);
+inflateAuto.end(emptyCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles truncated compressed data</dt>
+            <dd><pre><code>// Truncate shortly after the header (if any) for type detection
+var truncated = compressed.slice(0, headerLen + 1);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated compressed data</dt>
+            <dd><pre><code>var doubledata = Buffer.concat([compressed, compressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated empty compressed data</dt>
+            <dd><pre><code>var doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubleempty);
+inflateAuto.end(doubleempty);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated 0</dt>
+            <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+var compressedWithZeros = Buffer.concat([compressed, zeros]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithZeros);
+inflateAuto.end(compressedWithZeros);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated garbage</dt>
+            <dd><pre><code>var garbage = new Buffer(20);
+garbage.fill(42);
+var compressedWithGarbage = Buffer.concat([compressed, garbage]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithGarbage);
+inflateAuto.end(compressedWithGarbage);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data</dt>
+            <dd><pre><code>var corrupted = new Buffer(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>corrupted checksum</dt>
+            <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var invalid = corruptChecksum(compressed);
+zlibStream.end(invalid);
+inflateAuto.end(invalid);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>emits error for format error in _flush</dt>
+            <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var truncated = compressed.slice(0, 1);
+inflateAuto.on('error', function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, truncated);
+  done();
+});
+inflateAuto.end(truncated);</code></pre></dd>
+            <dt>errors on write of invalid type</dt>
+            <dd><pre><code>var options = {objectMode: true};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var compareOptions = extend({}, COMPARE_OPTIONS);
+compareOptions.endEvents = ['end'];
+var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(true);
+inflateAuto.write(true);
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <section class="suite">
+              <h1>.inflateAuto</h1>
+              <dl>
+                <dt>decompresses all data in a single call</dt>
+                <dd><pre><code>decompress(compressed, function(errDecompress, dataDecompress) {
+  assert.ifError(errDecompress);
+  InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+    assert.ifError(errAuto);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can accept options argument</dt>
+                <dd><pre><code>var opts = {chunkSize: zlib.Z_MIN_CHUNK};
+InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  // Node 0.10 does not support opts
+  if (decompress.length &lt; 3) {
+    done();
+    return;
+  }
+  decompress(compressed, opts, function(errDecompress, dataDecompress) {
+    assert.ifError(errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  deepEqual(dataAuto, uncompressed);
+  done();
+});</code></pre></dd>
+                <dt>passes format Error to the callback</dt>
+                <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+decompress(zeros, function(errDecompress, dataDecompress) {
+  assert(errDecompress, 'expected Error to test');
+  InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+decompress(compressedStr, function(errDecompress, dataDecompress) {
+  InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>.inflateAutoSync()</h1>
+              <dl>
+                <dt>invalid type synchronously</dt>
+                <dd><pre><code>var errInflate;
+try {
+  decompressSync(true);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  InflateAuto.inflateAutoSync(true);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+deepEqual(dataAuto, uncompressed);</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+var dataInflate, errInflate;
+try {
+  dataInflate = decompressSync(compressedStr);
+} catch (err) {
+  errInflate = err;
+}
+var dataAuto, errAuto;
+try {
+  dataAuto = InflateAuto.inflateAutoSync(compressedStr);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+deepEqual(dataAuto, dataInflate);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>Constructor</h1>
+              <dl>
+                <dt>supports chunkSize</dt>
+                <dd><pre><code>var options = {chunkSize: zlib.Z_MIN_CHUNK};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(largeCompressed);
+inflateAuto.end(largeCompressed);
+return result;</code></pre></dd>
+                <dt>supports finishFlush</dt>
+                <dd><pre><code>var options = {finishFlush: zlib.Z_SYNC_FLUSH};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var truncated = largeCompressed.slice(0, -1);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+return result;</code></pre></dd>
+                <section class="suite">
+                  <h1>validation</h1>
+                  <dl>
+                    <dt>same for null</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for true</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 63 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 64 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: [] }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: true }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { finishFlush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -2 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 0 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: '1' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 16 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 15 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 7 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 8 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#close()</h1>
+              <dl>
+                <dt>without writing</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+return new Promise(function(resolve, reject) {
+  zlibStream.close(function() {
+    var zlibArgs = arguments;
+    inflateAuto.close(function() {
+      var inflateArgs = arguments;
+      deepEqual(inflateArgs, zlibArgs);
+      setImmediate(function() {
+        result.end();
+        resolve(result);
+      });
+    });
+  });
+});</code></pre></dd>
+                <dt>emits once for multiple calls</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var closeEmitted = false;
+inflateAuto.on('close', function() {
+  assert.strictEqual(closeEmitted, false);
+  closeEmitted = true;
+});
+inflateAuto.once('close', function() {
+  inflateAuto.close();
+});
+inflateAuto.close();
+inflateAuto.close();
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(closeEmitted, true);
+    resolve();
+  });
+});</code></pre></dd>
+                <dt>before #end()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>#reset() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+var errInflate;
+try { zlibStream.reset(); } catch (err) { errInflate = err; }
+var errAuto;
+try { inflateAuto.reset(); } catch (err) { errAuto = err; }
+// nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
+// which is null rather than false in this case.  It's not worth
+// complicating the code to mimic this.  Ignore the difference
+if (errInflate) {
+  errInflate.actual = false;
+}
+deepEqual(errAuto, errInflate);
+result.end();
+return result;</code></pre></dd>
+                <dt>#write() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+return new Promise(function(resolve, reject) {
+  var writeArgs = [];
+  function onWrite() {
+    writeArgs.push(arguments);
+    if (writeArgs.length === 2) {
+      deepEqual(writeArgs[0], writeArgs[1]);
+      result.end();
+      resolve(result);
+    }
+  }
+  zlibStream.write(new Buffer(0), onWrite);
+  inflateAuto.write(new Buffer(0), onWrite);
+  result.checkpoint();
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#getFormat()</h1>
+              <dl>
+                <dt>returns format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
+                <dt>returns custom format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(MyDecompress);
+assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
+                <dt>returns the detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.on('format', function() {
+  assert.strictEqual(inflateAuto.getFormat(), Decompress);
+  done();
+});
+inflateAuto.write(compressed);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#flush()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#params()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype.params;
+var zlibType = typeof Decompress.prototype.params;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto().params;
+zlibType = typeof new Decompress().params;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var level = zlib.Z_BEST_COMPRESSION;
+var strategy = zlib.Z_FILTERED;
+zlibStream.params(level, strategy, function(err) {
+  assert.ifError(err);
+  zlibStream.end(compressed);
+});
+inflateAuto.params(level, strategy, function(err) {
+  assert.ifError(err);
+  inflateAuto.end(compressed);
+});
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  var remainder = compressed.slice(4);
+  zlibStream.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      zlibStream.end(remainder);
+    }
+  );
+  inflateAuto.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      inflateAuto.end(remainder);
+    }
+  );
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#reset()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.reset();
+inflateAuto.reset();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>discards partial header</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var dataAuto = [];
+inflateAuto.on('data', function(data) {
+  dataAuto.push(data);
+});
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, 1);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  // IMPORTANT:  Can't call Zlib.reset() with write in progress
+  // Since write is run from uv work queue thread and reset from main
+  zlibStream.reset();
+  inflateAuto.reset();
+  result.checkpoint();
+  zlibStream.end(compressed);
+  inflateAuto.end(compressed);
+  result.checkpoint();
+  // Gunzip gained reset in v6.0.0
+  // https://github.com/nodejs/node/commit/f380db23
+  // If zlib stream emits a header error, test for success instead of ==
+  return new Promise(function(resolve, reject) {
+    var headerError = false;
+    zlibStream.once('error', function(err) {
+      if (err.message === 'incorrect header check') {
+        headerError = true;
+        // Comparison result ignored.  Suppress unhandled rejection.
+        result.catch(function(errResult) {});
+      }
+    });
+    zlibStream.once('end', function() {
+      resolve(result);
+    });
+    inflateAuto.once('end', function() {
+      deepEqual(Buffer.concat(dataAuto), uncompressed);
+      if (headerError) {
+        resolve();
+      }
+    });
+  });
+});</code></pre></dd>
+                <dt>forgets partial header</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+// Note:  Only write to inflateAuto since zlib stream could error on
+// first byte due to invalid header.
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+// Write data with a different header before reset to check that reset
+// clears any partial-header state.
+return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
+  .then(function() {
+    // IMPORTANT:  Can't call Zlib.reset() with write in progress
+    // Since write is run from uv work queue thread and reset from main
+    zlibStream.reset();
+    inflateAuto.reset();
+    result.checkpoint();
+    zlibStream.end(compressed);
+    inflateAuto.end(compressed);
+    result.checkpoint();
+    return result;
+  });</code></pre></dd>
+                <dt>discards post-header data</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, headerLen + 1);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  // IMPORTANT:  Can't call Zlib.reset() with write in progress
+  // Since write is run from uv work queue thread and reset from main
+  zlibStream.reset();
+  inflateAuto.reset();
+  result.checkpoint();
+  zlibStream.end(compressed);
+  inflateAuto.end(compressed);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setEncoding()</h1>
+              <dl>
+                <dt>behaves the same before writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.setEncoding('utf8');
+inflateAuto.setEncoding('utf8');
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>behaves the same after format</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var chunk = compressed.slice(0, headerLen + 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, chunk),
+  autoWriteP.call(inflateAuto, chunk)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.setEncoding('utf8');
+  inflateAuto.setEncoding('utf8');
+  result.checkpoint();
+  var rest = compressed.slice(chunk.length);
+  zlibStream.end(rest);
+  inflateAuto.end(rest);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setFormat()</h1>
+              <dl>
+                <dt>emits 'format' event with decoder</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var gotFormat = false;
+inflateAuto.on('format', function(decoder) {
+  assert(decoder instanceof Decompress);
+  gotFormat = true;
+});
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(gotFormat, true);</code></pre></dd>
+                <dt>can set correct format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set incorrect format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(otherCompressed);
+inflateAuto.end(otherCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set same format twice</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>throws if changing format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(zlib.Inflate);
+try {
+  inflateAuto.setFormat(zlib.Gunzip);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+                <dt>throws if changing detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.write(otherHeader);
+try {
+  inflateAuto.setFormat(Decompress);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#_processChunk()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype._processChunk;
+var zlibType = typeof Decompress.prototype._processChunk;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto()._processChunk;
+zlibType = typeof new Decompress()._processChunk;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <section class="suite">
+                  <h1>with cb</h1>
+                  <dl>
+                    <dt>emits error without calling callback</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+function neverCalled() {
+  throw new Error('should not be called');
+}
+var zeros = new Buffer(10);
+zeros.fill(0);
+zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+result.checkpoint();
+return result;</code></pre></dd>
+                    <dt>yields format error</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>works if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function(data, enc, cb) {
+  process.nextTick(function() {
+    cb(null, data);
+  });
+};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
+  deepEqual(data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>buffers inconclusive data</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto();
+var trunc = compressed.slice(0, 1);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, function(err, data) {
+  assert.ifError(err);
+  assert.strictEqual(data, undefined);
+  done();
+});</code></pre></dd>
+                  </dl>
+                </section>
+                <section class="suite">
+                  <h1>without cb</h1>
+                  <dl>
+                    <dt>throws without error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>throws with error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+result.checkpoint();</code></pre></dd>
+                    <dt>throws format errors</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(function() {
+  inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+});</code></pre></dd>
+                    <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dd><pre><code>function NoTransform() { stream.Duplex.apply(this, arguments); }
+NoTransform.prototype = Object.create(stream.Duplex.prototype);
+NoTransform.prototype.constructor = NoTransform;
+NoTransform.prototype._read = function() {};
+NoTransform.prototype._write = function(chunk, enc, cb) {
+  this.push(chunk);
+  cb();
+};
+var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /NoTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function() {};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /AsyncTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform yields Error</dt>
+                    <dd><pre><code>var errTest = new Error('test');
+function ErrorTransform() { stream.Transform.apply(this, arguments); }
+ErrorTransform.prototype = Object.create(stream.Transform.prototype);
+ErrorTransform.prototype.constructor = ErrorTransform;
+ErrorTransform.prototype._transform = function(data, enc, cb) {
+  cb(errTest);
+};
+var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  function(err) {
+    return err === errTest;
+  }
+);</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>Deflate support</h1>
+          <dl>
+            <dt>as synchronous function</dt>
+            <dd><pre><code>var dataDecompress = decompressSync(compressed);
+var dataAuto = InflateAuto.inflateAutoSync(compressed);
+deepEqual(dataAuto, dataDecompress);</code></pre></dd>
+            <dt>single-write with immediate end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>single-write delayed end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+return Promise.all([
+  zlibWriteP.call(zlibStream, compressed),
+  autoWriteP.call(inflateAuto, compressed)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.end();
+  inflateAuto.end();
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+            <dt>1 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>2 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>3 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>no data after header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(header);
+inflateAuto.end(header);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>compressed empty data</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(emptyCompressed);
+inflateAuto.end(emptyCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles truncated compressed data</dt>
+            <dd><pre><code>// Truncate shortly after the header (if any) for type detection
+var truncated = compressed.slice(0, headerLen + 1);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated compressed data</dt>
+            <dd><pre><code>var doubledata = Buffer.concat([compressed, compressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated empty compressed data</dt>
+            <dd><pre><code>var doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubleempty);
+inflateAuto.end(doubleempty);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated 0</dt>
+            <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+var compressedWithZeros = Buffer.concat([compressed, zeros]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithZeros);
+inflateAuto.end(compressedWithZeros);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated garbage</dt>
+            <dd><pre><code>var garbage = new Buffer(20);
+garbage.fill(42);
+var compressedWithGarbage = Buffer.concat([compressed, garbage]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithGarbage);
+inflateAuto.end(compressedWithGarbage);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data</dt>
+            <dd><pre><code>var corrupted = new Buffer(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>corrupted checksum</dt>
+            <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var invalid = corruptChecksum(compressed);
+zlibStream.end(invalid);
+inflateAuto.end(invalid);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles dictionary</dt>
+            <dd><pre><code>var options = {dictionary: uncompressed};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithDict);
+inflateAuto.end(compressedWithDict);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles missing dictionary</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithDict);
+inflateAuto.end(compressedWithDict);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>emits error for format error in _flush</dt>
+            <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var truncated = compressed.slice(0, 1);
+inflateAuto.on('error', function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, truncated);
+  done();
+});
+inflateAuto.end(truncated);</code></pre></dd>
+            <dt>errors on write of invalid type</dt>
+            <dd><pre><code>var options = {objectMode: true};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var compareOptions = extend({}, COMPARE_OPTIONS);
+compareOptions.endEvents = ['end'];
+var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(true);
+inflateAuto.write(true);
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <section class="suite">
+              <h1>.inflateAuto</h1>
+              <dl>
+                <dt>decompresses all data in a single call</dt>
+                <dd><pre><code>decompress(compressed, function(errDecompress, dataDecompress) {
+  assert.ifError(errDecompress);
+  InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+    assert.ifError(errAuto);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can accept options argument</dt>
+                <dd><pre><code>var opts = {chunkSize: zlib.Z_MIN_CHUNK};
+InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  // Node 0.10 does not support opts
+  if (decompress.length &lt; 3) {
+    done();
+    return;
+  }
+  decompress(compressed, opts, function(errDecompress, dataDecompress) {
+    assert.ifError(errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  deepEqual(dataAuto, uncompressed);
+  done();
+});</code></pre></dd>
+                <dt>passes format Error to the callback</dt>
+                <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+decompress(zeros, function(errDecompress, dataDecompress) {
+  assert(errDecompress, 'expected Error to test');
+  InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+decompress(compressedStr, function(errDecompress, dataDecompress) {
+  InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>.inflateAutoSync()</h1>
+              <dl>
+                <dt>invalid type synchronously</dt>
+                <dd><pre><code>var errInflate;
+try {
+  decompressSync(true);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  InflateAuto.inflateAutoSync(true);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+deepEqual(dataAuto, uncompressed);</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+var dataInflate, errInflate;
+try {
+  dataInflate = decompressSync(compressedStr);
+} catch (err) {
+  errInflate = err;
+}
+var dataAuto, errAuto;
+try {
+  dataAuto = InflateAuto.inflateAutoSync(compressedStr);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+deepEqual(dataAuto, dataInflate);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>Constructor</h1>
+              <dl>
+                <dt>supports chunkSize</dt>
+                <dd><pre><code>var options = {chunkSize: zlib.Z_MIN_CHUNK};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(largeCompressed);
+inflateAuto.end(largeCompressed);
+return result;</code></pre></dd>
+                <dt>supports finishFlush</dt>
+                <dd><pre><code>var options = {finishFlush: zlib.Z_SYNC_FLUSH};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var truncated = largeCompressed.slice(0, -1);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+return result;</code></pre></dd>
+                <section class="suite">
+                  <h1>validation</h1>
+                  <dl>
+                    <dt>same for null</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for true</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 63 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 64 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: [] }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: true }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { finishFlush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -2 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 0 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: '1' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 16 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 15 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 7 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 8 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#close()</h1>
+              <dl>
+                <dt>without writing</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+return new Promise(function(resolve, reject) {
+  zlibStream.close(function() {
+    var zlibArgs = arguments;
+    inflateAuto.close(function() {
+      var inflateArgs = arguments;
+      deepEqual(inflateArgs, zlibArgs);
+      setImmediate(function() {
+        result.end();
+        resolve(result);
+      });
+    });
+  });
+});</code></pre></dd>
+                <dt>emits once for multiple calls</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var closeEmitted = false;
+inflateAuto.on('close', function() {
+  assert.strictEqual(closeEmitted, false);
+  closeEmitted = true;
+});
+inflateAuto.once('close', function() {
+  inflateAuto.close();
+});
+inflateAuto.close();
+inflateAuto.close();
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(closeEmitted, true);
+    resolve();
+  });
+});</code></pre></dd>
+                <dt>before #end()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>#reset() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+var errInflate;
+try { zlibStream.reset(); } catch (err) { errInflate = err; }
+var errAuto;
+try { inflateAuto.reset(); } catch (err) { errAuto = err; }
+// nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
+// which is null rather than false in this case.  It's not worth
+// complicating the code to mimic this.  Ignore the difference
+if (errInflate) {
+  errInflate.actual = false;
+}
+deepEqual(errAuto, errInflate);
+result.end();
+return result;</code></pre></dd>
+                <dt>#write() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+return new Promise(function(resolve, reject) {
+  var writeArgs = [];
+  function onWrite() {
+    writeArgs.push(arguments);
+    if (writeArgs.length === 2) {
+      deepEqual(writeArgs[0], writeArgs[1]);
+      result.end();
+      resolve(result);
+    }
+  }
+  zlibStream.write(new Buffer(0), onWrite);
+  inflateAuto.write(new Buffer(0), onWrite);
+  result.checkpoint();
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#getFormat()</h1>
+              <dl>
+                <dt>returns format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
+                <dt>returns custom format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(MyDecompress);
+assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
+                <dt>returns the detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.on('format', function() {
+  assert.strictEqual(inflateAuto.getFormat(), Decompress);
+  done();
+});
+inflateAuto.write(compressed);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#flush()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#params()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype.params;
+var zlibType = typeof Decompress.prototype.params;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto().params;
+zlibType = typeof new Decompress().params;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var level = zlib.Z_BEST_COMPRESSION;
+var strategy = zlib.Z_FILTERED;
+zlibStream.params(level, strategy, function(err) {
+  assert.ifError(err);
+  zlibStream.end(compressed);
+});
+inflateAuto.params(level, strategy, function(err) {
+  assert.ifError(err);
+  inflateAuto.end(compressed);
+});
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  var remainder = compressed.slice(4);
+  zlibStream.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      zlibStream.end(remainder);
+    }
+  );
+  inflateAuto.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      inflateAuto.end(remainder);
+    }
+  );
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#reset()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.reset();
+inflateAuto.reset();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>discards partial header</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var dataAuto = [];
+inflateAuto.on('data', function(data) {
+  dataAuto.push(data);
+});
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, 1);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  // IMPORTANT:  Can't call Zlib.reset() with write in progress
+  // Since write is run from uv work queue thread and reset from main
+  zlibStream.reset();
+  inflateAuto.reset();
+  result.checkpoint();
+  zlibStream.end(compressed);
+  inflateAuto.end(compressed);
+  result.checkpoint();
+  // Gunzip gained reset in v6.0.0
+  // https://github.com/nodejs/node/commit/f380db23
+  // If zlib stream emits a header error, test for success instead of ==
+  return new Promise(function(resolve, reject) {
+    var headerError = false;
+    zlibStream.once('error', function(err) {
+      if (err.message === 'incorrect header check') {
+        headerError = true;
+        // Comparison result ignored.  Suppress unhandled rejection.
+        result.catch(function(errResult) {});
+      }
+    });
+    zlibStream.once('end', function() {
+      resolve(result);
+    });
+    inflateAuto.once('end', function() {
+      deepEqual(Buffer.concat(dataAuto), uncompressed);
+      if (headerError) {
+        resolve();
+      }
+    });
+  });
+});</code></pre></dd>
+                <dt>forgets partial header</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+// Note:  Only write to inflateAuto since zlib stream could error on
+// first byte due to invalid header.
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+// Write data with a different header before reset to check that reset
+// clears any partial-header state.
+return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
+  .then(function() {
+    // IMPORTANT:  Can't call Zlib.reset() with write in progress
+    // Since write is run from uv work queue thread and reset from main
+    zlibStream.reset();
+    inflateAuto.reset();
+    result.checkpoint();
+    zlibStream.end(compressed);
+    inflateAuto.end(compressed);
+    result.checkpoint();
+    return result;
+  });</code></pre></dd>
+                <dt>discards post-header data</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, headerLen + 1);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  // IMPORTANT:  Can't call Zlib.reset() with write in progress
+  // Since write is run from uv work queue thread and reset from main
+  zlibStream.reset();
+  inflateAuto.reset();
+  result.checkpoint();
+  zlibStream.end(compressed);
+  inflateAuto.end(compressed);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setEncoding()</h1>
+              <dl>
+                <dt>behaves the same before writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.setEncoding('utf8');
+inflateAuto.setEncoding('utf8');
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>behaves the same after format</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var chunk = compressed.slice(0, headerLen + 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, chunk),
+  autoWriteP.call(inflateAuto, chunk)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.setEncoding('utf8');
+  inflateAuto.setEncoding('utf8');
+  result.checkpoint();
+  var rest = compressed.slice(chunk.length);
+  zlibStream.end(rest);
+  inflateAuto.end(rest);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setFormat()</h1>
+              <dl>
+                <dt>emits 'format' event with decoder</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var gotFormat = false;
+inflateAuto.on('format', function(decoder) {
+  assert(decoder instanceof Decompress);
+  gotFormat = true;
+});
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(gotFormat, true);</code></pre></dd>
+                <dt>can set correct format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set incorrect format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(otherCompressed);
+inflateAuto.end(otherCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set same format twice</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>throws if changing format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(zlib.Inflate);
+try {
+  inflateAuto.setFormat(zlib.Gunzip);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+                <dt>throws if changing detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.write(otherHeader);
+try {
+  inflateAuto.setFormat(Decompress);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#_processChunk()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype._processChunk;
+var zlibType = typeof Decompress.prototype._processChunk;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto()._processChunk;
+zlibType = typeof new Decompress()._processChunk;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <section class="suite">
+                  <h1>with cb</h1>
+                  <dl>
+                    <dt>emits error without calling callback</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+function neverCalled() {
+  throw new Error('should not be called');
+}
+var zeros = new Buffer(10);
+zeros.fill(0);
+zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+result.checkpoint();
+return result;</code></pre></dd>
+                    <dt>yields format error</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>works if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function(data, enc, cb) {
+  process.nextTick(function() {
+    cb(null, data);
+  });
+};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
+  deepEqual(data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>buffers inconclusive data</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto();
+var trunc = compressed.slice(0, 1);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, function(err, data) {
+  assert.ifError(err);
+  assert.strictEqual(data, undefined);
+  done();
+});</code></pre></dd>
+                  </dl>
+                </section>
+                <section class="suite">
+                  <h1>without cb</h1>
+                  <dl>
+                    <dt>throws without error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>throws with error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+result.checkpoint();</code></pre></dd>
+                    <dt>throws format errors</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(function() {
+  inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+});</code></pre></dd>
+                    <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dd><pre><code>function NoTransform() { stream.Duplex.apply(this, arguments); }
+NoTransform.prototype = Object.create(stream.Duplex.prototype);
+NoTransform.prototype.constructor = NoTransform;
+NoTransform.prototype._read = function() {};
+NoTransform.prototype._write = function(chunk, enc, cb) {
+  this.push(chunk);
+  cb();
+};
+var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /NoTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function() {};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /AsyncTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform yields Error</dt>
+                    <dd><pre><code>var errTest = new Error('test');
+function ErrorTransform() { stream.Transform.apply(this, arguments); }
+ErrorTransform.prototype = Object.create(stream.Transform.prototype);
+ErrorTransform.prototype.constructor = ErrorTransform;
+ErrorTransform.prototype._transform = function(data, enc, cb) {
+  cb(errTest);
+};
+var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  function(err) {
+    return err === errTest;
+  }
+);</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+          </dl>
+        </section>
+        <section class="suite">
+          <h1>DeflateRaw support</h1>
+          <dl>
+            <dt>as synchronous function</dt>
+            <dd><pre><code>var dataDecompress = decompressSync(compressed);
+var dataAuto = InflateAuto.inflateAutoSync(compressed);
+deepEqual(dataAuto, dataDecompress);</code></pre></dd>
+            <dt>single-write with immediate end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>single-write delayed end</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+return Promise.all([
+  zlibWriteP.call(zlibStream, compressed),
+  autoWriteP.call(inflateAuto, compressed)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.end();
+  inflateAuto.end();
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+            <dt>1 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>2 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>3 byte writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+for (var i = 0; i &lt; compressed.length; i += 1) {
+  var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+  zlibStream.write(block);
+  inflateAuto.write(block);
+  result.checkpoint();
+}
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>no writes</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>no data after header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(header);
+inflateAuto.end(header);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>1 bytes of Gzip header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var partial = formatHeader.slice(0, len);
+zlibStream.end(partial);
+inflateAuto.end(partial);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>2 bytes of Gzip header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var partial = formatHeader.slice(0, len);
+zlibStream.end(partial);
+inflateAuto.end(partial);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>1 bytes of Deflate header</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var partial = formatHeader.slice(0, len);
+zlibStream.end(partial);
+inflateAuto.end(partial);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>compressed empty data</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(emptyCompressed);
+inflateAuto.end(emptyCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles truncated compressed data</dt>
+            <dd><pre><code>// Truncate shortly after the header (if any) for type detection
+var truncated = compressed.slice(0, headerLen + 1);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated compressed data</dt>
+            <dd><pre><code>var doubledata = Buffer.concat([compressed, compressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated empty compressed data</dt>
+            <dd><pre><code>var doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(doubleempty);
+inflateAuto.end(doubleempty);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated 0</dt>
+            <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+var compressedWithZeros = Buffer.concat([compressed, zeros]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithZeros);
+inflateAuto.end(compressedWithZeros);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles concatenated garbage</dt>
+            <dd><pre><code>var garbage = new Buffer(20);
+garbage.fill(42);
+var compressedWithGarbage = Buffer.concat([compressed, garbage]);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithGarbage);
+inflateAuto.end(compressedWithGarbage);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data</dt>
+            <dd><pre><code>var corrupted = new Buffer(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles dictionary</dt>
+            <dd><pre><code>var options = {dictionary: uncompressed};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithDict);
+inflateAuto.end(compressedWithDict);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles missing dictionary</dt>
+            <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(compressedWithDict);
+inflateAuto.end(compressedWithDict);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>errors on write of invalid type</dt>
+            <dd><pre><code>var options = {objectMode: true};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var compareOptions = extend({}, COMPARE_OPTIONS);
+compareOptions.endEvents = ['end'];
+var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(true);
+inflateAuto.write(true);
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+            <section class="suite">
+              <h1>.inflateAuto</h1>
+              <dl>
+                <dt>decompresses all data in a single call</dt>
+                <dd><pre><code>decompress(compressed, function(errDecompress, dataDecompress) {
+  assert.ifError(errDecompress);
+  InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+    assert.ifError(errAuto);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can accept options argument</dt>
+                <dd><pre><code>var opts = {chunkSize: zlib.Z_MIN_CHUNK};
+InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  // Node 0.10 does not support opts
+  if (decompress.length &lt; 3) {
+    done();
+    return;
+  }
+  decompress(compressed, opts, function(errDecompress, dataDecompress) {
+    assert.ifError(errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
+  assert.ifError(errAuto);
+  deepEqual(dataAuto, uncompressed);
+  done();
+});</code></pre></dd>
+                <dt>passes format Error to the callback</dt>
+                <dd><pre><code>var zeros = new Buffer(20);
+zeros.fill(0);
+decompress(zeros, function(errDecompress, dataDecompress) {
+  assert(errDecompress, 'expected Error to test');
+  InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>handles truncated header like zlib</dt>
+                <dd><pre><code>var trunc = compressed.slice(0, 1);
+decompress(trunc, function(errDecompress, dataDecompress) {
+  InflateAuto.inflateAuto(trunc, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+decompress(compressedStr, function(errDecompress, dataDecompress) {
+  InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+    deepEqual(errAuto, errDecompress);
+    deepEqual(dataAuto, dataDecompress);
+    done();
+  });
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>.inflateAutoSync()</h1>
+              <dl>
+                <dt>invalid type synchronously</dt>
+                <dd><pre><code>var errInflate;
+try {
+  decompressSync(true);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  InflateAuto.inflateAutoSync(true);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>partial Gzip header</dt>
+                <dd><pre><code>var partial = formatHeader.slice(0, 1);
+var dataInflate, errInflate;
+try {
+  dataInflate = decompressSync(partial);
+} catch (err) {
+  errInflate = err;
+}
+var dataAuto, errAuto;
+try {
+  dataAuto = InflateAuto.inflateAutoSync(partial);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+deepEqual(dataAuto, dataInflate);</code></pre></dd>
+                <dt>partial Deflate header</dt>
+                <dd><pre><code>var partial = formatHeader.slice(0, 1);
+var dataInflate, errInflate;
+try {
+  dataInflate = decompressSync(partial);
+} catch (err) {
+  errInflate = err;
+}
+var dataAuto, errAuto;
+try {
+  dataAuto = InflateAuto.inflateAutoSync(partial);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+deepEqual(dataAuto, dataInflate);</code></pre></dd>
+                <dt>can use PassThrough as defaultFormat</dt>
+                <dd><pre><code>var opts = {defaultFormat: stream.PassThrough};
+var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+deepEqual(dataAuto, uncompressed);</code></pre></dd>
+                <dt>handles string argument like zlib</dt>
+                <dd><pre><code>var compressedStr = compressed.toString('binary');
+var dataInflate, errInflate;
+try {
+  dataInflate = decompressSync(compressedStr);
+} catch (err) {
+  errInflate = err;
+}
+var dataAuto, errAuto;
+try {
+  dataAuto = InflateAuto.inflateAutoSync(compressedStr);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+deepEqual(dataAuto, dataInflate);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>Constructor</h1>
+              <dl>
+                <dt>supports chunkSize</dt>
+                <dd><pre><code>var options = {chunkSize: zlib.Z_MIN_CHUNK};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.end(largeCompressed);
+inflateAuto.end(largeCompressed);
+return result;</code></pre></dd>
+                <dt>supports finishFlush</dt>
+                <dd><pre><code>var options = {finishFlush: zlib.Z_SYNC_FLUSH};
+var zlibStream = new Decompress(options);
+var inflateAuto = new InflateAuto(options);
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var truncated = largeCompressed.slice(0, -1);
+zlibStream.end(truncated);
+inflateAuto.end(truncated);
+return result;</code></pre></dd>
+                <section class="suite">
+                  <h1>validation</h1>
+                  <dl>
+                    <dt>same for null</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for true</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: Infinity }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 63 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { chunkSize: 64 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: [] }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { dictionary: true }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { finishFlush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { flush: 3 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -2 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { level: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 10 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 9 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 0 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { memLevel: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: '1' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { strategy: 1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 16 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 15 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 7 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>same for { windowBits: 8 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: -1 }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                    <dt>at least as strict for { finishFlush: '3' }</dt>
+                    <dd><pre><code>var errInflate;
+// eslint-disable-next-line no-new
+try { new Decompress(options); } catch (err) { errInflate = err; }
+var errAuto;
+// eslint-disable-next-line no-new
+try { new InflateAuto(options); } catch (err) { errAuto = err; }
+if (errInflate) {
+  deepEqual(errAuto, errInflate);
+}</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#close()</h1>
+              <dl>
+                <dt>without writing</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+return new Promise(function(resolve, reject) {
+  zlibStream.close(function() {
+    var zlibArgs = arguments;
+    inflateAuto.close(function() {
+      var inflateArgs = arguments;
+      deepEqual(inflateArgs, zlibArgs);
+      setImmediate(function() {
+        result.end();
+        resolve(result);
+      });
+    });
+  });
+});</code></pre></dd>
+                <dt>emits once for multiple calls</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var closeEmitted = false;
+inflateAuto.on('close', function() {
+  assert.strictEqual(closeEmitted, false);
+  closeEmitted = true;
+});
+inflateAuto.once('close', function() {
+  inflateAuto.close();
+});
+inflateAuto.close();
+inflateAuto.close();
+return new Promise(function(resolve, reject) {
+  setImmediate(function() {
+    assert.strictEqual(closeEmitted, true);
+    resolve();
+  });
+});</code></pre></dd>
+                <dt>before #end()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+zlibStream.end();
+inflateAuto.end();
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>#reset() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+var errInflate;
+try { zlibStream.reset(); } catch (err) { errInflate = err; }
+var errAuto;
+try { inflateAuto.reset(); } catch (err) { errAuto = err; }
+// nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
+// which is null rather than false in this case.  It's not worth
+// complicating the code to mimic this.  Ignore the difference
+if (errInflate) {
+  errInflate.actual = false;
+}
+deepEqual(errAuto, errInflate);
+result.end();
+return result;</code></pre></dd>
+                <dt>#write() after #close()</dt>
+                <dd><pre><code>var zlibStream = new zlib.Inflate();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.close();
+inflateAuto.close();
+result.checkpoint();
+return new Promise(function(resolve, reject) {
+  var writeArgs = [];
+  function onWrite() {
+    writeArgs.push(arguments);
+    if (writeArgs.length === 2) {
+      deepEqual(writeArgs[0], writeArgs[1]);
+      result.end();
+      resolve(result);
+    }
+  }
+  zlibStream.write(new Buffer(0), onWrite);
+  inflateAuto.write(new Buffer(0), onWrite);
+  result.checkpoint();
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#getFormat()</h1>
+              <dl>
+                <dt>returns format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
+                <dt>returns custom format set by #setFormat()</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(MyDecompress);
+assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
+                <dt>returns the detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.on('format', function() {
+  assert.strictEqual(inflateAuto.getFormat(), Decompress);
+  done();
+});
+inflateAuto.write(compressed);</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#flush()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush();
+inflateAuto.flush();
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>Z_FINISH between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressed.slice(0, 4));
+inflateAuto.write(compressed.slice(0, 4));
+result.checkpoint();
+zlibStream.flush(zlib.Z_FINISH);
+inflateAuto.flush(zlib.Z_FINISH);
+result.checkpoint();
+zlibStream.end(compressed.slice(4));
+inflateAuto.end(compressed.slice(4));
+result.checkpoint();
+return result;</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#params()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype.params;
+var zlibType = typeof Decompress.prototype.params;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto().params;
+zlibType = typeof new Decompress().params;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var level = zlib.Z_BEST_COMPRESSION;
+var strategy = zlib.Z_FILTERED;
+zlibStream.params(level, strategy, function(err) {
+  assert.ifError(err);
+  zlibStream.end(compressed);
+});
+inflateAuto.params(level, strategy, function(err) {
+  assert.ifError(err);
+  inflateAuto.end(compressed);
+});
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>between writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  var remainder = compressed.slice(4);
+  zlibStream.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      zlibStream.end(remainder);
+    }
+  );
+  inflateAuto.params(
+    zlib.Z_BEST_COMPRESSION,
+    zlib.Z_FILTERED,
+    function(err) {
+      assert.ifError(err);
+      inflateAuto.end(remainder);
+    }
+  );
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#reset()</h1>
+              <dl>
+                <dt>before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.reset();
+inflateAuto.reset();
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>discards post-header data</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var partial = compressed.slice(0, headerLen + 1);
+return Promise.all([
+  zlibWriteP.call(zlibStream, partial),
+  autoWriteP.call(inflateAuto, partial)
+]).then(function() {
+  result.checkpoint();
+  // IMPORTANT:  Can't call Zlib.reset() with write in progress
+  // Since write is run from uv work queue thread and reset from main
+  zlibStream.reset();
+  inflateAuto.reset();
+  result.checkpoint();
+  zlibStream.end(compressed);
+  inflateAuto.end(compressed);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setEncoding()</h1>
+              <dl>
+                <dt>behaves the same before writes</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.setEncoding('utf8');
+inflateAuto.setEncoding('utf8');
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>behaves the same after format</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zlibWriteP = BBPromise.promisify(zlibStream.write);
+var autoWriteP = BBPromise.promisify(inflateAuto.write);
+var chunk = compressed.slice(0, headerLen + 4);
+return Promise.all([
+  zlibWriteP.call(zlibStream, chunk),
+  autoWriteP.call(inflateAuto, chunk)
+]).then(function() {
+  result.checkpoint();
+  zlibStream.setEncoding('utf8');
+  inflateAuto.setEncoding('utf8');
+  result.checkpoint();
+  var rest = compressed.slice(chunk.length);
+  zlibStream.end(rest);
+  inflateAuto.end(rest);
+  result.checkpoint();
+  return result;
+});</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#setFormat()</h1>
+              <dl>
+                <dt>emits 'format' event with decoder</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+var gotFormat = false;
+inflateAuto.on('format', function(decoder) {
+  assert(decoder instanceof Decompress);
+  gotFormat = true;
+});
+inflateAuto.setFormat(Decompress);
+assert.strictEqual(gotFormat, true);</code></pre></dd>
+                <dt>can set correct format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set incorrect format before write</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(otherCompressed);
+inflateAuto.end(otherCompressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>can set same format twice</dt>
+                <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+inflateAuto.setFormat(Decompress);
+inflateAuto.setFormat(Decompress);
+result.checkpoint();
+zlibStream.end(compressed);
+inflateAuto.end(compressed);
+result.checkpoint();
+return result;</code></pre></dd>
+                <dt>throws if changing format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.setFormat(zlib.Inflate);
+try {
+  inflateAuto.setFormat(zlib.Gunzip);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+                <dt>throws if changing detected format</dt>
+                <dd><pre><code>var inflateAuto = new InflateAuto();
+inflateAuto.write(otherHeader);
+try {
+  inflateAuto.setFormat(Decompress);
+  throw new Error('Should have thrown');
+} catch (err) {
+  assert(/\bformat\b/i.test(err.message));
+}</code></pre></dd>
+              </dl>
+            </section>
+            <section class="suite">
+              <h1>#_processChunk()</h1>
+              <dl>
+                <dt>has the same type</dt>
+                <dd><pre><code>var autoType = typeof InflateAuto.prototype._processChunk;
+var zlibType = typeof Decompress.prototype._processChunk;
+assert.strictEqual(autoType, zlibType);
+autoType = typeof new InflateAuto()._processChunk;
+zlibType = typeof new Decompress()._processChunk;
+assert.strictEqual(autoType, zlibType);</code></pre></dd>
+                <section class="suite">
+                  <h1>with cb</h1>
+                  <dl>
+                    <dt>emits error without calling callback</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+function neverCalled() {
+  throw new Error('should not be called');
+}
+var zeros = new Buffer(10);
+zeros.fill(0);
+zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+result.checkpoint();
+return result;</code></pre></dd>
+                    <dt>yields format error</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+  assert(err, 'expected format error');
+  assert(/format/i.test(err.message));
+  deepEqual(err.data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>works if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function(data, enc, cb) {
+  process.nextTick(function() {
+    cb(null, data);
+  });
+};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
+  deepEqual(data, zeros);
+  done();
+});</code></pre></dd>
+                    <dt>buffers inconclusive data</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto();
+var trunc = compressed.slice(0, 1);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, function(err, data) {
+  assert.ifError(err);
+  assert.strictEqual(data, undefined);
+  done();
+});</code></pre></dd>
+                  </dl>
+                </section>
+                <section class="suite">
+                  <h1>without cb</h1>
+                  <dl>
+                    <dt>throws without error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);</code></pre></dd>
+                    <dt>throws with error listener</dt>
+                    <dd><pre><code>var zlibStream = new Decompress();
+var inflateAuto = new InflateAuto();
+var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+var zeros = new Buffer(10);
+zeros.fill(0);
+var errInflate;
+try {
+  zlibStream._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errInflate = err;
+}
+var errAuto;
+try {
+  inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+} catch (err) {
+  errAuto = err;
+}
+deepEqual(errAuto, errInflate);
+result.checkpoint();</code></pre></dd>
+                    <dt>throws format errors</dt>
+                    <dd><pre><code>var inflateAuto = new InflateAuto({defaultFormat: null});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(function() {
+  inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+});</code></pre></dd>
+                    <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dd><pre><code>function NoTransform() { stream.Duplex.apply(this, arguments); }
+NoTransform.prototype = Object.create(stream.Duplex.prototype);
+NoTransform.prototype.constructor = NoTransform;
+NoTransform.prototype._read = function() {};
+NoTransform.prototype._write = function(chunk, enc, cb) {
+  this.push(chunk);
+  cb();
+};
+var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /NoTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform does not yield synchronously</dt>
+                    <dd><pre><code>function AsyncTransform() { stream.Transform.apply(this, arguments); }
+AsyncTransform.prototype = Object.create(stream.Transform.prototype);
+AsyncTransform.prototype.constructor = AsyncTransform;
+AsyncTransform.prototype._transform = function() {};
+var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  /AsyncTransform.*_processChunk/
+);</code></pre></dd>
+                    <dt>throws if _transform yields Error</dt>
+                    <dd><pre><code>var errTest = new Error('test');
+function ErrorTransform() { stream.Transform.apply(this, arguments); }
+ErrorTransform.prototype = Object.create(stream.Transform.prototype);
+ErrorTransform.prototype.constructor = ErrorTransform;
+ErrorTransform.prototype._transform = function(data, enc, cb) {
+  cb(errTest);
+};
+var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+var zeros = new Buffer(10);
+zeros.fill(0);
+inflateAuto.on('error', function() {
+  throw new Error('error should not be emitted');
+});
+assert.throws(
+  function() {
+    inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+  },
+  function(err) {
+    return err === errTest;
+  }
+);</code></pre></dd>
+                  </dl>
+                </section>
+              </dl>
+            </section>
+          </dl>
+        </section>
+      </dl>
+    </section>
+  </div><!-- .container -->
+
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/jquery/2.2.1/jquery.min.js"></script>
+  <script type="text/javascript" src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.6/js/bootstrap.min.js" integrity="sha384-0mSbJDEHialfmuBBQP6A4Qrprq5OVfW37PRR3j5ELqxss1yVqOtnepnHVP9aJ7xS" crossorigin="anonymous"></script>
+  <script type="text/javascript" src="https://cdn.jsdelivr.net/highlight.js/9.1.0/highlight.min.js"></script>
+  <script type="text/javascript">//<![CDATA[
+'use strict';
+// Adjust the nested heading level to match depth
+$('section section h1').each(function() {
+  var $this = $(this);
+  var depth = Math.min($this.parents('section').length, 6);
+  // http://stackoverflow.com/a/30059450/503410
+  $this.wrapInner(document.createElement('h' + depth)).children().unwrap();
+});
+
+// Make the tests collapsible
+var testNum = 0;
+$('dt + dd')
+  .addClass('collapse')
+  .attr('role', 'tabpanel')
+  .attr('aria-expanded', 'false')
+  .each(function() {
+    var $this = $(this);
+    var $dt = $this.prev();
+
+    ++testNum;
+    var id = 'test' + testNum;
+    var idDt = id + '-title';
+    var idDd = id + '-desc';
+
+    $dt.attr('id', idDt);
+    $this.attr('id', idDd);
+
+    $dt.wrapInner('<a role="button" data-toggle="collapse" href="#' + idDd +
+        '" aria-expanded="false" aria-controls="' + idDd + '"></a>')
+      .children()
+      .collapse();
+  });
+
+// Enable syntax highlighting for the code (which is all JavaScript)
+hljs.configure({languages: ['javascript']});
+hljs.initHighlighting();
+//]]></script>
+</body>
+</html>
