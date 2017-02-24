@@ -1238,7 +1238,16 @@ function defineFormatTests(format) {
       });
 
       it('throws if format lacks _processChunk and _transform', function() {
-        var inflateAuto = new InflateAuto({defaultFormat: stream.Duplex});
+        function NoTransform() { stream.Duplex.apply(this, arguments); }
+        NoTransform.prototype = Object.create(stream.Duplex.prototype);
+        NoTransform.prototype.constructor = NoTransform;
+        NoTransform.prototype._read = function() {};
+        NoTransform.prototype._write = function(chunk, enc, cb) {
+          this.push(chunk);
+          cb();
+        };
+
+        var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
         var zeros = new Buffer(10);
         zeros.fill(0);
         inflateAuto.on('error', function() {
@@ -1248,7 +1257,7 @@ function defineFormatTests(format) {
           function() {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
-          /Duplex.*_processChunk/
+          /NoTransform.*_processChunk/
         );
       });
 
