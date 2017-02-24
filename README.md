@@ -50,21 +50,6 @@ than mentioned above) to work with `InflateAuto` it is considered a bug in
 issues](https://github.com/kevinoid/inflate-auto/issues/new).
 
 
-## Use Cases
-
-The primary use case for which this module was created is decompressing HTTP
-responses which declare `Content-Encoding: deflate`.  As noted in [Section
-4.2.2 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.2.2) "Some
-non-conformant implementations send the `"deflate"` compressed data without
-the zlib wrapper."  This has been attributed to [early Microsoft
-servers](https://stackoverflow.com/a/9186091) and to [old Apache
-mod\_deflate](https://mxr.mozilla.org/mozilla-esr38/source/netwerk/streamconv/converters/nsHTTPCompressConv.cpp#214),
-and is almost certainly an issue in less common servers.  Regardless of the
-most common cause, it is observed in real-world behavior and poses a
-compatibility risk for HTTP clients which support deflate encoding.  Using
-`InflateAuto` is one way to address the issue.
-
-
 ## Installation
 
 [This package](https://www.npmjs.com/package/inflate-auto) can be installed
@@ -78,6 +63,18 @@ npm install inflate-auto
 ## Recipes
 
 ### Deflate HTTP
+
+The primary use case for which this module was created is decompressing HTTP
+responses which declare `Content-Encoding: deflate`.  As noted in [Section
+4.2.2 of RFC 7230](https://tools.ietf.org/html/rfc7230#section-4.2.2) "Some
+non-conformant implementations send the `"deflate"` compressed data without
+the zlib wrapper."  This has been attributed to [early Microsoft
+servers](https://stackoverflow.com/a/9186091) and to [old Apache
+mod\_deflate](https://mxr.mozilla.org/mozilla-esr38/source/netwerk/streamconv/converters/nsHTTPCompressConv.cpp#214),
+and is an issue in several less common servers.  Regardless of the most common
+cause, it is observed in real-world behavior and poses a compatibility risk
+for HTTP clients which support deflate encoding.  Using `InflateAuto` is one
+way to address the issue.
 
 Compressed HTTP/HTTPS responses can be supported with code similar to the
 following:
