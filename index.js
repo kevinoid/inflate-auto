@@ -555,8 +555,8 @@ InflateAuto.prototype.close = function close(callback) {
   return undefined;
 };
 
-/** Gets the constructor for the format used to decode data written to this
- * stream.
+/** Gets the constructor function used to create the decoder for data written
+ * to this stream.
  *
  * @return {?function(new:stream.Duplex,Object=)} Constructor for the stream
  * class which is used to decode data written to this stream, or
