@@ -1,7 +1,7 @@
 {
   "name": "inflate-auto",
   "version": "0.0.1",
-  "description": "Decompression stream which detects the compression format from the compressed data with minimal buffering.  Supports Gzip-, Deflate-, and DeflateRaw-compressed data.",
+  "description": "Decompression stream which detects the compression format from the compressed data with minimal buffering.  Detects Gzip, Deflate, and DeflateRaw by default.",
   "keywords": [
     "compression",
     "decompress",
