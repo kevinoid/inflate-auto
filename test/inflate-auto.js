@@ -573,7 +573,7 @@ function defineFormatTests(format) {
 
   describe('Constructor', function() {
     describe('validation', function() {
-      var optionsTestCases = [
+      [
         null,
         true,
         {chunkSize: zlib.Z_MAX_CHUNK + 1},
@@ -582,8 +582,6 @@ function defineFormatTests(format) {
         {chunkSize: zlib.Z_MIN_CHUNK},
         {dictionary: []},
         {dictionary: true},
-        {finishFlush: -1},
-        {finishFlush: String(zlib.Z_FULL_FLUSH)},
         {finishFlush: zlib.Z_FULL_FLUSH},
         {flush: -1},
         {flush: String(zlib.Z_FULL_FLUSH)},
@@ -603,9 +601,7 @@ function defineFormatTests(format) {
         {windowBits: zlib.Z_MAX_WINDOWBITS},
         {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
         {windowBits: zlib.Z_MIN_WINDOWBITS}
-      ];
-
-      optionsTestCases.forEach(function(options) {
+      ].forEach(function(options) {
         it('same for ' + util.inspect(options), function() {
           var errInflate;
           // eslint-disable-next-line no-new
@@ -616,6 +612,26 @@ function defineFormatTests(format) {
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
           deepEqual(errAuto, errInflate);
+        });
+      });
+
+      // Older node versions do not check/use finishFlush
+      [
+        {finishFlush: -1},
+        {finishFlush: String(zlib.Z_FULL_FLUSH)}
+      ].forEach(function(options) {
+        it('at least as strict for ' + util.inspect(options), function() {
+          var errInflate;
+          // eslint-disable-next-line no-new
+          try { new Decompress(options); } catch (err) { errInflate = err; }
+
+          var errAuto;
+          // eslint-disable-next-line no-new
+          try { new InflateAuto(options); } catch (err) { errAuto = err; }
+
+          if (errInflate) {
+            deepEqual(errAuto, errInflate);
+          }
         });
       });
     });
