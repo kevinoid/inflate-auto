@@ -43,7 +43,7 @@ compressor(testData, (errCompress, compressed) => {
 
 `InflateAuto` should behave identically to any of the `zlib` decompression
 types, with the exception of `instanceof` and `.constructor` checks.  Using
-the class should be as simple as `s/Inflate\(Raw\)?/InflateAuto/g`
+the class should be as simple as `s/Inflate(Raw)?/InflateAuto/g`
 in existing code.  If any real-world which code requires modification (other
 than mentioned above) to work with `InflateAuto` it is considered a bug in
 `InflateAuto`.  Please [report any such
@@ -102,11 +102,11 @@ https.get(options, function(res) {
     encoding === 'gzip' ? new zlib.Gunzip() :
     null;
 
-  var bodyData;
+  res.on('error', err => console.error('Response error:', err));
+
+  let bodyData;
   if (inflater) {
-    inflater.on('error', function(err) {
-      console.error('Decompression error:', err);
-    });
+    inflater.on('error', err => console.error('Decompression error:', err));
     bodyData = res.pipe(inflater);
   } else {
     bodyData = res;
@@ -114,9 +114,7 @@ https.get(options, function(res) {
 
   bodyData.pipe(process.stdout, {end: false});
 })
-  .on('error', function(err) {
-    console.error('Request error:', err);
-  });
+  .on('error', err => console.error('Request error:', err));
 ```
 
 ### Log Compression Format
