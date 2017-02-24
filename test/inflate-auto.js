@@ -1099,6 +1099,52 @@ function defineFormatTests(format) {
     // guaranteed.  See method comment for details.
   });
 
+  describe('#setEncoding()', function() {
+    it('behaves the same before writes', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      zlibStream.setEncoding('utf8');
+      inflateAuto.setEncoding('utf8');
+      result.checkpoint();
+
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+
+      return result;
+    });
+
+    it('behaves the same after format', function() {
+      var zlibStream = new Decompress();
+      var inflateAuto = new InflateAuto();
+      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      var zlibWriteP = BBPromise.promisify(zlibStream.write);
+      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+
+      var chunk = compressed.slice(0, headerLen + 4);
+      return Promise.all([
+        zlibWriteP.call(zlibStream, chunk),
+        autoWriteP.call(inflateAuto, chunk)
+      ]).then(function() {
+        result.checkpoint();
+
+        zlibStream.setEncoding('utf8');
+        inflateAuto.setEncoding('utf8');
+        result.checkpoint();
+
+        var rest = compressed.slice(chunk.length);
+        zlibStream.end(rest);
+        inflateAuto.end(rest);
+        result.checkpoint();
+
+        return result;
+      });
+    });
+  });
+
   describe('#setFormat()', function() {
     it('emits \'format\' event with decoder', function() {
       var inflateAuto = new InflateAuto();
