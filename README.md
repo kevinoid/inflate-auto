@@ -1,6 +1,8 @@
 InflateAuto
 ===========
 
+[![Greenkeeper badge](https://badges.greenkeeper.io/kevinoid/inflate-auto.svg)](https://greenkeeper.io/)
+
 [![Build Status: Linux](https://img.shields.io/travis/kevinoid/inflate-auto.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/inflate-auto)
 [![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/inflate-auto.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/inflate-auto)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat)](https://codecov.io/github/kevinoid/inflate-auto?branch=master)
