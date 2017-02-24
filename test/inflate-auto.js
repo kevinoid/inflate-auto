@@ -166,10 +166,17 @@ function defineFormatTests(format) {
 
     it('can accept options argument', function(done) {
       var opts = {chunkSize: zlib.Z_MIN_CHUNK};
-      decompress(compressed, opts, function(errDecompress, dataDecompress) {
-        assert.ifError(errDecompress);
-        InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
-          assert.ifError(errAuto);
+      InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+        assert.ifError(errAuto);
+
+        // Node 0.10 does not support opts
+        if (decompress.length < 3) {
+          done();
+          return;
+        }
+
+        decompress(compressed, opts, function(errDecompress, dataDecompress) {
+          assert.ifError(errDecompress);
           deepEqual(dataAuto, dataDecompress);
           done();
         });
