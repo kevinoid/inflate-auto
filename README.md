@@ -1,10 +1,10 @@
 InflateAuto
 ===========
 
-[![Build Status: Linux](https://img.shields.io/travis/kevinoid/inflate-auto.svg?style=flat-square&label=build+on+linux)](https://travis-ci.org/kevinoid/inflate-auto)
+[![Build Status: Linux](https://img.shields.io/travis/kevinoid/inflate-auto.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/inflate-auto)
 [![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/inflate-auto.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/inflate-auto)
-[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat-square)](https://codecov.io/github/kevinoid/inflate-auto?branch=master)
-[![Dependency Status](https://img.shields.io/david/kevinoid/inflate-auto.svg?style=flat-square)](https://david-dm.org/kevinoid/inflate-auto)
+[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat)](https://codecov.io/github/kevinoid/inflate-auto?branch=master)
+[![Dependency Status](https://img.shields.io/david/kevinoid/inflate-auto.svg?style=flat)](https://david-dm.org/kevinoid/inflate-auto)
 [![Supported Node Version](https://img.shields.io/node/v/inflate-auto.svg?style=flat)](https://www.npmjs.com/package/inflate-auto)
 [![Version on NPM](https://img.shields.io/npm/v/inflate-auto.svg?style=flat)](https://www.npmjs.com/package/inflate-auto)
 
