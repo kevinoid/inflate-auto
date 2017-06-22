@@ -613,6 +613,32 @@ function defineFormatTests(format) {
 
   describe('Constructor', function() {
     describe('validation', function() {
+      function checkOptions(stricter, options) {
+        var descPrefix = stricter ? 'at least as strict for ' : 'same for ';
+        it(descPrefix + util.inspect(options), function() {
+          var errInflate;
+          // eslint-disable-next-line no-new
+          try { new Decompress(options); } catch (err) { errInflate = err; }
+
+          var errAuto;
+          // eslint-disable-next-line no-new
+          try { new InflateAuto(options); } catch (err) { errAuto = err; }
+
+          // Convert to generic Error for pre-nodejs/node@b514bd231
+          if (nodeVerMajor < 8 &&
+              errAuto &&
+              errInflate &&
+              Object.getPrototypeOf(errAuto) !==
+                Object.getPrototypeOf(errInflate)) {
+            errAuto = makeError(errAuto);
+          }
+
+          if (errInflate || !stricter) {
+            deepEqual(errAuto, errInflate);
+          }
+        });
+      }
+
       [
         null,
         true,
@@ -641,56 +667,13 @@ function defineFormatTests(format) {
         {windowBits: zlib.Z_MAX_WINDOWBITS},
         {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
         {windowBits: zlib.Z_MIN_WINDOWBITS}
-      ].forEach(function(options) {
-        it('same for ' + util.inspect(options), function() {
-          var errInflate;
-          // eslint-disable-next-line no-new
-          try { new Decompress(options); } catch (err) { errInflate = err; }
-
-          var errAuto;
-          // eslint-disable-next-line no-new
-          try { new InflateAuto(options); } catch (err) { errAuto = err; }
-
-          // Convert to generic Error for pre-nodejs/node@b514bd231
-          if (nodeVerMajor < 8 &&
-              errAuto &&
-              errInflate &&
-              Object.getPrototypeOf(errAuto) !==
-                Object.getPrototypeOf(errInflate)) {
-            errAuto = makeError(errAuto);
-          }
-
-          deepEqual(errAuto, errInflate);
-        });
-      });
+      ].forEach(checkOptions.bind(null, false));
 
       // Older node versions do not check/use finishFlush
       [
         {finishFlush: -1},
         {finishFlush: String(zlib.Z_FULL_FLUSH)}
-      ].forEach(function(options) {
-        it('at least as strict for ' + util.inspect(options), function() {
-          var errInflate;
-          // eslint-disable-next-line no-new
-          try { new Decompress(options); } catch (err) { errInflate = err; }
-
-          var errAuto;
-          // eslint-disable-next-line no-new
-          try { new InflateAuto(options); } catch (err) { errAuto = err; }
-
-          if (errInflate) {
-            // Convert to generic Error for pre-nodejs/node@b514bd231
-            if (nodeVerMajor < 8 &&
-                errAuto &&
-                Object.getPrototypeOf(errAuto) !==
-                  Object.getPrototypeOf(errInflate)) {
-              errAuto = makeError(errAuto);
-            }
-
-            deepEqual(errAuto, errInflate);
-          }
-        });
-      });
+      ].forEach(checkOptions.bind(null, true));
     });
 
     it('supports chunkSize', function() {
