@@ -736,9 +736,9 @@ function defineFormatTests(format) {
 
       // Checking changed in nodejs/node@add4b0ab8cc (Node 8.2.0) to throw
       // RangeError in Zlib instead of TypeError in Buffer.
+      // Old Node versions did not throw any value.
       if (nodeVersion[0] < 8 || (nodeVersion[0] === 8 && nodeVersion[1] < 2)) {
         assert.ok(errAuto);
-        assert.ok(errInflate);
       } else {
         deepEqual(errAuto, errInflate);
       }
