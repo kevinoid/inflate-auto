@@ -658,7 +658,6 @@ function defineFormatTests(format) {
         {level: zlib.Z_MIN_LEVEL},
         {memLevel: zlib.Z_MAX_MEMLEVEL + 1},
         {memLevel: zlib.Z_MAX_MEMLEVEL},
-        {memLevel: zlib.Z_MIN_MEMLEVEL - 1},
         {memLevel: zlib.Z_MIN_MEMLEVEL},
         {strategy: -1},
         {strategy: String(zlib.Z_FILTERED)},
@@ -674,6 +673,18 @@ function defineFormatTests(format) {
         {finishFlush: -1},
         {finishFlush: String(zlib.Z_FULL_FLUSH)}
       ].forEach(checkOptions.bind(null, true));
+
+      // zero checking tightened in nodejs/node@efae43f0ee2 (Node 8)
+      [
+        {chunkSize: 0},
+        {dictionary: 0},
+        {finishFlush: 0},
+        {flush: 0},
+        {level: 0},
+        {memLevel: 0},
+        {strategy: 0},
+        {windowBits: 0}
+      ].forEach(checkOptions.bind(null, nodeVerMajor < 8));
     });
 
     it('supports chunkSize', function() {
