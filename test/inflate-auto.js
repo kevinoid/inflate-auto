@@ -19,7 +19,7 @@ var zlib = require('zlib');
 var Promise = global.Promise || BBPromise;
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
 
-var nodeVerMajor = Number(process.version.split('.', 1)[0].slice(1));
+var nodeVersion = process.version.slice(1).split('.').map(Number);
 
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
@@ -518,7 +518,7 @@ function defineFormatTests(format) {
     compareOptions.endEvents = ['end'];
 
     // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-    if (nodeVerMajor < 8) {
+    if (nodeVersion[0] < 8) {
       compareOptions.compare = compareNoErrorTypes;
     }
 
@@ -625,7 +625,7 @@ function defineFormatTests(format) {
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
           // Convert to generic Error for pre-nodejs/node@b514bd231
-          if (nodeVerMajor < 8 &&
+          if (nodeVersion[0] < 8 &&
               errAuto &&
               errInflate &&
               Object.getPrototypeOf(errAuto) !==
@@ -684,7 +684,7 @@ function defineFormatTests(format) {
         {memLevel: 0},
         {strategy: 0},
         {windowBits: 0}
-      ].forEach(checkOptions.bind(null, nodeVerMajor < 8));
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8));
     });
 
     it('supports chunkSize', function() {
