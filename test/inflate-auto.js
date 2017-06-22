@@ -8,6 +8,8 @@
 var BBPromise = require('bluebird');
 var InflateAuto = require('..');
 var assert = require('assert');
+var assignOwnPropertyDescriptors =
+  require('../test-lib/assign-own-property-descriptors.js');
 var extend = require('extend');
 var stream = require('stream');
 var streamCompare = require('stream-compare');
@@ -16,6 +18,8 @@ var zlib = require('zlib');
 
 var Promise = global.Promise || BBPromise;
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
+
+var nodeVerMajor = Number(process.version.split('.', 1)[0].slice(1));
 
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
@@ -123,6 +127,36 @@ function assertInstanceOf(obj, ctor) {
       'instanceof'
     );
   }
+}
+
+/** Make an Error object with the same properties as a given object. */
+function makeError(source) {
+  if (Object.getPrototypeOf(source) === Error.prototype) {
+    return source;
+  }
+  var error = new Error(source.message);
+  assignOwnPropertyDescriptors(error, source);
+  return error;
+}
+
+/** Compares StreamStates ignoring the prototype of Error events. */
+function compareNoErrorTypes(actualState, expectedState) {
+  var actual = extend({}, actualState);
+  var expected = extend({}, expectedState);
+
+  function normalizeEvent(event) {
+    if (event.name === 'error') {
+      var normEvent = extend({}, event);
+      normEvent.args = normEvent.args.map(makeError);
+      return normEvent;
+    }
+
+    return event;
+  }
+  actual.events = actual.events.map(normalizeEvent);
+  expected.events = expected.events.map(normalizeEvent);
+
+  deepEqual(actual, expected);
 }
 
 /** Defines tests which are run for a given format. */
@@ -482,6 +516,12 @@ function defineFormatTests(format) {
     var inflateAuto = new InflateAuto(options);
     var compareOptions = extend({}, COMPARE_OPTIONS);
     compareOptions.endEvents = ['end'];
+
+    // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
+    if (nodeVerMajor < 8) {
+      compareOptions.compare = compareNoErrorTypes;
+    }
+
     var result = streamCompare(inflateAuto, zlibStream, compareOptions);
     zlibStream.write(true);
     inflateAuto.write(true);
@@ -611,6 +651,15 @@ function defineFormatTests(format) {
           // eslint-disable-next-line no-new
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
+          // Convert to generic Error for pre-nodejs/node@b514bd231
+          if (nodeVerMajor < 8 &&
+              errAuto &&
+              errInflate &&
+              Object.getPrototypeOf(errAuto) !==
+                Object.getPrototypeOf(errInflate)) {
+            errAuto = makeError(errAuto);
+          }
+
           deepEqual(errAuto, errInflate);
         });
       });
@@ -630,6 +679,14 @@ function defineFormatTests(format) {
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
           if (errInflate) {
+            // Convert to generic Error for pre-nodejs/node@b514bd231
+            if (nodeVerMajor < 8 &&
+                errAuto &&
+                Object.getPrototypeOf(errAuto) !==
+                  Object.getPrototypeOf(errInflate)) {
+              errAuto = makeError(errAuto);
+            }
+
             deepEqual(errAuto, errInflate);
           }
         });

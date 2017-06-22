@@ -490,7 +490,7 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
   callback) {
   if (!this._decoder) {
     if (chunk !== null && !(chunk instanceof Buffer)) {
-      callback(new Error('invalid input'));
+      callback(new TypeError('invalid input'));
       return;
     }
 
