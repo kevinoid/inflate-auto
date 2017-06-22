@@ -652,6 +652,7 @@ function defineFormatTests(format) {
         {chunkSize: zlib.Z_MIN_CHUNK},
         {chunkSize: Infinity},
         {chunkSize: NaN},
+        {dictionary: new Buffer(0)},
         {dictionary: []},
         {dictionary: true},
         {finishFlush: 0},
