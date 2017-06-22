@@ -650,45 +650,98 @@ function defineFormatTests(format) {
         {chunkSize: zlib.Z_MAX_CHUNK},
         {chunkSize: zlib.Z_MIN_CHUNK - 1},
         {chunkSize: zlib.Z_MIN_CHUNK},
+        {chunkSize: Infinity},
+        {chunkSize: NaN},
         {dictionary: []},
         {dictionary: true},
+        {finishFlush: 0},
         {finishFlush: zlib.Z_FULL_FLUSH},
+        {finishFlush: NaN},
+        {flush: 0},
         {flush: -1},
+        {flush: Infinity},
         {flush: String(zlib.Z_FULL_FLUSH)},
         {flush: zlib.Z_FULL_FLUSH},
+        {level: 0},
         {level: zlib.Z_MAX_LEVEL + 1},
         {level: zlib.Z_MAX_LEVEL},
         {level: zlib.Z_MIN_LEVEL - 1},
         {level: zlib.Z_MIN_LEVEL},
+        {level: Infinity},
+        {level: NaN},
         {memLevel: zlib.Z_MAX_MEMLEVEL + 1},
         {memLevel: zlib.Z_MAX_MEMLEVEL},
         {memLevel: zlib.Z_MIN_MEMLEVEL},
+        {memLevel: Infinity},
+        {memLevel: NaN},
+        {strategy: 0},
         {strategy: -1},
-        {strategy: String(zlib.Z_FILTERED)},
         {strategy: zlib.Z_FILTERED},
+        {strategy: Infinity},
+        {strategy: NaN},
+        {strategy: String(zlib.Z_FILTERED)},
         {windowBits: zlib.Z_MAX_WINDOWBITS + 1},
         {windowBits: zlib.Z_MAX_WINDOWBITS},
         {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
-        {windowBits: zlib.Z_MIN_WINDOWBITS}
+        {windowBits: zlib.Z_MIN_WINDOWBITS},
+        {windowBits: Infinity},
+        {windowBits: NaN}
       ].forEach(checkOptions.bind(null, false));
 
-      // Older node versions do not check/use finishFlush
+      // finishFlush added in nodejs/node@97816679 (Node 7)
+      // backported in nodejs/node@5f11b5369 (Node 6)
       [
         {finishFlush: -1},
+        {finishFlush: Infinity},
         {finishFlush: String(zlib.Z_FULL_FLUSH)}
-      ].forEach(checkOptions.bind(null, true));
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6));
 
-      // zero checking tightened in nodejs/node@efae43f0ee2 (Node 8)
+      // Checking falsey values changed in nodejs/node@efae43f0ee2 (Node 8)
       [
         {chunkSize: 0},
+        {chunkSize: false},
         {dictionary: 0},
-        {finishFlush: 0},
-        {flush: 0},
-        {level: 0},
+        {dictionary: false},
+        {finishFlush: false},
+        {flush: false},
+        {level: false},
         {memLevel: 0},
-        {strategy: 0},
-        {windowBits: 0}
+        {memLevel: false},
+        {strategy: false},
+        {windowBits: 0},
+        {windowBits: false}
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8));
+
+      // Checking for zero, NaN, Infinity, and strict types changed in
+      // nodejs/node@add4b0ab8cc (Node 8.2.0)
+      [
+        {level: String(zlib.Z_MIN_LEVEL)},
+        {memLevel: String(zlib.Z_MIN_MEMLEVEL)},
+        {windowBits: String(zlib.Z_MIN_WINDOWBITS)}
+      ].forEach(checkOptions.bind(
+        null,
+        nodeVersion[0] < 8 || (nodeVersion[0] === 8 && nodeVersion[1] < 2)
+      ));
+    });
+
+    var stringChunkOpts = {chunkSize: String(zlib.Z_MIN_CHUNK)};
+    it('throws for ' + util.inspect(stringChunkOpts), function() {
+      var errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(stringChunkOpts); } catch (err) { errInflate = err; }
+
+      var errAuto;
+      // eslint-disable-next-line no-new
+      try { new InflateAuto(stringChunkOpts); } catch (err) { errAuto = err; }
+
+      // Checking changed in nodejs/node@add4b0ab8cc (Node 8.2.0) to throw
+      // RangeError in Zlib instead of TypeError in Buffer.
+      if (nodeVersion[0] < 8 || (nodeVersion[0] === 8 && nodeVersion[1] < 2)) {
+        assert.ok(errAuto);
+        assert.ok(errInflate);
+      } else {
+        deepEqual(errAuto, errInflate);
+      }
     });
 
     it('supports chunkSize', function() {
