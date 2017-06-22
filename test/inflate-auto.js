@@ -614,7 +614,7 @@ function defineFormatTests(format) {
   describe('Constructor', function() {
     describe('validation', function() {
       function checkOptions(stricter, options) {
-        var descPrefix = stricter ? 'at least as strict for ' : 'same for ';
+        var descPrefix = stricter ? 'is stricter for ' : 'same for ';
         it(descPrefix + util.inspect(options), function() {
           var errInflate;
           // eslint-disable-next-line no-new
@@ -633,7 +633,11 @@ function defineFormatTests(format) {
             errAuto = makeError(errAuto);
           }
 
-          if (errInflate || !stricter) {
+          if (stricter) {
+            // InflateAuto throws an Error while Decompress does not
+            assert.ok(errAuto);
+            assert.ifError(errInflate);
+          } else if (errInflate) {
             deepEqual(errAuto, errInflate);
           }
         });
