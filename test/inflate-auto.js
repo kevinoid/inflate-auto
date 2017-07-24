@@ -714,15 +714,12 @@ function defineFormatTests(format) {
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8));
 
       // Checking for zero, NaN, Infinity, and strict types changed in
-      // nodejs/node@add4b0ab8cc (Node 8.2.0)
+      // nodejs/node@add4b0ab8cc (Node 9)
       [
         {level: String(zlib.Z_MIN_LEVEL)},
         {memLevel: String(zlib.Z_MIN_MEMLEVEL)},
         {windowBits: String(zlib.Z_MIN_WINDOWBITS)}
-      ].forEach(checkOptions.bind(
-        null,
-        nodeVersion[0] < 8 || (nodeVersion[0] === 8 && nodeVersion[1] < 2)
-      ));
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 9));
     });
 
     var stringChunkOpts = {chunkSize: String(zlib.Z_MIN_CHUNK)};
@@ -735,10 +732,10 @@ function defineFormatTests(format) {
       // eslint-disable-next-line no-new
       try { new InflateAuto(stringChunkOpts); } catch (err) { errAuto = err; }
 
-      // Checking changed in nodejs/node@add4b0ab8cc (Node 8.2.0) to throw
+      // Checking changed in nodejs/node@add4b0ab8cc (Node 9) to throw
       // RangeError in Zlib instead of TypeError in Buffer.
       // Old Node versions did not throw any value.
-      if (nodeVersion[0] < 8 || (nodeVersion[0] === 8 && nodeVersion[1] < 2)) {
+      if (nodeVersion[0] < 9) {
         assert.ok(errAuto);
       } else {
         deepEqual(errAuto, errInflate);
