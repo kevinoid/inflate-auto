@@ -228,19 +228,19 @@ function defineFormatTests(format) {
       });
     });
 
-    it('passes format Error to the callback', function(done) {
-      var zeros = Buffer.alloc(20);
-      decompress(zeros, function(errDecompress, dataDecompress) {
-        assert(errDecompress, 'expected Error to test');
-        InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
-          deepEqual(errAuto, errDecompress);
-          deepEqual(dataAuto, dataDecompress);
-          done();
+    if (isDefaultFormat) {
+      it('passes format Error to the callback like zlib', function(done) {
+        var zeros = Buffer.alloc(20);
+        decompress(zeros, function(errDecompress, dataDecompress) {
+          assert(errDecompress, 'expected Error to test');
+          InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+            deepEqual(errAuto, errDecompress);
+            deepEqual(dataAuto, dataDecompress);
+            done();
+          });
         });
       });
-    });
 
-    if (isDefaultFormat) {
       it('handles truncated header like zlib', function(done) {
         var trunc = compressed.slice(0, 1);
         decompress(trunc, function(errDecompress, dataDecompress) {
@@ -251,18 +251,20 @@ function defineFormatTests(format) {
           });
         });
       });
-    }
 
-    it('handles string argument like zlib', function(done) {
-      var compressedStr = compressed.toString('binary');
-      decompress(compressedStr, function(errDecompress, dataDecompress) {
-        InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
-          deepEqual(errAuto, errDecompress);
-          deepEqual(dataAuto, dataDecompress);
-          done();
+      // Default string decoding as utf8 mangles the data, resulting in an
+      // invalid format, so error equality is only guaranteed for default fmt
+      it('handles string argument like zlib', function(done) {
+        var compressedStr = compressed.toString('binary');
+        decompress(compressedStr, function(errDecompress, dataDecompress) {
+          InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+            deepEqual(errAuto, errDecompress);
+            deepEqual(dataAuto, dataDecompress);
+            done();
+          });
         });
       });
-    });
+    }
   });
 
   if (decompressSync) {
@@ -1358,35 +1360,37 @@ function defineFormatTests(format) {
       // 'error' is emitted asynchronously causing unhandledException.
       // Not currently tested.
 
-      it('emits error without calling callback', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      if (isDefaultFormat) {
+        it('emits error without calling callback', function() {
+          var zlibStream = new Decompress();
+          var inflateAuto = new InflateAuto();
+          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-        function neverCalled() {
-          throw new Error('should not be called');
-        }
+          function neverCalled() {
+            throw new Error('should not be called');
+          }
 
-        var zeros = Buffer.alloc(10);
-        zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
-        inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
-        result.checkpoint();
-        return result;
-      });
-
-      it('yields format error', function(done) {
-        var inflateAuto = new InflateAuto({defaultFormat: null});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
-          throw new Error('error should not be emitted');
+          var zeros = Buffer.alloc(10);
+          zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+          inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
+          result.checkpoint();
+          return result;
         });
-        inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
-          assert(err, 'expected format error');
-          assert(/format/i.test(err.message));
-          deepEqual(err.data, zeros);
-          done();
+
+        it('yields format error', function(done) {
+          var inflateAuto = new InflateAuto({defaultFormat: null});
+          var zeros = Buffer.alloc(10);
+          inflateAuto.on('error', function() {
+            throw new Error('error should not be emitted');
+          });
+          inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+            assert(err, 'expected format error');
+            assert(/format/i.test(err.message));
+            deepEqual(err.data, zeros);
+            done();
+          });
         });
-      });
+      }
 
       it('works if _transform does not yield synchronously', function(done) {
         function AsyncTransform() { stream.Transform.apply(this, arguments); }
@@ -1424,64 +1428,66 @@ function defineFormatTests(format) {
     });
 
     describe('without cb', function() {
-      it('throws without error listener', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
+      if (isDefaultFormat) {
+        it('throws without error listener', function() {
+          var zlibStream = new Decompress();
+          var inflateAuto = new InflateAuto();
 
-        var zeros = Buffer.alloc(10);
+          var zeros = Buffer.alloc(10);
 
-        var errInflate;
-        try {
-          zlibStream._processChunk(zeros, zlib.Z_FINISH);
-        } catch (err) {
-          errInflate = err;
-        }
+          var errInflate;
+          try {
+            zlibStream._processChunk(zeros, zlib.Z_FINISH);
+          } catch (err) {
+            errInflate = err;
+          }
 
-        var errAuto;
-        try {
-          inflateAuto._processChunk(zeros, zlib.Z_FINISH);
-        } catch (err) {
-          errAuto = err;
-        }
+          var errAuto;
+          try {
+            inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+          } catch (err) {
+            errAuto = err;
+          }
 
-        deepEqual(errAuto, errInflate);
-      });
-
-      it('throws with error listener', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-
-        var zeros = Buffer.alloc(10);
-
-        var errInflate;
-        try {
-          zlibStream._processChunk(zeros, zlib.Z_FINISH);
-        } catch (err) {
-          errInflate = err;
-        }
-
-        var errAuto;
-        try {
-          inflateAuto._processChunk(zeros, zlib.Z_FINISH);
-        } catch (err) {
-          errAuto = err;
-        }
-
-        deepEqual(errAuto, errInflate);
-        result.checkpoint();
-      });
-
-      it('throws format errors', function() {
-        var inflateAuto = new InflateAuto({defaultFormat: null});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
-          throw new Error('error should not be emitted');
+          deepEqual(errAuto, errInflate);
         });
-        assert.throws(function() {
-          inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+
+        it('throws with error listener', function() {
+          var zlibStream = new Decompress();
+          var inflateAuto = new InflateAuto();
+          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+          var zeros = Buffer.alloc(10);
+
+          var errInflate;
+          try {
+            zlibStream._processChunk(zeros, zlib.Z_FINISH);
+          } catch (err) {
+            errInflate = err;
+          }
+
+          var errAuto;
+          try {
+            inflateAuto._processChunk(zeros, zlib.Z_FINISH);
+          } catch (err) {
+            errAuto = err;
+          }
+
+          deepEqual(errAuto, errInflate);
+          result.checkpoint();
         });
-      });
+
+        it('throws format errors', function() {
+          var inflateAuto = new InflateAuto({defaultFormat: null});
+          var zeros = Buffer.alloc(10);
+          inflateAuto.on('error', function() {
+            throw new Error('error should not be emitted');
+          });
+          assert.throws(function() {
+            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          });
+        });
+      }
 
       it('throws if format lacks _processChunk and _transform', function() {
         function NoTransform() { stream.Duplex.apply(this, arguments); }
