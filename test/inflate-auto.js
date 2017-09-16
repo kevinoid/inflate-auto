@@ -6,6 +6,9 @@
 'use strict';
 
 var BBPromise = require('bluebird');
+// Use safe-buffer until support for Node < 4 is dropped
+// eslint-disable-next-line no-shadow
+var Buffer = require('safe-buffer').Buffer;
 var InflateAuto = require('..');
 var assert = require('assert');
 var assignOwnPropertyDescriptors =
@@ -30,12 +33,11 @@ var COMPARE_OPTIONS = {
 };
 
 var TEST_DATA = {
-  empty: new Buffer(0),
-  large: new Buffer(1024),
+  empty: Buffer.alloc(0),
+  large: Buffer.alloc(1024),
   // 'normal' is the default for not-data-specific tests
-  normal: new Buffer('uncompressed data')
+  normal: Buffer.from('uncompressed data')
 };
-TEST_DATA.large.fill(0);
 
 /* eslint-disable comma-spacing */
 var SUPPORTED_FORMATS = [
@@ -45,7 +47,7 @@ var SUPPORTED_FORMATS = [
     compress: zlib.gzip,
     compressSync: zlib.gzipSync,
     corruptChecksum: function corruptGzipChecksum(compressed) {
-      var invalid = new Buffer(compressed);
+      var invalid = Buffer.from(compressed);
       // gzip format has 4-byte CRC32 before 4-byte size at end
       invalid[invalid.length - 5] = invalid[invalid.length - 5] ^ 0x1;
       return invalid;
@@ -53,17 +55,17 @@ var SUPPORTED_FORMATS = [
     data: TEST_DATA,
     dataCompressed: {
       // zlib.gzipSync(data.empty)
-      empty: new Buffer([31,139,8,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0]),
+      empty: Buffer.from([31,139,8,0,0,0,0,0,0,3,3,0,0,0,0,0,0,0,0,0]),
       // zlib.gzipSync(data.large)
-      large: new Buffer([31,139,8,0,0,0,0,0,0,3,99,96,24,5,163,96,20,140,84,0,
+      large: Buffer.from([31,139,8,0,0,0,0,0,0,3,99,96,24,5,163,96,20,140,84,0,
         0,46,175,181,239,0,4,0,0]),
       // zlib.gzipSync(data.normal)
-      normal: new Buffer([31,139,8,0,0,0,0,0,0,3,43,205,75,206,207,45,40,74,45,
+      normal: Buffer.from([31,139,8,0,0,0,0,0,0,3,43,205,75,206,207,45,40,74,45,
         46,78,77,81,72,73,44,73,4,0,239,231,69,217,17,0,0,0])
     },
     decompress: zlib.gunzip,
     decompressSync: zlib.gunzipSync,
-    header: new Buffer([31,139,8])
+    header: Buffer.from([31,139,8])
   },
   {
     Compress: zlib.Deflate,
@@ -71,7 +73,7 @@ var SUPPORTED_FORMATS = [
     compress: zlib.deflate,
     compressSync: zlib.deflateSync,
     corruptChecksum: function corruptZlibChecksum(compressed) {
-      var invalid = new Buffer(compressed);
+      var invalid = Buffer.from(compressed);
       // zlib format has 4-byte Adler-32 at end
       invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
       return invalid;
@@ -79,19 +81,19 @@ var SUPPORTED_FORMATS = [
     data: TEST_DATA,
     dataCompressed: {
       // zlib.deflateSync(data.empty)
-      empty: new Buffer([120,156,3,0,0,0,0,1]),
+      empty: Buffer.from([120,156,3,0,0,0,0,1]),
       // zlib.deflateSync(data.large)
-      large: new Buffer([120,156,99,96,24,5,163,96,20,140,84,0,0,4,0,0,1]),
+      large: Buffer.from([120,156,99,96,24,5,163,96,20,140,84,0,0,4,0,0,1]),
       // zlib.deflateSync(data.normal)
-      normal: new Buffer([120,156,43,205,75,206,207,45,40,74,45,46,78,77,81,72,
+      normal: Buffer.from([120,156,43,205,75,206,207,45,40,74,45,46,78,77,81,72,
         73,44,73,4,0,63,144,6,211]),
       // zlib.deflateSync(data.normal, {dictionary: data.normal})
       normalWithDict:
-        new Buffer([120,187,63,144,6,211,43,69,23,0,0,63,144,6,211])
+        Buffer.from([120,187,63,144,6,211,43,69,23,0,0,63,144,6,211])
     },
     decompress: zlib.inflate,
     decompressSync: zlib.inflateSync,
-    header: new Buffer([120,156])
+    header: Buffer.from([120,156])
   },
   {
     Compress: zlib.DeflateRaw,
@@ -101,18 +103,18 @@ var SUPPORTED_FORMATS = [
     data: TEST_DATA,
     dataCompressed: {
       // zlib.deflateRawSync(data.empty)
-      empty: new Buffer([3,0]),
+      empty: Buffer.from([3,0]),
       // zlib.deflateRawSync(data.large)
-      large: new Buffer([99,96,24,5,163,96,20,140,84,0,0]),
+      large: Buffer.from([99,96,24,5,163,96,20,140,84,0,0]),
       // zlib.deflateRawSync(data.normal)
-      normal: new Buffer([43,205,75,206,207,45,40,74,45,46,78,77,81,72,73,44,
+      normal: Buffer.from([43,205,75,206,207,45,40,74,45,46,78,77,81,72,73,44,
         73,4,0]),
       // zlib.deflateRawSync(data.normal, {dictionary: data.normal})
-      normalWithDict: new Buffer([43,69,23,0,0])
+      normalWithDict: Buffer.from([43,69,23,0,0])
     },
     decompress: zlib.inflateRaw,
     decompressSync: zlib.inflateRawSync,
-    header: new Buffer(0),
+    header: Buffer.alloc(0),
     isDefault: true
   }
 ];
@@ -227,8 +229,7 @@ function defineFormatTests(format) {
     });
 
     it('passes format Error to the callback', function(done) {
-      var zeros = new Buffer(20);
-      zeros.fill(0);
+      var zeros = Buffer.alloc(20);
       decompress(zeros, function(errDecompress, dataDecompress) {
         assert(errDecompress, 'expected Error to test');
         InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
@@ -420,8 +421,7 @@ function defineFormatTests(format) {
   });
 
   it('handles concatenated 0', function() {
-    var zeros = new Buffer(20);
-    zeros.fill(0);
+    var zeros = Buffer.alloc(20);
     var compressedWithZeros = Buffer.concat([compressed, zeros]);
     var zlibStream = new Decompress();
     var inflateAuto = new InflateAuto();
@@ -433,8 +433,7 @@ function defineFormatTests(format) {
   });
 
   it('handles concatenated garbage', function() {
-    var garbage = new Buffer(20);
-    garbage.fill(42);
+    var garbage = Buffer.alloc(20, 42);
     var compressedWithGarbage = Buffer.concat([compressed, garbage]);
     var zlibStream = new Decompress();
     var inflateAuto = new InflateAuto();
@@ -446,7 +445,7 @@ function defineFormatTests(format) {
   });
 
   it('handles corrupted compressed data', function() {
-    var corrupted = new Buffer(compressed);
+    var corrupted = Buffer.from(compressed);
     // Leave signature intact
     corrupted.fill(42, headerLen);
     var zlibStream = new Decompress();
@@ -652,7 +651,7 @@ function defineFormatTests(format) {
         {chunkSize: zlib.Z_MIN_CHUNK},
         {chunkSize: Infinity},
         {chunkSize: NaN},
-        {dictionary: new Buffer(0)},
+        {dictionary: Buffer.alloc(0)},
         {dictionary: []},
         {dictionary: true},
         {finishFlush: 0},
@@ -873,8 +872,8 @@ function defineFormatTests(format) {
           }
         }
 
-        zlibStream.write(new Buffer(0), onWrite);
-        inflateAuto.write(new Buffer(0), onWrite);
+        zlibStream.write(Buffer.alloc(0), onWrite);
+        inflateAuto.write(Buffer.alloc(0), onWrite);
         result.checkpoint();
       });
     });
@@ -1368,8 +1367,7 @@ function defineFormatTests(format) {
           throw new Error('should not be called');
         }
 
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
         inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
         result.checkpoint();
@@ -1378,8 +1376,7 @@ function defineFormatTests(format) {
 
       it('yields format error', function(done) {
         var inflateAuto = new InflateAuto({defaultFormat: null});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1402,8 +1399,7 @@ function defineFormatTests(format) {
         };
 
         var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1432,8 +1428,7 @@ function defineFormatTests(format) {
         var zlibStream = new Decompress();
         var inflateAuto = new InflateAuto();
 
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
 
         var errInflate;
         try {
@@ -1457,8 +1452,7 @@ function defineFormatTests(format) {
         var inflateAuto = new InflateAuto();
         var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
 
         var errInflate;
         try {
@@ -1480,8 +1474,7 @@ function defineFormatTests(format) {
 
       it('throws format errors', function() {
         var inflateAuto = new InflateAuto({defaultFormat: null});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1501,8 +1494,7 @@ function defineFormatTests(format) {
         };
 
         var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1521,8 +1513,7 @@ function defineFormatTests(format) {
         AsyncTransform.prototype._transform = function() {};
 
         var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1544,8 +1535,7 @@ function defineFormatTests(format) {
         };
 
         var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
-        var zeros = new Buffer(10);
-        zeros.fill(0);
+        var zeros = Buffer.alloc(10);
         inflateAuto.on('error', function() {
           throw new Error('error should not be emitted');
         });
@@ -1606,8 +1596,7 @@ describe('InflateAuto', function() {
 
   it('defaultFormat null disables default', function(done) {
     var auto = new InflateAuto({defaultFormat: null});
-    var testData = new Buffer(10);
-    testData.fill(0);
+    var testData = Buffer.alloc(10);
     auto.on('error', function(err) {
       assert(err, 'expected format mismatch error');
       assert(/format/i.test(err.message));
@@ -1619,8 +1608,7 @@ describe('InflateAuto', function() {
 
   it('emits error for format detection error in _transform', function(done) {
     var inflateAuto = new InflateAuto({defaultFormat: null});
-    var zeros = new Buffer(10);
-    zeros.fill(0);
+    var zeros = Buffer.alloc(10);
     inflateAuto.once('error', function(err) {
       assert(err, 'expected format error');
       assert(/format/i.test(err.message));
