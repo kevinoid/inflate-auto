@@ -459,7 +459,7 @@ function defineFormatTests(format) {
 
   if (corruptChecksum) {
     it('corrupted checksum', function() {
-      var zlibStream = new zlib.Inflate();
+      var zlibStream = new Decompress();
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       var invalid = corruptChecksum(compressed);
