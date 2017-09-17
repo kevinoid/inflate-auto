@@ -666,7 +666,7 @@ function defineFormatTests(format) {
 
   describe('Constructor', function() {
     describe('validation', function() {
-      function checkOptions(stricter, options) {
+      function checkOptions(stricter, looseType, options) {
         var descPrefix = stricter ? 'is stricter for ' : 'same for ';
         it(descPrefix + util.inspect(options), function() {
           var errInflate;
@@ -677,20 +677,27 @@ function defineFormatTests(format) {
           // eslint-disable-next-line no-new
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
-          // Convert to generic Error for pre-nodejs/node@b514bd231
-          if (nodeVersion[0] < 8 &&
-              errAuto &&
-              errInflate &&
-              Object.getPrototypeOf(errAuto) !==
-                Object.getPrototypeOf(errInflate)) {
-            errAuto = makeError(errAuto);
-          }
-
           if (stricter) {
             // InflateAuto throws an Error while Decompress does not
             assert.ok(errAuto);
             assert.ifError(errInflate);
-          } else if (errInflate) {
+          } else if (looseType) {
+            // Both threw or neither threw
+            if (Boolean(errAuto) != Boolean(errInflate)) {
+              // Fail due to mismatch
+              deepEqual(errAuto, errInflate);
+            }
+          } else {
+            // Both had same exception, with one possible difference:
+            // Convert to generic Error for pre-nodejs/node@b514bd231
+            if (nodeVersion[0] < 8 &&
+                errAuto &&
+                errInflate &&
+                Object.getPrototypeOf(errAuto) !==
+                  Object.getPrototypeOf(errInflate)) {
+              errAuto = makeError(errAuto);
+            }
+
             deepEqual(errAuto, errInflate);
           }
         });
@@ -699,11 +706,8 @@ function defineFormatTests(format) {
       [
         null,
         true,
-        {chunkSize: zlib.Z_MAX_CHUNK + 1},
-        {chunkSize: zlib.Z_MAX_CHUNK},
         {chunkSize: zlib.Z_MIN_CHUNK - 1},
         {chunkSize: zlib.Z_MIN_CHUNK},
-        {chunkSize: Infinity},
         {chunkSize: NaN},
         {dictionary: Buffer.alloc(0)},
         {dictionary: []},
@@ -733,14 +737,13 @@ function defineFormatTests(format) {
         {strategy: zlib.Z_FILTERED},
         {strategy: Infinity},
         {strategy: NaN},
-        {strategy: String(zlib.Z_FILTERED)},
         {windowBits: zlib.Z_MAX_WINDOWBITS + 1},
         {windowBits: zlib.Z_MAX_WINDOWBITS},
         {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
         {windowBits: zlib.Z_MIN_WINDOWBITS},
         {windowBits: Infinity},
         {windowBits: NaN}
-      ].forEach(checkOptions.bind(null, false));
+      ].forEach(checkOptions.bind(null, false, false));
 
       // finishFlush added in nodejs/node@97816679 (Node 7)
       // backported in nodejs/node@5f11b5369 (Node 6)
@@ -748,7 +751,12 @@ function defineFormatTests(format) {
         {finishFlush: -1},
         {finishFlush: Infinity},
         {finishFlush: String(zlib.Z_FULL_FLUSH)}
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6));
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, false));
+
+      // Strategy checking tightened in nodejs/node@dd928b04fc6 (Node 8)
+      [
+        {strategy: String(zlib.Z_FILTERED)}
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking falsey values changed in nodejs/node@efae43f0ee2 (Node 8)
       [
@@ -756,43 +764,45 @@ function defineFormatTests(format) {
         {chunkSize: false},
         {dictionary: 0},
         {dictionary: false},
-        {finishFlush: false},
-        {flush: false},
-        {level: false},
         {memLevel: 0},
         {memLevel: false},
         {strategy: false},
         {windowBits: 0},
         {windowBits: false}
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8));
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking for zero, NaN, Infinity, and strict types changed in
       // nodejs/node@add4b0ab8cc (Node 9)
       [
+        {finishFlush: false},
+        {flush: false},
+        {level: false},
         {level: String(zlib.Z_MIN_LEVEL)},
         {memLevel: String(zlib.Z_MIN_MEMLEVEL)},
         {windowBits: String(zlib.Z_MIN_WINDOWBITS)}
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 9));
-    });
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 9, false));
 
-    var stringChunkOpts = {chunkSize: String(zlib.Z_MIN_CHUNK)};
-    it('throws for ' + util.inspect(stringChunkOpts), function() {
-      var errInflate;
-      // eslint-disable-next-line no-new
-      try { new Decompress(stringChunkOpts); } catch (err) { errInflate = err; }
-
-      var errAuto;
-      // eslint-disable-next-line no-new
-      try { new InflateAuto(stringChunkOpts); } catch (err) { errAuto = err; }
+      // chunkSize checking relied on Buffer argument checking prior to
+      // nodejs/node@add4b0ab8cc (Node 9)
+      // Buffet checking changed in nodejs/node@3d353c749cd to throw
+      // RangeError: "size" argument must not be larger than 2147483647
+      // instead of
+      // RangeError: Invalid array buffer length
+      // So allow error mismatch in Node < 9
+      [
+        {chunkSize: zlib.Z_MAX_CHUNK + 1},
+        {chunkSize: zlib.Z_MAX_CHUNK},
+        {chunkSize: Infinity}
+      ].forEach(checkOptions.bind(null, false, nodeVersion[0] < 9));
 
       // Checking changed in nodejs/node@add4b0ab8cc (Node 9) to throw
       // RangeError in Zlib instead of TypeError in Buffer.
-      // Old Node versions did not throw any value.
-      if (nodeVersion[0] < 9) {
-        assert.ok(errAuto);
-      } else {
-        deepEqual(errAuto, errInflate);
-      }
+      //
+      // Before nodejs/node@85ab4a5f128 (Node 6) chunkSize passed to Buffer
+      // constructor resulting in now error and incorrect sizing.
+      [
+        {chunkSize: String(zlib.Z_MIN_CHUNK)}
+      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9));
     });
 
     it('supports chunkSize', function() {
