@@ -568,6 +568,11 @@ function defineFormatTests(format) {
           errAuto = err;
         }
 
+        if (errAuto && errInflate) {
+          // message changed in 2ced07c (Node 8).  Ignore in comparison.
+          errAuto.message = errInflate.message;
+        }
+
         deepEqual(errAuto, errInflate);
       });
 
