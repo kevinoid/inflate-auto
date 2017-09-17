@@ -228,6 +228,25 @@ function defineFormatTests(format) {
       });
     });
 
+    // Node 0.10 decompress did not accept options argument
+    if (decompress.length > 2) {
+      it('handles string defaultEncoding like zlib', function(done) {
+        var compressedStr = compressed.toString('binary');
+        var opts = {defaultEncoding: 'binary'};
+        decompress(compressedStr, opts, function(errDecompress, dataDecompress) {
+          InflateAuto.inflateAuto(
+            compressedStr,
+            opts,
+            function(errAuto, dataAuto) {
+              deepEqual(errAuto, errDecompress);
+              deepEqual(dataAuto, dataDecompress);
+              done();
+            }
+          );
+        });
+      });
+    }
+
     if (isDefaultFormat) {
       it('passes format Error to the callback like zlib', function(done) {
         var zeros = Buffer.alloc(20);
