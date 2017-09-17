@@ -233,17 +233,21 @@ function defineFormatTests(format) {
       it('handles string defaultEncoding like zlib', function(done) {
         var compressedStr = compressed.toString('binary');
         var opts = {defaultEncoding: 'binary'};
-        decompress(compressedStr, opts, function(errDecompress, dataDecompress) {
-          InflateAuto.inflateAuto(
-            compressedStr,
-            opts,
-            function(errAuto, dataAuto) {
-              deepEqual(errAuto, errDecompress);
-              deepEqual(dataAuto, dataDecompress);
-              done();
-            }
-          );
-        });
+        decompress(
+          compressedStr,
+          opts,
+          function(errDecompress, dataDecompress) {
+            InflateAuto.inflateAuto(
+              compressedStr,
+              opts,
+              function(errAuto, dataAuto) {
+                deepEqual(errAuto, errDecompress);
+                deepEqual(dataAuto, dataDecompress);
+                done();
+              }
+            );
+          }
+        );
       });
     }
 
@@ -683,7 +687,7 @@ function defineFormatTests(format) {
             assert.ifError(errInflate);
           } else if (looseType) {
             // Both threw or neither threw
-            if (Boolean(errAuto) != Boolean(errInflate)) {
+            if (Boolean(errAuto) !== Boolean(errInflate)) {
               // Fail due to mismatch
               deepEqual(errAuto, errInflate);
             }
@@ -802,7 +806,9 @@ function defineFormatTests(format) {
       // constructor resulting in now error and incorrect sizing.
       [
         {chunkSize: String(zlib.Z_MIN_CHUNK)}
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9));
+      ].forEach(
+        checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9)
+      );
     });
 
     it('supports chunkSize', function() {
