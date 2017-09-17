@@ -613,26 +613,54 @@ function defineFormatTests(format) {
         deepEqual(dataAuto, uncompressed);
       });
 
-      it('handles string argument like zlib', function() {
-        var compressedStr = compressed.toString('binary');
+      if (isDefaultFormat) {
+        // Default string decoding as utf8 mangles the data, resulting in an
+        // invalid format, so error equality is only guaranteed for default fmt
+        it('handles string argument like zlib', function() {
+          var compressedStr = compressed.toString('binary');
 
-        var dataInflate, errInflate;
-        try {
-          dataInflate = decompressSync(compressedStr);
-        } catch (err) {
-          errInflate = err;
-        }
+          var dataInflate, errInflate;
+          try {
+            dataInflate = decompressSync(compressedStr);
+          } catch (err) {
+            errInflate = err;
+          }
 
-        var dataAuto, errAuto;
-        try {
-          dataAuto = InflateAuto.inflateAutoSync(compressedStr);
-        } catch (err) {
-          errAuto = err;
-        }
+          var dataAuto, errAuto;
+          try {
+            dataAuto = InflateAuto.inflateAutoSync(compressedStr);
+          } catch (err) {
+            errAuto = err;
+          }
 
-        deepEqual(errAuto, errInflate);
-        deepEqual(dataAuto, dataInflate);
-      });
+          deepEqual(errAuto, errInflate);
+          deepEqual(dataAuto, dataInflate);
+        });
+
+        // The *Sync methods call Buffer.from on arg without encoding before
+        // passing to _processChunk.  So it gets mangled.
+        it('handles string with defaultEncoding like zlib', function() {
+          var compressedStr = compressed.toString('binary');
+          var opts = {defaultEncoding: 'binary'};
+
+          var dataInflate, errInflate;
+          try {
+            dataInflate = decompressSync(compressedStr, opts);
+          } catch (err) {
+            errInflate = err;
+          }
+
+          var dataAuto, errAuto;
+          try {
+            dataAuto = InflateAuto.inflateAutoSync(compressedStr, opts);
+          } catch (err) {
+            errAuto = err;
+          }
+
+          deepEqual(errAuto, errInflate);
+          deepEqual(dataAuto, dataInflate);
+        });
+      }
     });
   }
 
