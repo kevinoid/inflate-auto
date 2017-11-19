@@ -534,26 +534,30 @@ function defineFormatTests(format) {
   }
 
   // For objectMode: true validation is done in _transform.  Check we match.
-  it('errors on write of invalid type', function() {
-    var options = {objectMode: true};
-    var zlibStream = new Decompress(options);
-    var inflateAuto = new InflateAuto(options);
-    var compareOptions = extend({}, COMPARE_OPTIONS);
-    compareOptions.endEvents = ['end'];
+  // This causes an assertion failure on Node v9.  Skip test on this version.
+  // See https://github.com/nodejs/node/pull/16960
+  if (nodeVersion[0] !== 9) {
+    it('errors on write of invalid type', function() {
+      var options = {objectMode: true};
+      var zlibStream = new Decompress(options);
+      var inflateAuto = new InflateAuto(options);
+      var compareOptions = extend({}, COMPARE_OPTIONS);
+      compareOptions.endEvents = ['end'];
 
-    // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-    if (nodeVersion[0] < 8) {
-      compareOptions.compare = compareNoErrorTypes;
-    }
+      // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
+      if (nodeVersion[0] < 8) {
+        compareOptions.compare = compareNoErrorTypes;
+      }
 
-    var result = streamCompare(inflateAuto, zlibStream, compareOptions);
-    zlibStream.write(true);
-    inflateAuto.write(true);
-    zlibStream.end(compressed);
-    inflateAuto.end(compressed);
-    result.checkpoint();
-    return result;
-  });
+      var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+      zlibStream.write(true);
+      inflateAuto.write(true);
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+      return result;
+    });
+  }
 
   if (zlib.inflateSync) {
     describe('.inflateAutoSync()', function() {
