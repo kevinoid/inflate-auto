@@ -792,7 +792,7 @@ function defineFormatTests(format) {
 
       // chunkSize checking relied on Buffer argument checking prior to
       // nodejs/node@add4b0ab8cc (Node 9)
-      // Buffet checking changed in nodejs/node@3d353c749cd to throw
+      // Buffer checking changed in nodejs/node@3d353c749cd to throw
       // RangeError: "size" argument must not be larger than 2147483647
       // instead of
       // RangeError: Invalid array buffer length
