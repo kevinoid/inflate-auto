@@ -45,7 +45,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "bluebird": ">=2.0.0",
     "codecov": "^3.0.0",
     "coveralls": "^3.0.0",
     "eslint": "^4.6.1",

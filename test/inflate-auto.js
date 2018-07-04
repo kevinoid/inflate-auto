@@ -5,7 +5,6 @@
 
 'use strict';
 
-var BBPromise = require('bluebird');
 var InflateAuto = require('..');
 var assert = require('assert');
 var assignOwnPropertyDescriptors =
@@ -16,7 +15,6 @@ var streamCompare = require('stream-compare');
 var util = require('util');
 var zlib = require('zlib');
 
-var Promise = global.Promise || BBPromise;
 var deepEqual = assert.deepStrictEqual || assert.deepEqual;
 
 var nodeVersion = process.version.slice(1).split('.').map(Number);
