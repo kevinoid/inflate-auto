@@ -13,7 +13,6 @@ var InflateAuto = require('..');
 var assert = require('assert');
 var assignOwnPropertyDescriptors =
   require('../test-lib/assign-own-property-descriptors.js');
-var extend = require('extend');
 var stream = require('stream');
 var streamCompare = require('stream-compare');
 var util = require('util');
@@ -143,12 +142,12 @@ function makeError(source) {
 
 /** Compares StreamStates ignoring the prototype of Error events. */
 function compareNoErrorTypes(actualState, expectedState) {
-  var actual = extend({}, actualState);
-  var expected = extend({}, expectedState);
+  var actual = Object.assign({}, actualState);
+  var expected = Object.assign({}, expectedState);
 
   function normalizeEvent(event) {
     if (event.name === 'error') {
-      var normEvent = extend({}, event);
+      var normEvent = Object.assign({}, event);
       normEvent.args = normEvent.args.map(makeError);
       return normEvent;
     }
@@ -541,7 +540,7 @@ function defineFormatTests(format) {
       var options = {objectMode: true};
       var zlibStream = new Decompress(options);
       var inflateAuto = new InflateAuto(options);
-      var compareOptions = extend({}, COMPARE_OPTIONS);
+      var compareOptions = Object.assign({}, COMPARE_OPTIONS);
       compareOptions.endEvents = ['end'];
 
       // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
