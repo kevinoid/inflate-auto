@@ -13,6 +13,7 @@ var InflateAuto = require('..');
 var assert = require('assert');
 var assignOwnPropertyDescriptors =
   require('../test-lib/assign-own-property-descriptors.js');
+var pify = require('pify');
 var stream = require('stream');
 var streamCompare = require('stream-compare');
 var util = require('util');
@@ -313,8 +314,8 @@ function defineFormatTests(format) {
     var inflateAuto = new InflateAuto();
     var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-    var zlibWriteP = BBPromise.promisify(zlibStream.write);
-    var autoWriteP = BBPromise.promisify(inflateAuto.write);
+    var zlibWriteP = pify(zlibStream.write);
+    var autoWriteP = pify(inflateAuto.write);
 
     return Promise.all([
       zlibWriteP.call(zlibStream, compressed),
@@ -1114,8 +1115,8 @@ function defineFormatTests(format) {
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = BBPromise.promisify(zlibStream.write);
-      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+      var zlibWriteP = pify(zlibStream.write);
+      var autoWriteP = pify(inflateAuto.write);
 
       var partial = compressed.slice(0, 4);
       return Promise.all([
@@ -1183,8 +1184,8 @@ function defineFormatTests(format) {
           dataAuto.push(data);
         });
 
-        var zlibWriteP = BBPromise.promisify(zlibStream.write);
-        var autoWriteP = BBPromise.promisify(inflateAuto.write);
+        var zlibWriteP = pify(zlibStream.write);
+        var autoWriteP = pify(inflateAuto.write);
 
         var partial = compressed.slice(0, 1);
         return Promise.all([
@@ -1236,7 +1237,7 @@ function defineFormatTests(format) {
 
         // Note:  Only write to inflateAuto since zlib stream could error on
         // first byte due to invalid header.
-        var autoWriteP = BBPromise.promisify(inflateAuto.write);
+        var autoWriteP = pify(inflateAuto.write);
 
         // Write data with a different header before reset to check that reset
         // clears any partial-header state.
@@ -1262,8 +1263,8 @@ function defineFormatTests(format) {
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = BBPromise.promisify(zlibStream.write);
-      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+      var zlibWriteP = pify(zlibStream.write);
+      var autoWriteP = pify(inflateAuto.write);
 
       var partial = compressed.slice(0, headerLen + 1);
       return Promise.all([
@@ -1312,8 +1313,8 @@ function defineFormatTests(format) {
       var inflateAuto = new InflateAuto();
       var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = BBPromise.promisify(zlibStream.write);
-      var autoWriteP = BBPromise.promisify(inflateAuto.write);
+      var zlibWriteP = pify(zlibStream.write);
+      var autoWriteP = pify(inflateAuto.write);
 
       var chunk = compressed.slice(0, headerLen + 4);
       return Promise.all([
