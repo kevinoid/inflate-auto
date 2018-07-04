@@ -285,13 +285,11 @@ function defineFormatTests(format) {
     }
   });
 
-  if (decompressSync) {
-    it('as synchronous function', () => {
-      const dataDecompress = decompressSync(compressed);
-      const dataAuto = InflateAuto.inflateAutoSync(compressed);
-      assert.deepStrictEqual(dataAuto, dataDecompress);
-    });
-  }
+  it('as synchronous function', () => {
+    const dataDecompress = decompressSync(compressed);
+    const dataAuto = InflateAuto.inflateAutoSync(compressed);
+    assert.deepStrictEqual(dataAuto, dataDecompress);
+  });
 
   it('single-write with immediate end', () => {
     const zlibStream = new Decompress();
@@ -555,118 +553,116 @@ function defineFormatTests(format) {
     });
   }
 
-  if (zlib.inflateSync) {
-    describe('.inflateAutoSync()', () => {
-      it('invalid type synchronously', () => {
-        let errInflate;
+  describe('.inflateAutoSync()', () => {
+    it('invalid type synchronously', () => {
+      let errInflate;
+      try {
+        decompressSync(true);
+      } catch (err) {
+        errInflate = err;
+      }
+
+      let errAuto;
+      try {
+        InflateAuto.inflateAutoSync(true);
+      } catch (err) {
+        errAuto = err;
+      }
+
+      if (errAuto && errInflate) {
+        // message changed in 2ced07c (Node 8).  Ignore in comparison.
+        errAuto.message = errInflate.message;
+      }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+    });
+
+    if (isDefaultFormat) {
+      SUPPORTED_FORMATS.forEach((supportedFormat) => {
+        const formatName = supportedFormat.Compress.name;
+        const formatHeader = supportedFormat.header;
+        if (formatHeader.length <= 1) {
+          return;
+        }
+
+        it(`partial ${formatName} header`, () => {
+          const partial = formatHeader.slice(0, 1);
+
+          let dataInflate, errInflate;
+          try {
+            dataInflate = decompressSync(partial);
+          } catch (err) {
+            errInflate = err;
+          }
+
+          let dataAuto, errAuto;
+          try {
+            dataAuto = InflateAuto.inflateAutoSync(partial);
+          } catch (err) {
+            errAuto = err;
+          }
+
+          assert.deepStrictEqual(errAuto, errInflate);
+          assert.deepStrictEqual(dataAuto, dataInflate);
+        });
+      });
+    }
+
+    it('can use PassThrough as defaultFormat', () => {
+      const opts = {defaultFormat: stream.PassThrough};
+      const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+      assert.deepStrictEqual(dataAuto, uncompressed);
+    });
+
+    if (isDefaultFormat) {
+      // Default string decoding as utf8 mangles the data, resulting in an
+      // invalid format, so error equality is only guaranteed for default fmt
+      it('handles string argument like zlib', () => {
+        const compressedStr = compressed.toString('binary');
+
+        let dataInflate, errInflate;
         try {
-          decompressSync(true);
+          dataInflate = decompressSync(compressedStr);
         } catch (err) {
           errInflate = err;
         }
 
-        let errAuto;
+        let dataAuto, errAuto;
         try {
-          InflateAuto.inflateAutoSync(true);
+          dataAuto = InflateAuto.inflateAutoSync(compressedStr);
         } catch (err) {
           errAuto = err;
         }
 
-        if (errAuto && errInflate) {
-          // message changed in 2ced07c (Node 8).  Ignore in comparison.
-          errAuto.message = errInflate.message;
+        assert.deepStrictEqual(errAuto, errInflate);
+        assert.deepStrictEqual(dataAuto, dataInflate);
+      });
+
+      // The *Sync methods call Buffer.from on arg without encoding before
+      // passing to _processChunk.  So it gets mangled.
+      it('handles string with defaultEncoding like zlib', () => {
+        const compressedStr = compressed.toString('binary');
+        const opts = {defaultEncoding: 'binary'};
+
+        let dataInflate, errInflate;
+        try {
+          dataInflate = decompressSync(compressedStr, opts);
+        } catch (err) {
+          errInflate = err;
+        }
+
+        let dataAuto, errAuto;
+        try {
+          dataAuto = InflateAuto.inflateAutoSync(compressedStr, opts);
+        } catch (err) {
+          errAuto = err;
         }
 
         assert.deepStrictEqual(errAuto, errInflate);
+        assert.deepStrictEqual(dataAuto, dataInflate);
       });
-
-      if (isDefaultFormat) {
-        SUPPORTED_FORMATS.forEach((supportedFormat) => {
-          const formatName = supportedFormat.Compress.name;
-          const formatHeader = supportedFormat.header;
-          if (formatHeader.length <= 1) {
-            return;
-          }
-
-          it(`partial ${formatName} header`, () => {
-            const partial = formatHeader.slice(0, 1);
-
-            let dataInflate, errInflate;
-            try {
-              dataInflate = decompressSync(partial);
-            } catch (err) {
-              errInflate = err;
-            }
-
-            let dataAuto, errAuto;
-            try {
-              dataAuto = InflateAuto.inflateAutoSync(partial);
-            } catch (err) {
-              errAuto = err;
-            }
-
-            assert.deepStrictEqual(errAuto, errInflate);
-            assert.deepStrictEqual(dataAuto, dataInflate);
-          });
-        });
-      }
-
-      it('can use PassThrough as defaultFormat', () => {
-        const opts = {defaultFormat: stream.PassThrough};
-        const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
-        assert.deepStrictEqual(dataAuto, uncompressed);
-      });
-
-      if (isDefaultFormat) {
-        // Default string decoding as utf8 mangles the data, resulting in an
-        // invalid format, so error equality is only guaranteed for default fmt
-        it('handles string argument like zlib', () => {
-          const compressedStr = compressed.toString('binary');
-
-          let dataInflate, errInflate;
-          try {
-            dataInflate = decompressSync(compressedStr);
-          } catch (err) {
-            errInflate = err;
-          }
-
-          let dataAuto, errAuto;
-          try {
-            dataAuto = InflateAuto.inflateAutoSync(compressedStr);
-          } catch (err) {
-            errAuto = err;
-          }
-
-          assert.deepStrictEqual(errAuto, errInflate);
-          assert.deepStrictEqual(dataAuto, dataInflate);
-        });
-
-        // The *Sync methods call Buffer.from on arg without encoding before
-        // passing to _processChunk.  So it gets mangled.
-        it('handles string with defaultEncoding like zlib', () => {
-          const compressedStr = compressed.toString('binary');
-          const opts = {defaultEncoding: 'binary'};
-
-          let dataInflate, errInflate;
-          try {
-            dataInflate = decompressSync(compressedStr, opts);
-          } catch (err) {
-            errInflate = err;
-          }
-
-          let dataAuto, errAuto;
-          try {
-            dataAuto = InflateAuto.inflateAutoSync(compressedStr, opts);
-          } catch (err) {
-            errAuto = err;
-          }
-
-          assert.deepStrictEqual(errAuto, errInflate);
-          assert.deepStrictEqual(dataAuto, dataInflate);
-        });
-      }
-    });
-  }
+    }
+  });
 
   describe('Constructor', () => {
     describe('validation', () => {

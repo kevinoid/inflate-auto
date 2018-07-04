@@ -238,19 +238,16 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
   return zlibInternal.zlibBuffer(new InflateAuto(opts), buffer, callback);
 };
 
-if (zlib.inflateSync) {
-  /** Decompresses a compressed Buffer synchronously.
-   * Analogous to {@link zlib.inflateSync}.
-   * Only defined when {@link zlib.inflateSync} is available.
-   *
-   * @param {!Buffer} buffer Compressed data to decompress.
-   * @param {Object=} opts Decompression options.
-   * @return {!Buffer} Decompressed data.
-   */
-  InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
-    return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
-  };
-}
+/** Decompresses a compressed Buffer synchronously.
+ * Analogous to {@link zlib.inflateSync}.
+ *
+ * @param {!Buffer} buffer Compressed data to decompress.
+ * @param {Object=} opts Decompression options.
+ * @return {!Buffer} Decompressed data.
+ */
+InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
+  return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
+};
 
 /** Detects the format of a given <code>Buffer</code>.
  *
