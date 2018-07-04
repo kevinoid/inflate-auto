@@ -15,14 +15,12 @@ var streamCompare = require('stream-compare');
 var util = require('util');
 var zlib = require('zlib');
 
-var deepEqual = assert.deepStrictEqual || assert.deepEqual;
-
 var nodeVersion = process.version.slice(1).split('.').map(Number);
 
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
 var COMPARE_OPTIONS = {
-  compare: deepEqual,
+  compare: assert.deepStrictEqual,
   events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
   readPolicy: 'none'
 };
@@ -153,7 +151,7 @@ function compareNoErrorTypes(actualState, expectedState) {
   actual.events = actual.events.map(normalizeEvent);
   expected.events = expected.events.map(normalizeEvent);
 
-  deepEqual(actual, expected);
+  assert.deepStrictEqual(actual, expected);
 }
 
 /** Defines tests which are run for a given format. */
@@ -189,7 +187,7 @@ function defineFormatTests(format) {
         assert.ifError(errDecompress);
         InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
           assert.ifError(errAuto);
-          deepEqual(dataAuto, dataDecompress);
+          assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
         });
       });
@@ -208,7 +206,7 @@ function defineFormatTests(format) {
 
         decompress(compressed, opts, function(errDecompress, dataDecompress) {
           assert.ifError(errDecompress);
-          deepEqual(dataAuto, dataDecompress);
+          assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
         });
       });
@@ -218,7 +216,7 @@ function defineFormatTests(format) {
       var opts = {defaultFormat: stream.PassThrough};
       InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
         assert.ifError(errAuto);
-        deepEqual(dataAuto, uncompressed);
+        assert.deepStrictEqual(dataAuto, uncompressed);
         done();
       });
     });
@@ -236,8 +234,8 @@ function defineFormatTests(format) {
               compressedStr,
               opts,
               function(errAuto, dataAuto) {
-                deepEqual(errAuto, errDecompress);
-                deepEqual(dataAuto, dataDecompress);
+                assert.deepStrictEqual(errAuto, errDecompress);
+                assert.deepStrictEqual(dataAuto, dataDecompress);
                 done();
               }
             );
@@ -252,8 +250,8 @@ function defineFormatTests(format) {
         decompress(zeros, function(errDecompress, dataDecompress) {
           assert(errDecompress, 'expected Error to test');
           InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
-            deepEqual(errAuto, errDecompress);
-            deepEqual(dataAuto, dataDecompress);
+            assert.deepStrictEqual(errAuto, errDecompress);
+            assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
         });
@@ -263,8 +261,8 @@ function defineFormatTests(format) {
         var trunc = compressed.slice(0, 1);
         decompress(trunc, function(errDecompress, dataDecompress) {
           InflateAuto.inflateAuto(trunc, function(errAuto, dataAuto) {
-            deepEqual(errAuto, errDecompress);
-            deepEqual(dataAuto, dataDecompress);
+            assert.deepStrictEqual(errAuto, errDecompress);
+            assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
         });
@@ -276,8 +274,8 @@ function defineFormatTests(format) {
         var compressedStr = compressed.toString('binary');
         decompress(compressedStr, function(errDecompress, dataDecompress) {
           InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
-            deepEqual(errAuto, errDecompress);
-            deepEqual(dataAuto, dataDecompress);
+            assert.deepStrictEqual(errAuto, errDecompress);
+            assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
         });
@@ -289,7 +287,7 @@ function defineFormatTests(format) {
     it('as synchronous function', function() {
       var dataDecompress = decompressSync(compressed);
       var dataAuto = InflateAuto.inflateAutoSync(compressed);
-      deepEqual(dataAuto, dataDecompress);
+      assert.deepStrictEqual(dataAuto, dataDecompress);
     });
   }
 
@@ -521,7 +519,7 @@ function defineFormatTests(format) {
       inflateAuto.on('error', function(err) {
         assert(err, 'expected format error');
         assert(/format/i.test(err.message));
-        deepEqual(err.data, truncated);
+        assert.deepStrictEqual(err.data, truncated);
         done();
       });
       inflateAuto.end(truncated);
@@ -576,7 +574,7 @@ function defineFormatTests(format) {
           errAuto.message = errInflate.message;
         }
 
-        deepEqual(errAuto, errInflate);
+        assert.deepStrictEqual(errAuto, errInflate);
       });
 
       if (isDefaultFormat) {
@@ -604,8 +602,8 @@ function defineFormatTests(format) {
               errAuto = err;
             }
 
-            deepEqual(errAuto, errInflate);
-            deepEqual(dataAuto, dataInflate);
+            assert.deepStrictEqual(errAuto, errInflate);
+            assert.deepStrictEqual(dataAuto, dataInflate);
           });
         });
       }
@@ -613,7 +611,7 @@ function defineFormatTests(format) {
       it('can use PassThrough as defaultFormat', function() {
         var opts = {defaultFormat: stream.PassThrough};
         var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
-        deepEqual(dataAuto, uncompressed);
+        assert.deepStrictEqual(dataAuto, uncompressed);
       });
 
       if (isDefaultFormat) {
@@ -636,8 +634,8 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          deepEqual(errAuto, errInflate);
-          deepEqual(dataAuto, dataInflate);
+          assert.deepStrictEqual(errAuto, errInflate);
+          assert.deepStrictEqual(dataAuto, dataInflate);
         });
 
         // The *Sync methods call Buffer.from on arg without encoding before
@@ -660,8 +658,8 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          deepEqual(errAuto, errInflate);
-          deepEqual(dataAuto, dataInflate);
+          assert.deepStrictEqual(errAuto, errInflate);
+          assert.deepStrictEqual(dataAuto, dataInflate);
         });
       }
     });
@@ -688,7 +686,7 @@ function defineFormatTests(format) {
             // Both threw or neither threw
             if (Boolean(errAuto) !== Boolean(errInflate)) {
               // Fail due to mismatch
-              deepEqual(errAuto, errInflate);
+              assert.deepStrictEqual(errAuto, errInflate);
             }
           } else {
             // Both had same exception, with one possible difference:
@@ -701,7 +699,7 @@ function defineFormatTests(format) {
               errAuto = makeError(errAuto);
             }
 
-            deepEqual(errAuto, errInflate);
+            assert.deepStrictEqual(errAuto, errInflate);
           }
         });
       }
@@ -842,7 +840,7 @@ function defineFormatTests(format) {
           var zlibArgs = arguments;
           inflateAuto.close(function() {
             var inflateArgs = arguments;
-            deepEqual(inflateArgs, zlibArgs);
+            assert.deepStrictEqual(inflateArgs, zlibArgs);
 
             setImmediate(function() {
               result.end();
@@ -916,7 +914,7 @@ function defineFormatTests(format) {
         errInflate.actual = false;
       }
 
-      deepEqual(errAuto, errInflate);
+      assert.deepStrictEqual(errAuto, errInflate);
 
       result.end();
       return result;
@@ -935,7 +933,7 @@ function defineFormatTests(format) {
         function onWrite() {
           writeArgs.push(arguments);
           if (writeArgs.length === 2) {
-            deepEqual(writeArgs[0], writeArgs[1]);
+            assert.deepStrictEqual(writeArgs[0], writeArgs[1]);
             result.end();
             resolve(result);
           }
@@ -1216,7 +1214,7 @@ function defineFormatTests(format) {
             });
 
             inflateAuto.once('end', function() {
-              deepEqual(Buffer.concat(dataAuto), uncompressed);
+              assert.deepStrictEqual(Buffer.concat(dataAuto), uncompressed);
               if (headerError) {
                 resolve();
               }
@@ -1453,7 +1451,7 @@ function defineFormatTests(format) {
           inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
             assert(err, 'expected format error');
             assert(/format/i.test(err.message));
-            deepEqual(err.data, zeros);
+            assert.deepStrictEqual(err.data, zeros);
             done();
           });
         });
@@ -1475,7 +1473,7 @@ function defineFormatTests(format) {
           throw new Error('error should not be emitted');
         });
         inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
-          deepEqual(data, zeros);
+          assert.deepStrictEqual(data, zeros);
           done();
         });
       });
@@ -1516,7 +1514,7 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          deepEqual(errAuto, errInflate);
+          assert.deepStrictEqual(errAuto, errInflate);
         });
 
         it('throws with error listener', function() {
@@ -1540,7 +1538,7 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          deepEqual(errAuto, errInflate);
+          assert.deepStrictEqual(errAuto, errInflate);
           result.checkpoint();
         });
 
@@ -1640,7 +1638,7 @@ describe('InflateAuto', function() {
         length: 1
       }
     });
-    deepEqual(auto._detectors, [zlib.Gunzip]);
+    assert.deepStrictEqual(auto._detectors, [zlib.Gunzip]);
   });
 
   it('throws TypeError for non-Array-like detectors', function() {
@@ -1673,7 +1671,7 @@ describe('InflateAuto', function() {
     auto.on('error', function(err) {
       assert(err, 'expected format mismatch error');
       assert(/format/i.test(err.message));
-      deepEqual(err.data, testData);
+      assert.deepStrictEqual(err.data, testData);
       done();
     });
     auto.write(testData);
@@ -1685,7 +1683,7 @@ describe('InflateAuto', function() {
     inflateAuto.once('error', function(err) {
       assert(err, 'expected format error');
       assert(/format/i.test(err.message));
-      deepEqual(err.data, zeros);
+      assert.deepStrictEqual(err.data, zeros);
       done();
     });
     inflateAuto.write(zeros);
