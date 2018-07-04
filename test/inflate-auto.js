@@ -5,27 +5,27 @@
 
 'use strict';
 
-var InflateAuto = require('..');
-var assert = require('assert');
-var assignOwnPropertyDescriptors =
-  require('../test-lib/assign-own-property-descriptors.js');
-var pify = require('pify');
-var stream = require('stream');
-var streamCompare = require('stream-compare');
-var util = require('util');
-var zlib = require('zlib');
+const InflateAuto = require('..');
+const assert = require('assert');
+const assignOwnPropertyDescriptors
+  = require('../test-lib/assign-own-property-descriptors.js');
+const pify = require('pify');
+const stream = require('stream');
+const streamCompare = require('stream-compare');
+const util = require('util');
+const zlib = require('zlib');
 
-var nodeVersion = process.version.slice(1).split('.').map(Number);
+const nodeVersion = process.version.slice(1).split('.').map(Number);
 
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
-var COMPARE_OPTIONS = {
+const COMPARE_OPTIONS = {
   compare: assert.deepStrictEqual,
   events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
   readPolicy: 'none'
 };
 
-var TEST_DATA = {
+const TEST_DATA = {
   empty: Buffer.alloc(0),
   large: Buffer.alloc(1024),
   // 'normal' is the default for not-data-specific tests
@@ -33,14 +33,14 @@ var TEST_DATA = {
 };
 
 /* eslint-disable comma-spacing */
-var SUPPORTED_FORMATS = [
+const SUPPORTED_FORMATS = [
   {
     Compress: zlib.Gzip,
     Decompress: zlib.Gunzip,
     compress: zlib.gzip,
     compressSync: zlib.gzipSync,
     corruptChecksum: function corruptGzipChecksum(compressed) {
-      var invalid = Buffer.from(compressed);
+      const invalid = Buffer.from(compressed);
       // gzip format has 4-byte CRC32 before 4-byte size at end
       invalid[invalid.length - 5] = invalid[invalid.length - 5] ^ 0x1;
       return invalid;
@@ -66,7 +66,7 @@ var SUPPORTED_FORMATS = [
     compress: zlib.deflate,
     compressSync: zlib.deflateSync,
     corruptChecksum: function corruptZlibChecksum(compressed) {
-      var invalid = Buffer.from(compressed);
+      const invalid = Buffer.from(compressed);
       // zlib format has 4-byte Adler-32 at end
       invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
       return invalid;
@@ -129,19 +129,19 @@ function makeError(source) {
   if (Object.getPrototypeOf(source) === Error.prototype) {
     return source;
   }
-  var error = new Error(source.message);
+  const error = new Error(source.message);
   assignOwnPropertyDescriptors(error, source);
   return error;
 }
 
 /** Compares StreamStates ignoring the prototype of Error events. */
 function compareNoErrorTypes(actualState, expectedState) {
-  var actual = Object.assign({}, actualState);
-  var expected = Object.assign({}, expectedState);
+  const actual = Object.assign({}, actualState);
+  const expected = Object.assign({}, expectedState);
 
   function normalizeEvent(event) {
     if (event.name === 'error') {
-      var normEvent = Object.assign({}, event);
+      const normEvent = Object.assign({}, event);
       normEvent.args = normEvent.args.map(makeError);
       return normEvent;
     }
@@ -156,11 +156,11 @@ function compareNoErrorTypes(actualState, expectedState) {
 
 /** Defines tests which are run for a given format. */
 function defineFormatTests(format) {
-  var emptyCompressed = format.dataCompressed.empty;
-  var largeCompressed = format.dataCompressed.large;
+  const emptyCompressed = format.dataCompressed.empty;
+  const largeCompressed = format.dataCompressed.large;
 
   // Data with a different header than the expected one
-  var otherCompressed, otherHeader;
+  let otherCompressed, otherHeader;
   if (format === SUPPORTED_FORMATS[0]) {
     otherCompressed = SUPPORTED_FORMATS[1].dataCompressed.normal;
     otherHeader = SUPPORTED_FORMATS[1].header;
@@ -169,23 +169,25 @@ function defineFormatTests(format) {
     otherHeader = SUPPORTED_FORMATS[0].header;
   }
 
-  var compressed = format.dataCompressed.normal;
-  var uncompressed = format.data.normal;
+  const compressed = format.dataCompressed.normal;
+  const uncompressed = format.data.normal;
 
-  var Decompress = format.Decompress;
-  var compress = format.compress;
-  var corruptChecksum = format.corruptChecksum;
-  var decompress = format.decompress;
-  var decompressSync = format.decompressSync;
-  var isDefaultFormat = format.isDefault;
-  var header = format.header;
-  var headerLen = header.length;
+  const {
+    Decompress,
+    compress,
+    corruptChecksum,
+    decompress,
+    decompressSync,
+    isDefault: isDefaultFormat,
+    header
+  } = format;
+  const headerLen = header.length;
 
-  describe('.inflateAuto', function() {
-    it('decompresses all data in a single call', function(done) {
-      decompress(compressed, function(errDecompress, dataDecompress) {
+  describe('.inflateAuto', () => {
+    it('decompresses all data in a single call', (done) => {
+      decompress(compressed, (errDecompress, dataDecompress) => {
         assert.ifError(errDecompress);
-        InflateAuto.inflateAuto(compressed, function(errAuto, dataAuto) {
+        InflateAuto.inflateAuto(compressed, (errAuto, dataAuto) => {
           assert.ifError(errAuto);
           assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
@@ -193,9 +195,9 @@ function defineFormatTests(format) {
       });
     });
 
-    it('can accept options argument', function(done) {
-      var opts = {chunkSize: zlib.Z_MIN_CHUNK};
-      InflateAuto.inflateAuto(compressed, opts, function(errAuto, dataAuto) {
+    it('can accept options argument', (done) => {
+      const opts = {chunkSize: zlib.Z_MIN_CHUNK};
+      InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) => {
         assert.ifError(errAuto);
 
         // Node 0.10 does not support opts
@@ -204,7 +206,7 @@ function defineFormatTests(format) {
           return;
         }
 
-        decompress(compressed, opts, function(errDecompress, dataDecompress) {
+        decompress(compressed, opts, (errDecompress, dataDecompress) => {
           assert.ifError(errDecompress);
           assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
@@ -212,9 +214,9 @@ function defineFormatTests(format) {
       });
     });
 
-    it('can use PassThrough as defaultFormat', function(done) {
-      var opts = {defaultFormat: stream.PassThrough};
-      InflateAuto.inflateAuto(uncompressed, opts, function(errAuto, dataAuto) {
+    it('can use PassThrough as defaultFormat', (done) => {
+      const opts = {defaultFormat: stream.PassThrough};
+      InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) => {
         assert.ifError(errAuto);
         assert.deepStrictEqual(dataAuto, uncompressed);
         done();
@@ -223,17 +225,17 @@ function defineFormatTests(format) {
 
     // Node 0.10 decompress did not accept options argument
     if (decompress.length > 2) {
-      it('handles string defaultEncoding like zlib', function(done) {
-        var compressedStr = compressed.toString('binary');
-        var opts = {defaultEncoding: 'binary'};
+      it('handles string defaultEncoding like zlib', (done) => {
+        const compressedStr = compressed.toString('binary');
+        const opts = {defaultEncoding: 'binary'};
         decompress(
           compressedStr,
           opts,
-          function(errDecompress, dataDecompress) {
+          (errDecompress, dataDecompress) => {
             InflateAuto.inflateAuto(
               compressedStr,
               opts,
-              function(errAuto, dataAuto) {
+              (errAuto, dataAuto) => {
                 assert.deepStrictEqual(errAuto, errDecompress);
                 assert.deepStrictEqual(dataAuto, dataDecompress);
                 done();
@@ -245,11 +247,11 @@ function defineFormatTests(format) {
     }
 
     if (isDefaultFormat) {
-      it('passes format Error to the callback like zlib', function(done) {
-        var zeros = Buffer.alloc(20);
-        decompress(zeros, function(errDecompress, dataDecompress) {
+      it('passes format Error to the callback like zlib', (done) => {
+        const zeros = Buffer.alloc(20);
+        decompress(zeros, (errDecompress, dataDecompress) => {
           assert(errDecompress, 'expected Error to test');
-          InflateAuto.inflateAuto(zeros, function(errAuto, dataAuto) {
+          InflateAuto.inflateAuto(zeros, (errAuto, dataAuto) => {
             assert.deepStrictEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
@@ -257,10 +259,10 @@ function defineFormatTests(format) {
         });
       });
 
-      it('handles truncated header like zlib', function(done) {
-        var trunc = compressed.slice(0, 1);
-        decompress(trunc, function(errDecompress, dataDecompress) {
-          InflateAuto.inflateAuto(trunc, function(errAuto, dataAuto) {
+      it('handles truncated header like zlib', (done) => {
+        const trunc = compressed.slice(0, 1);
+        decompress(trunc, (errDecompress, dataDecompress) => {
+          InflateAuto.inflateAuto(trunc, (errAuto, dataAuto) => {
             assert.deepStrictEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
@@ -270,10 +272,10 @@ function defineFormatTests(format) {
 
       // Default string decoding as utf8 mangles the data, resulting in an
       // invalid format, so error equality is only guaranteed for default fmt
-      it('handles string argument like zlib', function(done) {
-        var compressedStr = compressed.toString('binary');
-        decompress(compressedStr, function(errDecompress, dataDecompress) {
-          InflateAuto.inflateAuto(compressedStr, function(errAuto, dataAuto) {
+      it('handles string argument like zlib', (done) => {
+        const compressedStr = compressed.toString('binary');
+        decompress(compressedStr, (errDecompress, dataDecompress) => {
+          InflateAuto.inflateAuto(compressedStr, (errAuto, dataAuto) => {
             assert.deepStrictEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
@@ -284,17 +286,17 @@ function defineFormatTests(format) {
   });
 
   if (decompressSync) {
-    it('as synchronous function', function() {
-      var dataDecompress = decompressSync(compressed);
-      var dataAuto = InflateAuto.inflateAutoSync(compressed);
+    it('as synchronous function', () => {
+      const dataDecompress = decompressSync(compressed);
+      const dataAuto = InflateAuto.inflateAutoSync(compressed);
       assert.deepStrictEqual(dataAuto, dataDecompress);
     });
   }
 
-  it('single-write with immediate end', function() {
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('single-write with immediate end', () => {
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     result.checkpoint();
     zlibStream.end(compressed);
     inflateAuto.end(compressed);
@@ -302,18 +304,18 @@ function defineFormatTests(format) {
     return result;
   });
 
-  it('single-write delayed end', function() {
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('single-write delayed end', () => {
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-    var zlibWriteP = pify(zlibStream.write);
-    var autoWriteP = pify(inflateAuto.write);
+    const zlibWriteP = pify(zlibStream.write);
+    const autoWriteP = pify(inflateAuto.write);
 
     return Promise.all([
       zlibWriteP.call(zlibStream, compressed),
       autoWriteP.call(inflateAuto, compressed)
-    ]).then(function() {
+    ]).then(() => {
       result.checkpoint();
       zlibStream.end();
       inflateAuto.end();
@@ -323,14 +325,14 @@ function defineFormatTests(format) {
     });
   });
 
-  [1, 2, 3].forEach(function(blockSize) {
-    it(blockSize + ' byte writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  [1, 2, 3].forEach((blockSize) => {
+    it(`${blockSize} byte writes`, () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      for (var i = 0; i < compressed.length; i += 1) {
-        var block = compressed.slice(i * blockSize, (i + 1) * blockSize);
+      for (let i = 0; i < compressed.length; i += 1) {
+        const block = compressed.slice(i * blockSize, (i + 1) * blockSize);
         zlibStream.write(block);
         inflateAuto.write(block);
         result.checkpoint();
@@ -345,10 +347,10 @@ function defineFormatTests(format) {
   });
 
   if (isDefaultFormat) {
-    it('no writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('no writes', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.end();
       inflateAuto.end();
       result.checkpoint();
@@ -356,10 +358,10 @@ function defineFormatTests(format) {
     });
   }
 
-  it('no data after header', function() {
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('no data after header', () => {
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(header);
     inflateAuto.end(header);
     result.checkpoint();
@@ -367,33 +369,34 @@ function defineFormatTests(format) {
   });
 
   if (isDefaultFormat) {
-    SUPPORTED_FORMATS.forEach(function(supportedFormat) {
-      var formatName = supportedFormat.Compress.name;
-      var formatHeader = supportedFormat.header;
-      var formatHeaderLen = formatHeader.length;
+    SUPPORTED_FORMATS.forEach((supportedFormat) => {
+      const formatName = supportedFormat.Compress.name;
+      const formatHeader = supportedFormat.header;
+      const formatHeaderLen = formatHeader.length;
 
       function testPartialHeader(len) {
-        it(len + ' bytes of ' + formatName + ' header', function() {
-          var zlibStream = new Decompress();
-          var inflateAuto = new InflateAuto();
-          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-          var partial = formatHeader.slice(0, len);
+        it(`${len} bytes of ${formatName} header`, () => {
+          const zlibStream = new Decompress();
+          const inflateAuto = new InflateAuto();
+          const result
+            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+          const partial = formatHeader.slice(0, len);
           zlibStream.end(partial);
           inflateAuto.end(partial);
           result.checkpoint();
           return result;
         });
       }
-      for (var i = 1; i < formatHeaderLen; i += 1) {
+      for (let i = 1; i < formatHeaderLen; i += 1) {
         testPartialHeader(i);
       }
     });
   }
 
-  it('compressed empty data', function() {
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('compressed empty data', () => {
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(emptyCompressed);
     inflateAuto.end(emptyCompressed);
     result.checkpoint();
@@ -402,12 +405,12 @@ function defineFormatTests(format) {
 
   // This behavior changed in node v5 and later due to
   // https://github.com/nodejs/node/pull/2595
-  it('handles truncated compressed data', function() {
+  it('handles truncated compressed data', () => {
     // Truncate shortly after the header (if any) for type detection
-    var truncated = compressed.slice(0, headerLen + 1);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const truncated = compressed.slice(0, headerLen + 1);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(truncated);
     inflateAuto.end(truncated);
     result.checkpoint();
@@ -416,59 +419,59 @@ function defineFormatTests(format) {
 
   // This behavior changed in node v6 and later due to
   // https://github.com/nodejs/node/pull/5120
-  it('handles concatenated compressed data', function() {
-    var doubledata = Buffer.concat([compressed, compressed]);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('handles concatenated compressed data', () => {
+    const doubledata = Buffer.concat([compressed, compressed]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(doubledata);
     inflateAuto.end(doubledata);
     result.checkpoint();
     return result;
   });
 
-  it('handles concatenated empty compressed data', function() {
-    var doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('handles concatenated empty compressed data', () => {
+    const doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(doubleempty);
     inflateAuto.end(doubleempty);
     result.checkpoint();
     return result;
   });
 
-  it('handles concatenated 0', function() {
-    var zeros = Buffer.alloc(20);
-    var compressedWithZeros = Buffer.concat([compressed, zeros]);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('handles concatenated 0', () => {
+    const zeros = Buffer.alloc(20);
+    const compressedWithZeros = Buffer.concat([compressed, zeros]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(compressedWithZeros);
     inflateAuto.end(compressedWithZeros);
     result.checkpoint();
     return result;
   });
 
-  it('handles concatenated garbage', function() {
-    var garbage = Buffer.alloc(20, 42);
-    var compressedWithGarbage = Buffer.concat([compressed, garbage]);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  it('handles concatenated garbage', () => {
+    const garbage = Buffer.alloc(20, 42);
+    const compressedWithGarbage = Buffer.concat([compressed, garbage]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(compressedWithGarbage);
     inflateAuto.end(compressedWithGarbage);
     result.checkpoint();
     return result;
   });
 
-  it('handles corrupted compressed data', function() {
-    var corrupted = Buffer.from(compressed);
+  it('handles corrupted compressed data', () => {
+    const corrupted = Buffer.from(compressed);
     // Leave signature intact
     corrupted.fill(42, headerLen);
-    var zlibStream = new Decompress();
-    var inflateAuto = new InflateAuto();
-    var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(corrupted);
     inflateAuto.end(corrupted);
     result.checkpoint();
@@ -476,11 +479,11 @@ function defineFormatTests(format) {
   });
 
   if (corruptChecksum) {
-    it('corrupted checksum', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-      var invalid = corruptChecksum(compressed);
+    it('corrupted checksum', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      const invalid = corruptChecksum(compressed);
       zlibStream.end(invalid);
       inflateAuto.end(invalid);
       result.checkpoint();
@@ -488,23 +491,23 @@ function defineFormatTests(format) {
     });
   }
 
-  var compressedWithDict = format.dataCompressed.normalWithDict;
+  const compressedWithDict = format.dataCompressed.normalWithDict;
   if (compressedWithDict && compress.length === 3) {
-    it('handles dictionary', function() {
-      var options = {dictionary: uncompressed};
-      var zlibStream = new Decompress(options);
-      var inflateAuto = new InflateAuto(options);
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('handles dictionary', () => {
+      const options = {dictionary: uncompressed};
+      const zlibStream = new Decompress(options);
+      const inflateAuto = new InflateAuto(options);
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.end(compressedWithDict);
       inflateAuto.end(compressedWithDict);
       result.checkpoint();
       return result;
     });
 
-    it('handles missing dictionary', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('handles missing dictionary', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.end(compressedWithDict);
       inflateAuto.end(compressedWithDict);
       result.checkpoint();
@@ -513,10 +516,10 @@ function defineFormatTests(format) {
   }
 
   if (!isDefaultFormat) {
-    it('emits error for format error in _flush', function(done) {
-      var inflateAuto = new InflateAuto({defaultFormat: null});
-      var truncated = compressed.slice(0, 1);
-      inflateAuto.on('error', function(err) {
+    it('emits error for format error in _flush', (done) => {
+      const inflateAuto = new InflateAuto({defaultFormat: null});
+      const truncated = compressed.slice(0, 1);
+      inflateAuto.on('error', (err) => {
         assert(err, 'expected format error');
         assert(/format/i.test(err.message));
         assert.deepStrictEqual(err.data, truncated);
@@ -530,11 +533,11 @@ function defineFormatTests(format) {
   // This causes an assertion failure on Node v9.  Skip test on this version.
   // See https://github.com/nodejs/node/pull/16960
   if (nodeVersion[0] !== 9) {
-    it('errors on write of invalid type', function() {
-      var options = {objectMode: true};
-      var zlibStream = new Decompress(options);
-      var inflateAuto = new InflateAuto(options);
-      var compareOptions = Object.assign({}, COMPARE_OPTIONS);
+    it('errors on write of invalid type', () => {
+      const options = {objectMode: true};
+      const zlibStream = new Decompress(options);
+      const inflateAuto = new InflateAuto(options);
+      const compareOptions = Object.assign({}, COMPARE_OPTIONS);
       compareOptions.endEvents = ['end'];
 
       // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
@@ -542,7 +545,7 @@ function defineFormatTests(format) {
         compareOptions.compare = compareNoErrorTypes;
       }
 
-      var result = streamCompare(inflateAuto, zlibStream, compareOptions);
+      const result = streamCompare(inflateAuto, zlibStream, compareOptions);
       zlibStream.write(true);
       inflateAuto.write(true);
       zlibStream.end(compressed);
@@ -553,16 +556,16 @@ function defineFormatTests(format) {
   }
 
   if (zlib.inflateSync) {
-    describe('.inflateAutoSync()', function() {
-      it('invalid type synchronously', function() {
-        var errInflate;
+    describe('.inflateAutoSync()', () => {
+      it('invalid type synchronously', () => {
+        let errInflate;
         try {
           decompressSync(true);
         } catch (err) {
           errInflate = err;
         }
 
-        var errAuto;
+        let errAuto;
         try {
           InflateAuto.inflateAutoSync(true);
         } catch (err) {
@@ -578,24 +581,24 @@ function defineFormatTests(format) {
       });
 
       if (isDefaultFormat) {
-        SUPPORTED_FORMATS.forEach(function(supportedFormat) {
-          var formatName = supportedFormat.Compress.name;
-          var formatHeader = supportedFormat.header;
+        SUPPORTED_FORMATS.forEach((supportedFormat) => {
+          const formatName = supportedFormat.Compress.name;
+          const formatHeader = supportedFormat.header;
           if (formatHeader.length <= 1) {
             return;
           }
 
-          it('partial ' + formatName + ' header', function() {
-            var partial = formatHeader.slice(0, 1);
+          it(`partial ${formatName} header`, () => {
+            const partial = formatHeader.slice(0, 1);
 
-            var dataInflate, errInflate;
+            let dataInflate, errInflate;
             try {
               dataInflate = decompressSync(partial);
             } catch (err) {
               errInflate = err;
             }
 
-            var dataAuto, errAuto;
+            let dataAuto, errAuto;
             try {
               dataAuto = InflateAuto.inflateAutoSync(partial);
             } catch (err) {
@@ -608,26 +611,26 @@ function defineFormatTests(format) {
         });
       }
 
-      it('can use PassThrough as defaultFormat', function() {
-        var opts = {defaultFormat: stream.PassThrough};
-        var dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
+      it('can use PassThrough as defaultFormat', () => {
+        const opts = {defaultFormat: stream.PassThrough};
+        const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
         assert.deepStrictEqual(dataAuto, uncompressed);
       });
 
       if (isDefaultFormat) {
         // Default string decoding as utf8 mangles the data, resulting in an
         // invalid format, so error equality is only guaranteed for default fmt
-        it('handles string argument like zlib', function() {
-          var compressedStr = compressed.toString('binary');
+        it('handles string argument like zlib', () => {
+          const compressedStr = compressed.toString('binary');
 
-          var dataInflate, errInflate;
+          let dataInflate, errInflate;
           try {
             dataInflate = decompressSync(compressedStr);
           } catch (err) {
             errInflate = err;
           }
 
-          var dataAuto, errAuto;
+          let dataAuto, errAuto;
           try {
             dataAuto = InflateAuto.inflateAutoSync(compressedStr);
           } catch (err) {
@@ -640,18 +643,18 @@ function defineFormatTests(format) {
 
         // The *Sync methods call Buffer.from on arg without encoding before
         // passing to _processChunk.  So it gets mangled.
-        it('handles string with defaultEncoding like zlib', function() {
-          var compressedStr = compressed.toString('binary');
-          var opts = {defaultEncoding: 'binary'};
+        it('handles string with defaultEncoding like zlib', () => {
+          const compressedStr = compressed.toString('binary');
+          const opts = {defaultEncoding: 'binary'};
 
-          var dataInflate, errInflate;
+          let dataInflate, errInflate;
           try {
             dataInflate = decompressSync(compressedStr, opts);
           } catch (err) {
             errInflate = err;
           }
 
-          var dataAuto, errAuto;
+          let dataAuto, errAuto;
           try {
             dataAuto = InflateAuto.inflateAutoSync(compressedStr, opts);
           } catch (err) {
@@ -665,16 +668,16 @@ function defineFormatTests(format) {
     });
   }
 
-  describe('Constructor', function() {
-    describe('validation', function() {
+  describe('Constructor', () => {
+    describe('validation', () => {
       function checkOptions(stricter, looseType, options) {
-        var descPrefix = stricter ? 'is stricter for ' : 'same for ';
-        it(descPrefix + util.inspect(options), function() {
-          var errInflate;
+        const descPrefix = stricter ? 'is stricter for ' : 'same for ';
+        it(descPrefix + util.inspect(options), () => {
+          let errInflate;
           // eslint-disable-next-line no-new
           try { new Decompress(options); } catch (err) { errInflate = err; }
 
-          var errAuto;
+          let errAuto;
           // eslint-disable-next-line no-new
           try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
@@ -691,11 +694,11 @@ function defineFormatTests(format) {
           } else {
             // Both had same exception, with one possible difference:
             // Convert to generic Error for pre-nodejs/node@b514bd231
-            if (nodeVersion[0] < 8 &&
-                errAuto &&
-                errInflate &&
-                Object.getPrototypeOf(errAuto) !==
-                  Object.getPrototypeOf(errInflate)) {
+            if (nodeVersion[0] < 8
+                && errAuto
+                && errInflate
+                && Object.getPrototypeOf(errAuto)
+                  !== Object.getPrototypeOf(errInflate)) {
               errAuto = makeError(errAuto);
             }
 
@@ -808,79 +811,77 @@ function defineFormatTests(format) {
       );
     });
 
-    it('supports chunkSize', function() {
-      var options = {chunkSize: zlib.Z_MIN_CHUNK};
-      var zlibStream = new Decompress(options);
-      var inflateAuto = new InflateAuto(options);
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('supports chunkSize', () => {
+      const options = {chunkSize: zlib.Z_MIN_CHUNK};
+      const zlibStream = new Decompress(options);
+      const inflateAuto = new InflateAuto(options);
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.end(largeCompressed);
       inflateAuto.end(largeCompressed);
       return result;
     });
 
-    it('supports finishFlush', function() {
-      var options = {finishFlush: zlib.Z_SYNC_FLUSH};
-      var zlibStream = new Decompress(options);
-      var inflateAuto = new InflateAuto(options);
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-      var truncated = largeCompressed.slice(0, -1);
+    it('supports finishFlush', () => {
+      const options = {finishFlush: zlib.Z_SYNC_FLUSH};
+      const zlibStream = new Decompress(options);
+      const inflateAuto = new InflateAuto(options);
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      const truncated = largeCompressed.slice(0, -1);
       zlibStream.end(truncated);
       inflateAuto.end(truncated);
       return result;
     });
   });
 
-  describe('#close()', function() {
-    it('without writing', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-      return new Promise(function(resolve, reject) {
-        zlibStream.close(function() {
-          var zlibArgs = arguments;
-          inflateAuto.close(function() {
-            var inflateArgs = arguments;
+  describe('#close()', () => {
+    it('without writing', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      return new Promise(((resolve, reject) => {
+        zlibStream.close((...zlibArgs) => {
+          inflateAuto.close((...inflateArgs) => {
             assert.deepStrictEqual(inflateArgs, zlibArgs);
 
-            setImmediate(function() {
+            setImmediate(() => {
               result.end();
               resolve(result);
             });
           });
         });
-      });
+      }));
     });
 
     // Zlib behavior changed in 8b43d3f5 (6.0.0) to emit on every call.
     // InflateAuto implements the earlier behavior.
-    it('emits once for multiple calls', function() {
-      var inflateAuto = new InflateAuto();
+    it('emits once for multiple calls', () => {
+      const inflateAuto = new InflateAuto();
 
-      var closeEmitted = false;
-      inflateAuto.on('close', function() {
+      let closeEmitted = false;
+      inflateAuto.on('close', () => {
         assert.strictEqual(closeEmitted, false);
         closeEmitted = true;
       });
 
-      inflateAuto.once('close', function() {
+      inflateAuto.once('close', () => {
         inflateAuto.close();
       });
 
       inflateAuto.close();
       inflateAuto.close();
 
-      return new Promise(function(resolve, reject) {
-        setImmediate(function() {
+      return new Promise(((resolve, reject) => {
+        setImmediate(() => {
           assert.strictEqual(closeEmitted, true);
           resolve();
         });
-      });
+      }));
     });
 
-    it('before #end()', function() {
-      var zlibStream = new zlib.Inflate();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('before #end()', () => {
+      const zlibStream = new zlib.Inflate();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
       zlibStream.close();
       inflateAuto.close();
@@ -893,18 +894,18 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('#reset() after #close()', function() {
-      var zlibStream = new zlib.Inflate();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('#reset() after #close()', () => {
+      const zlibStream = new zlib.Inflate();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
       zlibStream.close();
       inflateAuto.close();
       result.checkpoint();
 
-      var errInflate;
+      let errInflate;
       try { zlibStream.reset(); } catch (err) { errInflate = err; }
-      var errAuto;
+      let errAuto;
       try { inflateAuto.reset(); } catch (err) { errAuto = err; }
 
       // nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
@@ -920,20 +921,20 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('#write() after #close()', function() {
-      var zlibStream = new zlib.Inflate();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('#write() after #close()', () => {
+      const zlibStream = new zlib.Inflate();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.close();
       inflateAuto.close();
       result.checkpoint();
 
-      return new Promise(function(resolve, reject) {
-        var writeArgs = [];
-        function onWrite() {
-          writeArgs.push(arguments);
-          if (writeArgs.length === 2) {
-            assert.deepStrictEqual(writeArgs[0], writeArgs[1]);
+      return new Promise(((resolve, reject) => {
+        const writeArgsByCall = [];
+        function onWrite(...writeArgs) {
+          writeArgsByCall.push(writeArgs);
+          if (writeArgsByCall.length === 2) {
+            assert.deepStrictEqual(writeArgsByCall[0], writeArgsByCall[1]);
             result.end();
             resolve(result);
           }
@@ -942,32 +943,32 @@ function defineFormatTests(format) {
         zlibStream.write(Buffer.alloc(0), onWrite);
         inflateAuto.write(Buffer.alloc(0), onWrite);
         result.checkpoint();
-      });
+      }));
     });
   });
 
-  describe('#getFormat()', function() {
-    it('returns format set by #setFormat()', function() {
-      var inflateAuto = new InflateAuto();
+  describe('#getFormat()', () => {
+    it('returns format set by #setFormat()', () => {
+      const inflateAuto = new InflateAuto();
       inflateAuto.setFormat(Decompress);
       assert.strictEqual(inflateAuto.getFormat(), Decompress);
     });
 
-    function MyDecompress() {
-      Decompress.apply(this, arguments);
+    function MyDecompress(...args) {
+      Decompress.apply(this, args);
     }
     // Note:  MyDecompress.prototype.constructor intentionally not set
     MyDecompress.prototype = Object.create(Decompress.prototype);
 
-    it('returns custom format set by #setFormat()', function() {
-      var inflateAuto = new InflateAuto();
+    it('returns custom format set by #setFormat()', () => {
+      const inflateAuto = new InflateAuto();
       inflateAuto.setFormat(MyDecompress);
       assert.strictEqual(inflateAuto.getFormat(), MyDecompress);
     });
 
-    it('returns the detected format', function(done) {
-      var inflateAuto = new InflateAuto();
-      inflateAuto.on('format', function() {
+    it('returns the detected format', (done) => {
+      const inflateAuto = new InflateAuto();
+      inflateAuto.on('format', () => {
         assert.strictEqual(inflateAuto.getFormat(), Decompress);
         done();
       });
@@ -975,11 +976,11 @@ function defineFormatTests(format) {
     });
   });
 
-  describe('#flush()', function() {
-    it('before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  describe('#flush()', () => {
+    it('before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.flush();
       inflateAuto.flush();
       result.checkpoint();
@@ -993,10 +994,10 @@ function defineFormatTests(format) {
 
     // This behavior changed in node v5 and later due to
     // https://github.com/nodejs/node/pull/2595
-    it('Z_FINISH before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('Z_FINISH before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.flush(zlib.Z_FINISH);
       inflateAuto.flush(zlib.Z_FINISH);
       result.checkpoint();
@@ -1008,10 +1009,10 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('between writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('between writes', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.write(compressed.slice(0, 4));
       inflateAuto.write(compressed.slice(0, 4));
       result.checkpoint();
@@ -1029,10 +1030,10 @@ function defineFormatTests(format) {
 
     // This behavior changed in node v5 and later due to
     // https://github.com/nodejs/node/pull/2595
-    it('Z_FINISH between writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('Z_FINISH between writes', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       zlibStream.write(compressed.slice(0, 4));
       inflateAuto.write(compressed.slice(0, 4));
       result.checkpoint();
@@ -1049,11 +1050,11 @@ function defineFormatTests(format) {
     });
   });
 
-  describe('#params()', function() {
+  describe('#params()', () => {
     // existence check
-    it('has the same type', function() {
-      var autoType = typeof InflateAuto.prototype.params;
-      var zlibType = typeof Decompress.prototype.params;
+    it('has the same type', () => {
+      let autoType = typeof InflateAuto.prototype.params;
+      let zlibType = typeof Decompress.prototype.params;
       assert.strictEqual(autoType, zlibType);
 
       autoType = typeof new InflateAuto().params;
@@ -1083,18 +1084,18 @@ function defineFormatTests(format) {
     // _decoder.end() from this.end() before this._flush()).  Since this is
     // an edge case without known use cases, delay this risky fix for now.
 
-    it('before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var level = zlib.Z_BEST_COMPRESSION;
-      var strategy = zlib.Z_FILTERED;
-      zlibStream.params(level, strategy, function(err) {
+      const level = zlib.Z_BEST_COMPRESSION;
+      const strategy = zlib.Z_FILTERED;
+      zlibStream.params(level, strategy, (err) => {
         assert.ifError(err);
         zlibStream.end(compressed);
       });
-      inflateAuto.params(level, strategy, function(err) {
+      inflateAuto.params(level, strategy, (err) => {
         assert.ifError(err);
         inflateAuto.end(compressed);
       });
@@ -1103,27 +1104,27 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('between writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('between writes', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = pify(zlibStream.write);
-      var autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = pify(zlibStream.write);
+      const autoWriteP = pify(inflateAuto.write);
 
-      var partial = compressed.slice(0, 4);
+      const partial = compressed.slice(0, 4);
       return Promise.all([
         zlibWriteP.call(zlibStream, partial),
         autoWriteP.call(inflateAuto, partial)
-      ]).then(function() {
+      ]).then(() => {
         result.checkpoint();
 
-        var remainder = compressed.slice(4);
+        const remainder = compressed.slice(4);
 
         zlibStream.params(
           zlib.Z_BEST_COMPRESSION,
           zlib.Z_FILTERED,
-          function(err) {
+          (err) => {
             assert.ifError(err);
             zlibStream.end(remainder);
           }
@@ -1131,7 +1132,7 @@ function defineFormatTests(format) {
         inflateAuto.params(
           zlib.Z_BEST_COMPRESSION,
           zlib.Z_FILTERED,
-          function(err) {
+          (err) => {
             assert.ifError(err);
             inflateAuto.end(remainder);
           }
@@ -1149,11 +1150,11 @@ function defineFormatTests(format) {
     // comment for details.
   });
 
-  describe('#reset()', function() {
-    it('before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  describe('#reset()', () => {
+    it('before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
       zlibStream.reset();
       inflateAuto.reset();
@@ -1167,24 +1168,24 @@ function defineFormatTests(format) {
     });
 
     if (headerLen > 0) {
-      it('discards partial header', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      it('discards partial header', () => {
+        const zlibStream = new Decompress();
+        const inflateAuto = new InflateAuto();
+        const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-        var dataAuto = [];
-        inflateAuto.on('data', function(data) {
+        const dataAuto = [];
+        inflateAuto.on('data', (data) => {
           dataAuto.push(data);
         });
 
-        var zlibWriteP = pify(zlibStream.write);
-        var autoWriteP = pify(inflateAuto.write);
+        const zlibWriteP = pify(zlibStream.write);
+        const autoWriteP = pify(inflateAuto.write);
 
-        var partial = compressed.slice(0, 1);
+        const partial = compressed.slice(0, 1);
         return Promise.all([
           zlibWriteP.call(zlibStream, partial),
           autoWriteP.call(inflateAuto, partial)
-        ]).then(function() {
+        ]).then(() => {
           result.checkpoint();
 
           // IMPORTANT:  Can't call Zlib.reset() with write in progress
@@ -1200,42 +1201,42 @@ function defineFormatTests(format) {
           // Gunzip gained reset in v6.0.0
           // https://github.com/nodejs/node/commit/f380db23
           // If zlib stream emits a header error, test for success instead of ==
-          return new Promise(function(resolve, reject) {
-            var headerError = false;
-            zlibStream.once('error', function(err) {
+          return new Promise(((resolve, reject) => {
+            let headerError = false;
+            zlibStream.once('error', (err) => {
               if (err.message === 'incorrect header check') {
                 headerError = true;
                 // Comparison result ignored.  Suppress unhandled rejection.
-                result.catch(function(errResult) {});
+                result.catch((errResult) => {});
               }
             });
-            zlibStream.once('end', function() {
+            zlibStream.once('end', () => {
               resolve(result);
             });
 
-            inflateAuto.once('end', function() {
+            inflateAuto.once('end', () => {
               assert.deepStrictEqual(Buffer.concat(dataAuto), uncompressed);
               if (headerError) {
                 resolve();
               }
             });
-          });
+          }));
         });
       });
 
-      it('forgets partial header', function() {
-        var zlibStream = new Decompress();
-        var inflateAuto = new InflateAuto();
-        var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+      it('forgets partial header', () => {
+        const zlibStream = new Decompress();
+        const inflateAuto = new InflateAuto();
+        const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
         // Note:  Only write to inflateAuto since zlib stream could error on
         // first byte due to invalid header.
-        var autoWriteP = pify(inflateAuto.write);
+        const autoWriteP = pify(inflateAuto.write);
 
         // Write data with a different header before reset to check that reset
         // clears any partial-header state.
         return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
-          .then(function() {
+          .then(() => {
             // IMPORTANT:  Can't call Zlib.reset() with write in progress
             // Since write is run from uv work queue thread and reset from main
             zlibStream.reset();
@@ -1251,19 +1252,19 @@ function defineFormatTests(format) {
       });
     }
 
-    it('discards post-header data', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('discards post-header data', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = pify(zlibStream.write);
-      var autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = pify(zlibStream.write);
+      const autoWriteP = pify(inflateAuto.write);
 
-      var partial = compressed.slice(0, headerLen + 1);
+      const partial = compressed.slice(0, headerLen + 1);
       return Promise.all([
         zlibWriteP.call(zlibStream, partial),
         autoWriteP.call(inflateAuto, partial)
-      ]).then(function() {
+      ]).then(() => {
         result.checkpoint();
 
         // IMPORTANT:  Can't call Zlib.reset() with write in progress
@@ -1284,11 +1285,11 @@ function defineFormatTests(format) {
     // guaranteed.  See method comment for details.
   });
 
-  describe('#setEncoding()', function() {
-    it('behaves the same before writes', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+  describe('#setEncoding()', () => {
+    it('behaves the same before writes', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
       zlibStream.setEncoding('utf8');
       inflateAuto.setEncoding('utf8');
@@ -1301,26 +1302,26 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('behaves the same after format', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('behaves the same after format', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      var zlibWriteP = pify(zlibStream.write);
-      var autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = pify(zlibStream.write);
+      const autoWriteP = pify(inflateAuto.write);
 
-      var chunk = compressed.slice(0, headerLen + 4);
+      const chunk = compressed.slice(0, headerLen + 4);
       return Promise.all([
         zlibWriteP.call(zlibStream, chunk),
         autoWriteP.call(inflateAuto, chunk)
-      ]).then(function() {
+      ]).then(() => {
         result.checkpoint();
 
         zlibStream.setEncoding('utf8');
         inflateAuto.setEncoding('utf8');
         result.checkpoint();
 
-        var rest = compressed.slice(chunk.length);
+        const rest = compressed.slice(chunk.length);
         zlibStream.end(rest);
         inflateAuto.end(rest);
         result.checkpoint();
@@ -1330,11 +1331,11 @@ function defineFormatTests(format) {
     });
   });
 
-  describe('#setFormat()', function() {
-    it('emits \'format\' event with decoder', function() {
-      var inflateAuto = new InflateAuto();
-      var gotFormat = false;
-      inflateAuto.on('format', function(decoder) {
+  describe('#setFormat()', () => {
+    it('emits \'format\' event with decoder', () => {
+      const inflateAuto = new InflateAuto();
+      let gotFormat = false;
+      inflateAuto.on('format', (decoder) => {
         assert(decoder instanceof Decompress);
         gotFormat = true;
       });
@@ -1342,10 +1343,10 @@ function defineFormatTests(format) {
       assert.strictEqual(gotFormat, true);
     });
 
-    it('can set correct format before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('can set correct format before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       inflateAuto.setFormat(Decompress);
       result.checkpoint();
       zlibStream.end(compressed);
@@ -1354,10 +1355,10 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('can set incorrect format before write', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('can set incorrect format before write', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       inflateAuto.setFormat(Decompress);
       result.checkpoint();
       zlibStream.end(otherCompressed);
@@ -1366,10 +1367,10 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('can set same format twice', function() {
-      var zlibStream = new Decompress();
-      var inflateAuto = new InflateAuto();
-      var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    it('can set same format twice', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
       inflateAuto.setFormat(Decompress);
       inflateAuto.setFormat(Decompress);
       result.checkpoint();
@@ -1379,8 +1380,8 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('throws if changing format', function() {
-      var inflateAuto = new InflateAuto();
+    it('throws if changing format', () => {
+      const inflateAuto = new InflateAuto();
       inflateAuto.setFormat(zlib.Inflate);
       try {
         inflateAuto.setFormat(zlib.Gunzip);
@@ -1390,8 +1391,8 @@ function defineFormatTests(format) {
       }
     });
 
-    it('throws if changing detected format', function() {
-      var inflateAuto = new InflateAuto();
+    it('throws if changing detected format', () => {
+      const inflateAuto = new InflateAuto();
       inflateAuto.write(otherHeader);
       try {
         inflateAuto.setFormat(Decompress);
@@ -1404,11 +1405,11 @@ function defineFormatTests(format) {
 
   // _processChunk is a semi-public API since it is called externally for
   // synchronous operation.  Other code may rely on this.
-  describe('#_processChunk()', function() {
+  describe('#_processChunk()', () => {
     // existence check
-    it('has the same type', function() {
-      var autoType = typeof InflateAuto.prototype._processChunk;
-      var zlibType = typeof Decompress.prototype._processChunk;
+    it('has the same type', () => {
+      let autoType = typeof InflateAuto.prototype._processChunk;
+      let zlibType = typeof Decompress.prototype._processChunk;
       assert.strictEqual(autoType, zlibType);
 
       autoType = typeof new InflateAuto()._processChunk;
@@ -1420,35 +1421,36 @@ function defineFormatTests(format) {
       return;
     }
 
-    describe('with cb', function() {
+    describe('with cb', () => {
       // Note:  When called with callback without 'error' listener on 0.12
       // 'error' is emitted asynchronously causing unhandledException.
       // Not currently tested.
 
       if (isDefaultFormat) {
-        it('emits error without calling callback', function() {
-          var zlibStream = new Decompress();
-          var inflateAuto = new InflateAuto();
-          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+        it('emits error without calling callback', () => {
+          const zlibStream = new Decompress();
+          const inflateAuto = new InflateAuto();
+          const result
+            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
           function neverCalled() {
             throw new Error('should not be called');
           }
 
-          var zeros = Buffer.alloc(10);
+          const zeros = Buffer.alloc(10);
           zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
           inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
           result.checkpoint();
           return result;
         });
 
-        it('yields format error', function(done) {
-          var inflateAuto = new InflateAuto({defaultFormat: null});
-          var zeros = Buffer.alloc(10);
-          inflateAuto.on('error', function() {
+        it('yields format error', (done) => {
+          const inflateAuto = new InflateAuto({defaultFormat: null});
+          const zeros = Buffer.alloc(10);
+          inflateAuto.on('error', () => {
             throw new Error('error should not be emitted');
           });
-          inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err) {
+          inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err) => {
             assert(err, 'expected format error');
             assert(/format/i.test(err.message));
             assert.deepStrictEqual(err.data, zeros);
@@ -1457,34 +1459,34 @@ function defineFormatTests(format) {
         });
       }
 
-      it('works if _transform does not yield synchronously', function(done) {
-        function AsyncTransform() { stream.Transform.apply(this, arguments); }
+      it('works if _transform does not yield synchronously', (done) => {
+        function AsyncTransform(...args) { stream.Transform.apply(this, args); }
         AsyncTransform.prototype = Object.create(stream.Transform.prototype);
         AsyncTransform.prototype.constructor = AsyncTransform;
         AsyncTransform.prototype._transform = function(data, enc, cb) {
-          process.nextTick(function() {
+          process.nextTick(() => {
             cb(null, data);
           });
         };
 
-        var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
+        const inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        const zeros = Buffer.alloc(10);
+        inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
         });
-        inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, function(err, data) {
+        inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err, data) => {
           assert.deepStrictEqual(data, zeros);
           done();
         });
       });
 
-      it('buffers inconclusive data', function(done) {
-        var inflateAuto = new InflateAuto();
-        var trunc = compressed.slice(0, 1);
-        inflateAuto.on('error', function() {
+      it('buffers inconclusive data', (done) => {
+        const inflateAuto = new InflateAuto();
+        const trunc = compressed.slice(0, 1);
+        inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
         });
-        inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, function(err, data) {
+        inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, (err, data) => {
           assert.ifError(err);
           assert.strictEqual(data, undefined);
           done();
@@ -1492,22 +1494,22 @@ function defineFormatTests(format) {
       });
     });
 
-    describe('without cb', function() {
+    describe('without cb', () => {
       if (isDefaultFormat) {
-        it('throws without error listener', function() {
-          var zlibStream = new Decompress();
-          var inflateAuto = new InflateAuto();
+        it('throws without error listener', () => {
+          const zlibStream = new Decompress();
+          const inflateAuto = new InflateAuto();
 
-          var zeros = Buffer.alloc(10);
+          const zeros = Buffer.alloc(10);
 
-          var errInflate;
+          let errInflate;
           try {
             zlibStream._processChunk(zeros, zlib.Z_FINISH);
           } catch (err) {
             errInflate = err;
           }
 
-          var errAuto;
+          let errAuto;
           try {
             inflateAuto._processChunk(zeros, zlib.Z_FINISH);
           } catch (err) {
@@ -1517,21 +1519,22 @@ function defineFormatTests(format) {
           assert.deepStrictEqual(errAuto, errInflate);
         });
 
-        it('throws with error listener', function() {
-          var zlibStream = new Decompress();
-          var inflateAuto = new InflateAuto();
-          var result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+        it('throws with error listener', () => {
+          const zlibStream = new Decompress();
+          const inflateAuto = new InflateAuto();
+          const result
+            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-          var zeros = Buffer.alloc(10);
+          const zeros = Buffer.alloc(10);
 
-          var errInflate;
+          let errInflate;
           try {
             zlibStream._processChunk(zeros, zlib.Z_FINISH);
           } catch (err) {
             errInflate = err;
           }
 
-          var errAuto;
+          let errAuto;
           try {
             inflateAuto._processChunk(zeros, zlib.Z_FINISH);
           } catch (err) {
@@ -1542,20 +1545,20 @@ function defineFormatTests(format) {
           result.checkpoint();
         });
 
-        it('throws format errors', function() {
-          var inflateAuto = new InflateAuto({defaultFormat: null});
-          var zeros = Buffer.alloc(10);
-          inflateAuto.on('error', function() {
+        it('throws format errors', () => {
+          const inflateAuto = new InflateAuto({defaultFormat: null});
+          const zeros = Buffer.alloc(10);
+          inflateAuto.on('error', () => {
             throw new Error('error should not be emitted');
           });
-          assert.throws(function() {
+          assert.throws(() => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           });
         });
       }
 
-      it('throws if format lacks _processChunk and _transform', function() {
-        function NoTransform() { stream.Duplex.apply(this, arguments); }
+      it('throws if format lacks _processChunk and _transform', () => {
+        function NoTransform(...args) { stream.Duplex.apply(this, args); }
         NoTransform.prototype = Object.create(stream.Duplex.prototype);
         NoTransform.prototype.constructor = NoTransform;
         NoTransform.prototype._read = function() {};
@@ -1564,75 +1567,73 @@ function defineFormatTests(format) {
           cb();
         };
 
-        var inflateAuto = new InflateAuto({defaultFormat: NoTransform});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
+        const inflateAuto = new InflateAuto({defaultFormat: NoTransform});
+        const zeros = Buffer.alloc(10);
+        inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
         });
         assert.throws(
-          function() {
+          () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
           /NoTransform.*_processChunk/
         );
       });
 
-      it('throws if _transform does not yield synchronously', function() {
-        function AsyncTransform() { stream.Transform.apply(this, arguments); }
+      it('throws if _transform does not yield synchronously', () => {
+        function AsyncTransform(...args) { stream.Transform.apply(this, args); }
         AsyncTransform.prototype = Object.create(stream.Transform.prototype);
         AsyncTransform.prototype.constructor = AsyncTransform;
         AsyncTransform.prototype._transform = function() {};
 
-        var inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
+        const inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        const zeros = Buffer.alloc(10);
+        inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
         });
         assert.throws(
-          function() {
+          () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
           /AsyncTransform.*_processChunk/
         );
       });
 
-      it('throws if _transform yields Error', function() {
-        var errTest = new Error('test');
-        function ErrorTransform() { stream.Transform.apply(this, arguments); }
+      it('throws if _transform yields Error', () => {
+        const errTest = new Error('test');
+        function ErrorTransform(...args) { stream.Transform.apply(this, args); }
         ErrorTransform.prototype = Object.create(stream.Transform.prototype);
         ErrorTransform.prototype.constructor = ErrorTransform;
         ErrorTransform.prototype._transform = function(data, enc, cb) {
           cb(errTest);
         };
 
-        var inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
-        var zeros = Buffer.alloc(10);
-        inflateAuto.on('error', function() {
+        const inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+        const zeros = Buffer.alloc(10);
+        inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
         });
         assert.throws(
-          function() {
+          () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
-          function(err) {
-            return err === errTest;
-          }
+          (err) => err === errTest
         );
       });
     });
   });
 }
 
-describe('InflateAuto', function() {
+describe('InflateAuto', () => {
   // Match constructor behavior of Gunzip/Inflate/InflateRaw
-  it('instantiates without new', function() {
+  it('instantiates without new', () => {
     // eslint-disable-next-line new-cap
-    var auto = InflateAuto();
+    const auto = InflateAuto();
     assertInstanceOf(auto, InflateAuto);
   });
 
-  it('accepts Array-like detectors', function() {
-    var auto = new InflateAuto({
+  it('accepts Array-like detectors', () => {
+    const auto = new InflateAuto({
       detectors: {
         0: zlib.Gunzip,
         length: 1
@@ -1641,34 +1642,34 @@ describe('InflateAuto', function() {
     assert.deepStrictEqual(auto._detectors, [zlib.Gunzip]);
   });
 
-  it('throws TypeError for non-Array-like detectors', function() {
+  it('throws TypeError for non-Array-like detectors', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      function() { new InflateAuto({detectors: true}); },
+      () => { new InflateAuto({detectors: true}); },
       TypeError
     );
   });
 
-  it('throws TypeError for non-function detector', function() {
+  it('throws TypeError for non-function detector', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      function() { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
+      () => { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
       TypeError
     );
   });
 
-  it('throws TypeError for non-function defaultFormat', function() {
+  it('throws TypeError for non-function defaultFormat', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      function() { new InflateAuto({defaultFormat: true}); },
+      () => { new InflateAuto({defaultFormat: true}); },
       TypeError
     );
   });
 
-  it('defaultFormat null disables default', function(done) {
-    var auto = new InflateAuto({defaultFormat: null});
-    var testData = Buffer.alloc(10);
-    auto.on('error', function(err) {
+  it('defaultFormat null disables default', (done) => {
+    const auto = new InflateAuto({defaultFormat: null});
+    const testData = Buffer.alloc(10);
+    auto.on('error', (err) => {
       assert(err, 'expected format mismatch error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, testData);
@@ -1677,10 +1678,10 @@ describe('InflateAuto', function() {
     auto.write(testData);
   });
 
-  it('emits error for format detection error in _transform', function(done) {
-    var inflateAuto = new InflateAuto({defaultFormat: null});
-    var zeros = Buffer.alloc(10);
-    inflateAuto.once('error', function(err) {
+  it('emits error for format detection error in _transform', (done) => {
+    const inflateAuto = new InflateAuto({defaultFormat: null});
+    const zeros = Buffer.alloc(10);
+    inflateAuto.once('error', (err) => {
       assert(err, 'expected format error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, zeros);
@@ -1690,42 +1691,42 @@ describe('InflateAuto', function() {
   });
 
   // Analogous to Gunzip/Inflate/InflateRaw
-  describe('.createInflateAuto()', function() {
-    it('is a factory function', function() {
-      var auto = InflateAuto.createInflateAuto();
+  describe('.createInflateAuto()', () => {
+    it('is a factory function', () => {
+      const auto = InflateAuto.createInflateAuto();
       assertInstanceOf(auto, InflateAuto);
     });
   });
 
-  describe('#flush()', function() {
+  describe('#flush()', () => {
     // To prevent deadlocks of callers waiting for flush before writing
-    it('calls its callback before format detection', function(done) {
-      var auto = new InflateAuto();
+    it('calls its callback before format detection', (done) => {
+      const auto = new InflateAuto();
       auto.on('error', done);
       auto.flush(done);
     });
   });
 
-  describe('#getFormat()', function() {
-    it('returns null before format detection', function() {
-      var inflateAuto = new InflateAuto();
+  describe('#getFormat()', () => {
+    it('returns null before format detection', () => {
+      const inflateAuto = new InflateAuto();
       assert.strictEqual(inflateAuto.getFormat(), null);
     });
   });
 
   if (InflateAuto.prototype.params) {
-    describe('#params()', function() {
+    describe('#params()', () => {
       // To prevent deadlocks of callers waiting for params before writing
-      it('calls its callback before format detection', function(done) {
-        var auto = new InflateAuto();
+      it('calls its callback before format detection', (done) => {
+        const auto = new InflateAuto();
         auto.on('error', done);
         auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);
       });
     });
   }
 
-  SUPPORTED_FORMATS.forEach(function(format) {
-    describe(format.Compress.name + ' support', function() {
+  SUPPORTED_FORMATS.forEach((format) => {
+    describe(`${format.Compress.name} support`, () => {
       defineFormatTests(format);
     });
   });

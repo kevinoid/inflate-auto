@@ -3,13 +3,18 @@
  * @license MIT
  */
 
+// It's helpful to use named parameters for documentation, which makes
+// re-building the argument list annoying and error prone.  Since that is done
+// frequently in this module, disable prefer-rest-params here.
+/* eslint-disable prefer-rest-params */
+
 'use strict';
 
-var Transform = require('stream').Transform;
-var assert = require('assert').ok;
-var inherits = require('util').inherits;
-var zlib = require('zlib');
-var zlibInternal = require('./lib/zlib-internal');
+const {Transform} = require('stream');
+const assert = require('assert');
+const {inherits} = require('util');
+const zlib = require('zlib');
+const zlibInternal = require('./lib/zlib-internal');
 
 function isFunction(val) {
   return typeof val === 'function';
@@ -95,8 +100,8 @@ function InflateAuto(opts) {
   this._closed = false;
 
   // For Zlib compatibility
-  this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined' ?
-    opts.finishFlush : zlib.Z_FINISH;
+  this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined'
+    ? opts.finishFlush : zlib.Z_FINISH;
 
   /** Instance of a class which does the decoding for the detected data format.
    * @private {stream.Duplex} */
@@ -184,7 +189,7 @@ InflateAuto.detectors = {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } else if ((chunk.readUInt16BE(0) % 31) === 0) {
+      } if ((chunk.readUInt16BE(0) % 31) === 0) {
         // Valid ZLIB header
         return zlib.Inflate;
       }
@@ -203,11 +208,11 @@ InflateAuto.detectors = {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } else if (chunk[1] === 0x8b) {
+      } if (chunk[1] === 0x8b) {
         if (chunk.length === 2) {
           // Can't know yet whether header is valid
           return undefined;
-        } else if (chunk[2] === 8) {
+        } if (chunk[2] === 8) {
           // Valid gzip header
           return zlib.Gunzip;
         }
@@ -269,11 +274,11 @@ if (zlib.inflateSync) {
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
   if (chunk && chunk.length > 0) {
-    var detectors = this._detectorsLeft;
-    var plausible = [];
-    for (var i = 0; i < detectors.length; i += 1) {
-      var detector = detectors[i];
-      var format = detector(chunk);
+    const detectors = this._detectorsLeft;
+    const plausible = [];
+    for (let i = 0; i < detectors.length; i += 1) {
+      const detector = detectors[i];
+      const format = detector(chunk);
       if (format) {
         return format;
       }
@@ -289,7 +294,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
       return this._defaultFormat;
     }
 
-    var err = new Error('data did not match any supported formats');
+    const err = new Error('data did not match any supported formats');
     err.data = chunk;
     throw err;
   }
@@ -325,7 +330,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
   // and should not emit 'end' after 'error'
   this._decoder.once('end', callback);
 
-  var chunk = this._writeBuf;
+  const chunk = this._writeBuf;
   this._writeBuf = null;
   this._decoder.end(chunk);
 };
@@ -366,7 +371,7 @@ if (zlib.Inflate.prototype._processChunk) {
       if (typeof this._decoder._processChunk === 'function') {
         // Suppress throwing for unhandled 'error' event when called without cb.
         // zlib classes emit and listen for 'error' internally (in Node 0.12)
-        var errorListener;
+        let errorListener;
         if (typeof cb !== 'function') {
           errorListener = function() {};
           this.on('error', errorListener);
@@ -384,8 +389,8 @@ if (zlib.Inflate.prototype._processChunk) {
       // Fallback to _transform, where possible.
       // Only works synchronously when callback is called with data immediately.
       if (typeof this._decoder._transform === 'function') {
-        var needCb = false;
-        var retVal;
+        let needCb = false;
+        let retVal;
         if (typeof cb !== 'function') {
           needCb = true;
           cb = function(err, result) {
@@ -401,10 +406,10 @@ if (zlib.Inflate.prototype._processChunk) {
         }
       }
 
-      var formatName =
-        (this._decoder.constructor && this._decoder.constructor.name) ||
-        'format';
-      throw new Error(formatName + ' does not support _processChunk');
+      const formatName
+        = (this._decoder.constructor && this._decoder.constructor.name)
+        || 'format';
+      throw new Error(`${formatName} does not support _processChunk`);
     }
 
     this._writeBuf = chunk;
@@ -425,7 +430,7 @@ if (zlib.Inflate.prototype._processChunk) {
  * @see #_detectFormat()
  */
 InflateAuto.prototype.setFormat = function setFormat(Format) {
-  var self = this;
+  const self = this;
 
   if (this._decoder && Format === this._decoder.constructor) {
     return;
@@ -437,7 +442,7 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     throw new Error('Changing format is not supported');
   }
 
-  var format = new Format(this._opts);
+  const format = new Format(this._opts);
   this._decoder = format;
 
   // Ensure .constructor is set properly by Format constructor
@@ -445,25 +450,25 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     format.constructor = Format;
   }
 
-  format.on('data', function(chunk) {
+  format.on('data', (chunk) => {
     self.push(chunk);
   });
 
   // proxy important events from the format
   // Note:  Same events as Readable.wrap except pause/unpause and close.
-  ['destroy', 'error'].forEach(function(event) {
+  ['destroy', 'error'].forEach((event) => {
     format.on(event, self.emit.bind(self, event));
   });
 
   // 'close' handled specially to ensure correct order with 'end'
   this.removeListener('end', this.close);
-  var endEmitted = false;
-  this.once('end', function() { endEmitted = true; });
-  var formatEndEmitted = false;
-  format.once('end', function() { formatEndEmitted = true; });
-  format.on('close', function() {
+  let endEmitted = false;
+  this.once('end', () => { endEmitted = true; });
+  let formatEndEmitted = false;
+  format.once('end', () => { formatEndEmitted = true; });
+  format.on('close', () => {
     if (formatEndEmitted && !endEmitted) {
-      self.once('end', function() { self.emit('close'); });
+      self.once('end', () => { self.emit('close'); });
     } else {
       self.emit('close');
     }
@@ -472,8 +477,8 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   self.emit('format', format);
 
   if (this._queuedMethodCalls) {
-    this._queuedMethodCalls.forEach(function(mc) {
-      format[mc.name].apply(format, mc.args);
+    this._queuedMethodCalls.forEach((mc) => {
+      format[mc.name](...mc.args);
     });
     delete this._queuedMethodCalls;
   }
@@ -530,7 +535,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
     return chunk;
   }
 
-  var signature;
+  let signature;
   if (this._writeBuf) {
     signature = Buffer.concat([this._writeBuf, chunk]);
   } else {
@@ -540,7 +545,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   // If _detectFormat or setFormat throw, data will be buffered
   this._writeBuf = signature;
 
-  var Format = this._detectFormat(signature);
+  const Format = this._detectFormat(signature);
   if (Format) {
     this.setFormat(Format);
   }
@@ -557,7 +562,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  */
 InflateAuto.prototype.close = function close(callback) {
   if (this._decoder && typeof this._decoder.close === 'function') {
-    return this._decoder.close.apply(this._decoder, arguments);
+    return this._decoder.close(...arguments);
   }
 
   if (callback) {
@@ -593,7 +598,7 @@ InflateAuto.prototype.getFormat = function getFormat() {
  */
 InflateAuto.prototype.flush = function flush(kind, callback) {
   if (this._decoder) {
-    return this._decoder.flush.apply(this._decoder, arguments);
+    return this._decoder.flush(...arguments);
   }
 
   this._queueMethodCall('flush', arguments);
@@ -623,7 +628,7 @@ if (zlib.Inflate.prototype.params) {
    */
   InflateAuto.prototype.params = function params(level, strategy, callback) {
     if (this._decoder) {
-      return this._decoder.params.apply(this._decoder, arguments);
+      return this._decoder.params(...arguments);
     }
 
     this._queueMethodCall('params', arguments);
@@ -640,7 +645,7 @@ if (zlib.Inflate.prototype.params) {
  */
 InflateAuto.prototype.reset = function reset() {
   if (this._decoder) {
-    return this._decoder.reset.apply(this._decoder, arguments);
+    return this._decoder.reset(...arguments);
   }
 
   assert(!this._closed, 'zlib binding closed');
@@ -666,7 +671,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   // Ideally we would let the proxied method call the callback,
   // but callers may depend on a reply before the next write.
   // So call the callback now to avoid deadlocks.
-  var lastArg = args[args.length - 1];
+  const lastArg = args[args.length - 1];
   if (typeof lastArg === 'function') {
     args = Array.prototype.slice.call(args, 0, -1);
     process.nextTick(lastArg);
@@ -675,7 +680,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   if (!this._queuedMethodCalls) {
     this._queuedMethodCalls = [];
   }
-  this._queuedMethodCalls.push({name: name, args: args});
+  this._queuedMethodCalls.push({name, args});
 };
 
 module.exports = InflateAuto;
