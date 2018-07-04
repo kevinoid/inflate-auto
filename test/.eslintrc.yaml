@@ -3,8 +3,4 @@ extends: "../.eslintrc.yaml"
 env:
     mocha: true
 
-# The mocha env doesn't define the functions added by --delay
-globals:
-    run: false
-
 # vi: set sts=2 sw=2 et ft=yaml:
