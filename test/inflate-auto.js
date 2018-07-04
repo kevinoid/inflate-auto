@@ -6,9 +6,6 @@
 'use strict';
 
 var BBPromise = require('bluebird');
-// Use safe-buffer until support for Node < 4 is dropped
-// eslint-disable-next-line no-shadow
-var Buffer = require('safe-buffer').Buffer;
 var InflateAuto = require('..');
 var assert = require('assert');
 var assignOwnPropertyDescriptors =
