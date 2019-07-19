@@ -5,15 +5,15 @@
 
 'use strict';
 
-const InflateAuto = require('..');
 const assert = require('assert');
-const assignOwnPropertyDescriptors
-  = require('../test-lib/assign-own-property-descriptors.js');
 const pify = require('pify');
 const stream = require('stream');
 const streamCompare = require('stream-compare');
 const util = require('util');
 const zlib = require('zlib');
+const assignOwnPropertyDescriptors =
+  require('../test-lib/assign-own-property-descriptors.js');
+const InflateAuto = require('..');
 
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 
@@ -22,14 +22,14 @@ const nodeVersion = process.version.slice(1).split('.').map(Number);
 const COMPARE_OPTIONS = {
   compare: assert.deepStrictEqual,
   events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
-  readPolicy: 'none'
+  readPolicy: 'none',
 };
 
 const TEST_DATA = {
   empty: Buffer.alloc(0),
   large: Buffer.alloc(1024),
   // 'normal' is the default for not-data-specific tests
-  normal: Buffer.from('uncompressed data')
+  normal: Buffer.from('uncompressed data'),
 };
 
 /* eslint-disable comma-spacing */
@@ -54,11 +54,11 @@ const SUPPORTED_FORMATS = [
         0,46,175,181,239,0,4,0,0]),
       // zlib.gzipSync(data.normal)
       normal: Buffer.from([31,139,8,0,0,0,0,0,0,3,43,205,75,206,207,45,40,74,45,
-        46,78,77,81,72,73,44,73,4,0,239,231,69,217,17,0,0,0])
+        46,78,77,81,72,73,44,73,4,0,239,231,69,217,17,0,0,0]),
     },
     decompress: zlib.gunzip,
     decompressSync: zlib.gunzipSync,
-    header: Buffer.from([31,139,8])
+    header: Buffer.from([31,139,8]),
   },
   {
     Compress: zlib.Deflate,
@@ -82,11 +82,11 @@ const SUPPORTED_FORMATS = [
         73,44,73,4,0,63,144,6,211]),
       // zlib.deflateSync(data.normal, {dictionary: data.normal})
       normalWithDict:
-        Buffer.from([120,187,63,144,6,211,43,69,23,0,0,63,144,6,211])
+        Buffer.from([120,187,63,144,6,211,43,69,23,0,0,63,144,6,211]),
     },
     decompress: zlib.inflate,
     decompressSync: zlib.inflateSync,
-    header: Buffer.from([120,156])
+    header: Buffer.from([120,156]),
   },
   {
     Compress: zlib.DeflateRaw,
@@ -103,13 +103,13 @@ const SUPPORTED_FORMATS = [
       normal: Buffer.from([43,205,75,206,207,45,40,74,45,46,78,77,81,72,73,44,
         73,4,0]),
       // zlib.deflateRawSync(data.normal, {dictionary: data.normal})
-      normalWithDict: Buffer.from([43,69,23,0,0])
+      normalWithDict: Buffer.from([43,69,23,0,0]),
     },
     decompress: zlib.inflateRaw,
     decompressSync: zlib.inflateRawSync,
     header: Buffer.alloc(0),
-    isDefault: true
-  }
+    isDefault: true,
+  },
 ];
 /* eslint-enable comma-spacing */
 
@@ -119,7 +119,7 @@ function assertInstanceOf(obj, ctor) {
       obj,
       ctor,
       null,
-      'instanceof'
+      'instanceof',
     );
   }
 }
@@ -179,7 +179,7 @@ function defineFormatTests(format) {
     decompress,
     decompressSync,
     isDefault: isDefaultFormat,
-    header
+    header,
   } = format;
   const headerLen = header.length;
 
@@ -239,9 +239,9 @@ function defineFormatTests(format) {
                 assert.deepStrictEqual(errAuto, errDecompress);
                 assert.deepStrictEqual(dataAuto, dataDecompress);
                 done();
-              }
+              },
             );
-          }
+          },
         );
       });
     }
@@ -312,7 +312,7 @@ function defineFormatTests(format) {
 
     return Promise.all([
       zlibWriteP.call(zlibStream, compressed),
-      autoWriteP.call(inflateAuto, compressed)
+      autoWriteP.call(inflateAuto, compressed),
     ]).then(() => {
       result.checkpoint();
       zlibStream.end();
@@ -376,8 +376,8 @@ function defineFormatTests(format) {
         it(`${len} bytes of ${formatName} header`, () => {
           const zlibStream = new Decompress();
           const inflateAuto = new InflateAuto();
-          const result
-            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+          const result =
+            streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
           const partial = formatHeader.slice(0, len);
           zlibStream.end(partial);
           inflateAuto.end(partial);
@@ -742,7 +742,7 @@ function defineFormatTests(format) {
         {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
         {windowBits: zlib.Z_MIN_WINDOWBITS},
         {windowBits: Infinity},
-        {windowBits: NaN}
+        {windowBits: NaN},
       ].forEach(checkOptions.bind(null, false, false));
 
       // finishFlush added in nodejs/node@97816679 (Node 7)
@@ -750,12 +750,12 @@ function defineFormatTests(format) {
       [
         {finishFlush: -1},
         {finishFlush: Infinity},
-        {finishFlush: String(zlib.Z_FULL_FLUSH)}
+        {finishFlush: String(zlib.Z_FULL_FLUSH)},
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, false));
 
       // Strategy checking tightened in nodejs/node@dd928b04fc6 (Node 8)
       [
-        {strategy: String(zlib.Z_FILTERED)}
+        {strategy: String(zlib.Z_FILTERED)},
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking falsey values changed in nodejs/node@efae43f0ee2 (Node 8)
@@ -768,7 +768,7 @@ function defineFormatTests(format) {
         {memLevel: false},
         {strategy: false},
         {windowBits: 0},
-        {windowBits: false}
+        {windowBits: false},
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking for zero, NaN, Infinity, and strict types changed in
@@ -779,7 +779,7 @@ function defineFormatTests(format) {
         {level: false},
         {level: String(zlib.Z_MIN_LEVEL)},
         {memLevel: String(zlib.Z_MIN_MEMLEVEL)},
-        {windowBits: String(zlib.Z_MIN_WINDOWBITS)}
+        {windowBits: String(zlib.Z_MIN_WINDOWBITS)},
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 9, false));
 
       // chunkSize checking relied on Buffer argument checking prior to
@@ -792,7 +792,7 @@ function defineFormatTests(format) {
       [
         {chunkSize: zlib.Z_MAX_CHUNK + 1},
         {chunkSize: zlib.Z_MAX_CHUNK},
-        {chunkSize: Infinity}
+        {chunkSize: Infinity},
       ].forEach(checkOptions.bind(null, false, nodeVersion[0] < 9));
 
       // Checking changed in nodejs/node@add4b0ab8cc (Node 9) to throw
@@ -801,9 +801,9 @@ function defineFormatTests(format) {
       // Before nodejs/node@85ab4a5f128 (Node 6) chunkSize passed to Buffer
       // constructor resulting in now error and incorrect sizing.
       [
-        {chunkSize: String(zlib.Z_MIN_CHUNK)}
+        {chunkSize: String(zlib.Z_MIN_CHUNK)},
       ].forEach(
-        checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9)
+        checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9),
       );
     });
 
@@ -834,7 +834,7 @@ function defineFormatTests(format) {
       const zlibStream = new Decompress();
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-      return new Promise(((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         zlibStream.close((...zlibArgs) => {
           inflateAuto.close((...inflateArgs) => {
             assert.deepStrictEqual(inflateArgs, zlibArgs);
@@ -845,7 +845,7 @@ function defineFormatTests(format) {
             });
           });
         });
-      }));
+      });
     });
 
     // Zlib behavior changed in 8b43d3f5 (6.0.0) to emit on every call.
@@ -866,12 +866,12 @@ function defineFormatTests(format) {
       inflateAuto.close();
       inflateAuto.close();
 
-      return new Promise(((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         setImmediate(() => {
           assert.strictEqual(closeEmitted, true);
           resolve();
         });
-      }));
+      });
     });
 
     it('before #end()', () => {
@@ -925,7 +925,7 @@ function defineFormatTests(format) {
       inflateAuto.close();
       result.checkpoint();
 
-      return new Promise(((resolve, reject) => {
+      return new Promise((resolve, reject) => {
         const writeArgsByCall = [];
         function onWrite(...writeArgs) {
           writeArgsByCall.push(writeArgs);
@@ -939,7 +939,7 @@ function defineFormatTests(format) {
         zlibStream.write(Buffer.alloc(0), onWrite);
         inflateAuto.write(Buffer.alloc(0), onWrite);
         result.checkpoint();
-      }));
+      });
     });
   });
 
@@ -1111,7 +1111,7 @@ function defineFormatTests(format) {
       const partial = compressed.slice(0, 4);
       return Promise.all([
         zlibWriteP.call(zlibStream, partial),
-        autoWriteP.call(inflateAuto, partial)
+        autoWriteP.call(inflateAuto, partial),
       ]).then(() => {
         result.checkpoint();
 
@@ -1123,7 +1123,7 @@ function defineFormatTests(format) {
           (err) => {
             assert.ifError(err);
             zlibStream.end(remainder);
-          }
+          },
         );
         inflateAuto.params(
           zlib.Z_BEST_COMPRESSION,
@@ -1131,7 +1131,7 @@ function defineFormatTests(format) {
           (err) => {
             assert.ifError(err);
             inflateAuto.end(remainder);
-          }
+          },
         );
         result.checkpoint();
 
@@ -1180,7 +1180,7 @@ function defineFormatTests(format) {
         const partial = compressed.slice(0, 1);
         return Promise.all([
           zlibWriteP.call(zlibStream, partial),
-          autoWriteP.call(inflateAuto, partial)
+          autoWriteP.call(inflateAuto, partial),
         ]).then(() => {
           result.checkpoint();
 
@@ -1197,7 +1197,7 @@ function defineFormatTests(format) {
           // Gunzip gained reset in v6.0.0
           // https://github.com/nodejs/node/commit/f380db23
           // If zlib stream emits a header error, test for success instead of ==
-          return new Promise(((resolve, reject) => {
+          return new Promise((resolve, reject) => {
             let headerError = false;
             zlibStream.once('error', (err) => {
               if (err.message === 'incorrect header check') {
@@ -1216,7 +1216,7 @@ function defineFormatTests(format) {
                 resolve();
               }
             });
-          }));
+          });
         });
       });
 
@@ -1259,7 +1259,7 @@ function defineFormatTests(format) {
       const partial = compressed.slice(0, headerLen + 1);
       return Promise.all([
         zlibWriteP.call(zlibStream, partial),
-        autoWriteP.call(inflateAuto, partial)
+        autoWriteP.call(inflateAuto, partial),
       ]).then(() => {
         result.checkpoint();
 
@@ -1309,7 +1309,7 @@ function defineFormatTests(format) {
       const chunk = compressed.slice(0, headerLen + 4);
       return Promise.all([
         zlibWriteP.call(zlibStream, chunk),
-        autoWriteP.call(inflateAuto, chunk)
+        autoWriteP.call(inflateAuto, chunk),
       ]).then(() => {
         result.checkpoint();
 
@@ -1426,8 +1426,8 @@ function defineFormatTests(format) {
         it('emits error without calling callback', () => {
           const zlibStream = new Decompress();
           const inflateAuto = new InflateAuto();
-          const result
-            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+          const result =
+            streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
           function neverCalled() {
             throw new Error('should not be called');
@@ -1518,8 +1518,8 @@ function defineFormatTests(format) {
         it('throws with error listener', () => {
           const zlibStream = new Decompress();
           const inflateAuto = new InflateAuto();
-          const result
-            = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+          const result =
+            streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
           const zeros = Buffer.alloc(10);
 
@@ -1572,7 +1572,7 @@ function defineFormatTests(format) {
           () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
-          /NoTransform.*_processChunk/
+          /NoTransform.*_processChunk/,
         );
       });
 
@@ -1591,7 +1591,7 @@ function defineFormatTests(format) {
           () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
-          /AsyncTransform.*_processChunk/
+          /AsyncTransform.*_processChunk/,
         );
       });
 
@@ -1613,7 +1613,7 @@ function defineFormatTests(format) {
           () => {
             inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
           },
-          (err) => err === errTest
+          (err) => err === errTest,
         );
       });
     });
@@ -1632,8 +1632,8 @@ describe('InflateAuto', () => {
     const auto = new InflateAuto({
       detectors: {
         0: zlib.Gunzip,
-        length: 1
-      }
+        length: 1,
+      },
     });
     assert.deepStrictEqual(auto._detectors, [zlib.Gunzip]);
   });
@@ -1642,7 +1642,7 @@ describe('InflateAuto', () => {
     assert.throws(
       // eslint-disable-next-line no-new
       () => { new InflateAuto({detectors: true}); },
-      TypeError
+      TypeError,
     );
   });
 
@@ -1650,7 +1650,7 @@ describe('InflateAuto', () => {
     assert.throws(
       // eslint-disable-next-line no-new
       () => { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
-      TypeError
+      TypeError,
     );
   });
 
@@ -1658,7 +1658,7 @@ describe('InflateAuto', () => {
     assert.throws(
       // eslint-disable-next-line no-new
       () => { new InflateAuto({defaultFormat: true}); },
-      TypeError
+      TypeError,
     );
   });
 

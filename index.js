@@ -124,7 +124,7 @@ function InflateAuto(opts) {
   } else {
     this._detectors = [
       InflateAuto.detectors.detectDeflate,
-      InflateAuto.detectors.detectGzip
+      InflateAuto.detectors.detectGzip,
     ];
   }
 
@@ -219,7 +219,7 @@ InflateAuto.detectors = {
       }
     }
     return null;
-  }
+  },
 };
 
 /** Decompresses a compressed <code>Buffer</code>.
@@ -403,8 +403,8 @@ if (zlib.Inflate.prototype._processChunk) {
         }
       }
 
-      const formatName
-        = (this._decoder.constructor && this._decoder.constructor.name)
+      const formatName =
+        (this._decoder.constructor && this._decoder.constructor.name)
         || 'format';
       throw new Error(`${formatName} does not support _processChunk`);
     }
