@@ -2,7 +2,9 @@
 .eslintignore
 .eslintrc*
 .npmignore
+.nyc_output/
 .travis.yml
+/.githooks/
 /coverage/
 /doc-src/
 /doc/
@@ -14,4 +16,5 @@
 CHANGELOG.*
 TODO.*
 appveyor.yml
+audit-resolv.json
 jsdoc*.conf.json
