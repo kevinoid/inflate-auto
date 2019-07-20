@@ -91,9 +91,17 @@ function InflateAuto(opts) {
 
   Transform.call(this, opts);
 
-  // Note:  Copy validation code rather than calling Zlib constructor to avoid
-  // overhead of zlib binding initialization.
-  zlibInternal.validateOptions(opts);
+  if (opts !== undefined && opts !== null) {
+    // Validate opts object for Zlib constructor
+    // Arguably this should be deferred until the decoder is constructed.
+    // Since the validation is the same for all Zlib subclasses (with the
+    // exception of windowBits == null or 0 for deflate vs inflate), the
+    // value of matching the behavior of Inflate/InflateRaw and reporting
+    // errors early (to avoid unknown/unrecoverable stream state) outweighs
+    // the performance penalty and validation edge cases.
+    // eslint-disable-next-line no-new
+    new zlib.Inflate(opts);
+  }
 
   /** Whether #close() has been called.
    * @private {boolean} */
