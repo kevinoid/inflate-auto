@@ -93,14 +93,19 @@ function InflateAuto(opts) {
 
   if (opts !== undefined && opts !== null) {
     // Validate opts object for Zlib constructor
+    //
     // Arguably this should be deferred until the decoder is constructed.
     // Since the validation is the same for all Zlib subclasses (with the
     // exception of windowBits == null or 0 for deflate vs inflate), the
     // value of matching the behavior of Inflate/InflateRaw and reporting
     // errors early (to avoid unknown/unrecoverable stream state) outweighs
     // the performance penalty and validation edge cases.
+    //
+    // Save Inflate instance for later use due to (relatively) high cost of
+    // instantiation (which involves initializing a zlib instance).
+    //
     // eslint-disable-next-line no-new
-    new zlib.Inflate(opts);
+    this._inflate = new zlib.Inflate(opts);
   }
 
   /** Whether #close() has been called.
@@ -447,7 +452,11 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     throw new Error('Changing format is not supported');
   }
 
-  const format = new Format(this._opts);
+  // Reuse instance from option validation, if Format matches.
+  const format = Format === zlib.Inflate && this._inflate ? this._inflate
+    : new Format(this._opts);
+  delete this._inflate;
+
   this._decoder = format;
 
   // Ensure .constructor is set properly by Format constructor
