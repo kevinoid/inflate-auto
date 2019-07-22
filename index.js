@@ -89,6 +89,15 @@ function InflateAuto(opts) {
     return new InflateAuto(opts);
   }
 
+  // Ignore encoding, objectMode, and writableObjectMode
+  // as done in nodejs/node@add4b0ab8c (v9 and later)
+  if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
+    opts = Object.assign({}, opts);
+    opts.encoding = null;
+    opts.objectMode = false;
+    opts.writableObjectMode = false;
+  }
+
   Transform.call(this, opts);
 
   if (opts !== undefined && opts !== null) {
@@ -508,11 +517,6 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
   callback) {
   if (!this._decoder) {
-    if (chunk !== null && !(chunk instanceof Buffer)) {
-      callback(new TypeError('invalid input'));
-      return;
-    }
-
     if (this._closed) {
       callback(new Error('zlib binding closed'));
       return;
