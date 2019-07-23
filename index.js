@@ -206,16 +206,19 @@ InflateAuto.detectors = {
    */
   detectDeflate: function detectDeflate(chunk) {
     // CM field (least-significant 4 bits) must be 8
-    // FCHECK field ensures first 16-bit BE int is a multiple of 31
     if ((chunk[0] & 0x0f) === 8) {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } if ((chunk.readUInt16BE(0) % 31) === 0) {
+      }
+
+      // FCHECK field ensures first 16-bit BE int is a multiple of 31
+      if ((chunk.readUInt16BE(0) % 31) === 0) {
         // Valid ZLIB header
         return zlib.Inflate;
       }
     }
+
     return null;
   },
   /** Detects the GZIP format, as specified in RFC 1952.
@@ -230,16 +233,21 @@ InflateAuto.detectors = {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } if (chunk[1] === 0x8b) {
+      }
+
+      if (chunk[1] === 0x8b) {
         if (chunk.length === 2) {
           // Can't know yet whether header is valid
           return undefined;
-        } if (chunk[2] === 8) {
+        }
+
+        if (chunk[2] === 8) {
           // Valid gzip header
           return zlib.Gunzip;
         }
       }
     }
+
     return null;
   },
 };
