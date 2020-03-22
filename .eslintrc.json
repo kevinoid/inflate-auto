@@ -27,6 +27,20 @@
       "rules": {
         "node/shebang": "off"
       }
+    },
+    {
+      "files": [
+        "lib/zlib-internal.js"
+      ],
+      "rules": {
+        "comma-dangle": ["error", "only-multiline"],
+        "curly": "off",
+        "import/order": "off",
+        "no-extra-parens": ["error", "functions"],
+        "no-use-before-define": ["error", { "functions": false }],
+        "nonblock-statement-body-position": ["error", "below"],
+        "operator-linebreak": ["error", "after"]
+      }
     }
   ]
 }
