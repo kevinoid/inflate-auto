@@ -10,9 +10,9 @@
 
 'use strict';
 
-const {Transform} = require('stream');
+const { Transform } = require('stream');
 const assert = require('assert');
-const {inherits} = require('util');
+const { inherits } = require('util');
 const zlib = require('zlib');
 const zlibInternal = require('./lib/zlib-internal');
 
@@ -107,7 +107,7 @@ function InflateAuto(opts) {
   // Ignore encoding, objectMode, and writableObjectMode
   // as done in nodejs/node@add4b0ab8c (v9 and later)
   if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
-    opts = Object.assign({}, opts);
+    opts = { ...opts };
     opts.encoding = null;
     opts.objectMode = false;
     opts.writableObjectMode = false;
@@ -127,8 +127,6 @@ function InflateAuto(opts) {
     //
     // Save Inflate instance for later use due to (relatively) high cost of
     // instantiation (which involves initializing a zlib instance).
-    //
-    // eslint-disable-next-line no-new
     this._inflate = new zlib.Inflate(opts);
   }
 
@@ -221,7 +219,8 @@ InflateAuto.detectors = {
    */
   detectDeflate: function detectDeflate(chunk) {
     // CM field (least-significant 4 bits) must be 8
-    if ((chunk[0] & 0x0f) === 8) {
+    // eslint-disable-next-line no-bitwise
+    if ((chunk[0] & 0x0F) === 8) {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
@@ -244,13 +243,13 @@ InflateAuto.detectors = {
    */
   detectGzip: function detectGzip(chunk) {
     // Check for gzip header per Section 2.3.1 of RFC 1952
-    if (chunk[0] === 0x1f) {
+    if (chunk[0] === 0x1F) {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
       }
 
-      if (chunk[1] === 0x8b) {
+      if (chunk[1] === 0x8B) {
         if (chunk.length === 2) {
           // Can't know yet whether header is valid
           return undefined;
@@ -714,7 +713,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   if (!this._queuedMethodCalls) {
     this._queuedMethodCalls = [];
   }
-  this._queuedMethodCalls.push({name, args});
+  this._queuedMethodCalls.push({ name, args });
 };
 
 module.exports = InflateAuto;

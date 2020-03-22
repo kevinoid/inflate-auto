@@ -13,7 +13,8 @@
  * @return {!Object} target.
  */
 function assignOwnPropertyDescriptors(target, ...sources) {
-  const targetObj = Object(target);
+  // eslint-disable-next-line no-new-object
+  const targetObj = new Object(target);
 
   sources.forEach((source) => {
     function assignProp(propName) {

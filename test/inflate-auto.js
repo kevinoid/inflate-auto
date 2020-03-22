@@ -42,6 +42,7 @@ const SUPPORTED_FORMATS = [
     corruptChecksum: function corruptGzipChecksum(compressed) {
       const invalid = Buffer.from(compressed);
       // gzip format has 4-byte CRC32 before 4-byte size at end
+      // eslint-disable-next-line no-bitwise
       invalid[invalid.length - 5] = invalid[invalid.length - 5] ^ 0x1;
       return invalid;
     },
@@ -68,6 +69,7 @@ const SUPPORTED_FORMATS = [
     corruptChecksum: function corruptZlibChecksum(compressed) {
       const invalid = Buffer.from(compressed);
       // zlib format has 4-byte Adler-32 at end
+      // eslint-disable-next-line no-bitwise
       invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
       return invalid;
     },
@@ -134,20 +136,25 @@ function makeError(source) {
   return error;
 }
 
+function neverCalled() {
+  throw new Error('should not be called');
+}
+
+function normalizeEvent(event) {
+  if (event.name === 'error') {
+    const normEvent = { ...event };
+    normEvent.args = normEvent.args.map(makeError);
+    return normEvent;
+  }
+
+  return event;
+}
+
 /** Compares StreamStates ignoring the prototype of Error events. */
 function compareNoErrorTypes(actualState, expectedState) {
-  const actual = Object.assign({}, actualState);
-  const expected = Object.assign({}, expectedState);
+  const actual = { ...actualState };
+  const expected = { ...expectedState };
 
-  function normalizeEvent(event) {
-    if (event.name === 'error') {
-      const normEvent = Object.assign({}, event);
-      normEvent.args = normEvent.args.map(makeError);
-      return normEvent;
-    }
-
-    return event;
-  }
   actual.events = actual.events.map(normalizeEvent);
   expected.events = expected.events.map(normalizeEvent);
 
@@ -196,7 +203,7 @@ function defineFormatTests(format) {
     });
 
     it('can accept options argument', (done) => {
-      const opts = {chunkSize: zlib.Z_MIN_CHUNK};
+      const opts = { chunkSize: zlib.Z_MIN_CHUNK };
       InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) => {
         assert.ifError(errAuto);
 
@@ -215,7 +222,7 @@ function defineFormatTests(format) {
     });
 
     it('can use PassThrough as defaultFormat', (done) => {
-      const opts = {defaultFormat: stream.PassThrough};
+      const opts = { defaultFormat: stream.PassThrough };
       InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) => {
         assert.ifError(errAuto);
         assert.deepStrictEqual(dataAuto, uncompressed);
@@ -227,7 +234,7 @@ function defineFormatTests(format) {
     if (decompress.length > 2) {
       it('handles string defaultEncoding like zlib', (done) => {
         const compressedStr = compressed.toString('binary');
-        const opts = {defaultEncoding: 'binary'};
+        const opts = { defaultEncoding: 'binary' };
         decompress(
           compressedStr,
           opts,
@@ -492,7 +499,7 @@ function defineFormatTests(format) {
   const compressedWithDict = format.dataCompressed.normalWithDict;
   if (compressedWithDict && compress.length === 3) {
     it('handles dictionary', () => {
-      const options = {dictionary: uncompressed};
+      const options = { dictionary: uncompressed };
       const zlibStream = new Decompress(options);
       const inflateAuto = new InflateAuto(options);
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -515,7 +522,7 @@ function defineFormatTests(format) {
 
   if (!isDefaultFormat) {
     it('emits error for format error in _flush', (done) => {
-      const inflateAuto = new InflateAuto({defaultFormat: null});
+      const inflateAuto = new InflateAuto({ defaultFormat: null });
       const truncated = compressed.slice(0, 1);
       inflateAuto.on('error', (err) => {
         assert(err, 'expected format error');
@@ -532,10 +539,10 @@ function defineFormatTests(format) {
   // See https://github.com/nodejs/node/pull/16960
   if (nodeVersion[0] !== 9) {
     it('errors on write of invalid type', () => {
-      const options = {objectMode: true};
+      const options = { objectMode: true };
       const zlibStream = new Decompress(options);
       const inflateAuto = new InflateAuto(options);
-      const compareOptions = Object.assign({}, COMPARE_OPTIONS);
+      const compareOptions = { ...COMPARE_OPTIONS };
       compareOptions.endEvents = ['end'];
 
       // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
@@ -609,7 +616,7 @@ function defineFormatTests(format) {
     }
 
     it('can use PassThrough as defaultFormat', () => {
-      const opts = {defaultFormat: stream.PassThrough};
+      const opts = { defaultFormat: stream.PassThrough };
       const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
       assert.deepStrictEqual(dataAuto, uncompressed);
     });
@@ -642,7 +649,7 @@ function defineFormatTests(format) {
       // passing to _processChunk.  So it gets mangled.
       it('handles string with defaultEncoding like zlib', () => {
         const compressedStr = compressed.toString('binary');
-        const opts = {defaultEncoding: 'binary'};
+        const opts = { defaultEncoding: 'binary' };
 
         let dataInflate, errInflate;
         try {
@@ -706,80 +713,80 @@ function defineFormatTests(format) {
       [
         null,
         true,
-        {chunkSize: zlib.Z_MIN_CHUNK - 1},
-        {chunkSize: zlib.Z_MIN_CHUNK},
-        {chunkSize: NaN},
-        {dictionary: Buffer.alloc(0)},
-        {dictionary: []},
-        {dictionary: true},
-        {finishFlush: 0},
-        {finishFlush: zlib.Z_FULL_FLUSH},
-        {finishFlush: NaN},
-        {flush: 0},
-        {flush: -1},
-        {flush: Infinity},
-        {flush: String(zlib.Z_FULL_FLUSH)},
-        {flush: zlib.Z_FULL_FLUSH},
-        {level: 0},
-        {level: zlib.Z_MAX_LEVEL + 1},
-        {level: zlib.Z_MAX_LEVEL},
-        {level: zlib.Z_MIN_LEVEL - 1},
-        {level: zlib.Z_MIN_LEVEL},
-        {level: Infinity},
-        {level: NaN},
-        {memLevel: zlib.Z_MAX_MEMLEVEL + 1},
-        {memLevel: zlib.Z_MAX_MEMLEVEL},
-        {memLevel: zlib.Z_MIN_MEMLEVEL},
-        {memLevel: Infinity},
-        {memLevel: NaN},
-        {strategy: 0},
-        {strategy: -1},
-        {strategy: zlib.Z_FILTERED},
-        {strategy: Infinity},
-        {strategy: NaN},
-        {windowBits: zlib.Z_MAX_WINDOWBITS + 1},
-        {windowBits: zlib.Z_MAX_WINDOWBITS},
-        {windowBits: zlib.Z_MIN_WINDOWBITS - 1},
-        {windowBits: zlib.Z_MIN_WINDOWBITS},
-        {windowBits: Infinity},
-        {windowBits: NaN},
+        { chunkSize: zlib.Z_MIN_CHUNK - 1 },
+        { chunkSize: zlib.Z_MIN_CHUNK },
+        { chunkSize: NaN },
+        { dictionary: Buffer.alloc(0) },
+        { dictionary: [] },
+        { dictionary: true },
+        { finishFlush: 0 },
+        { finishFlush: zlib.Z_FULL_FLUSH },
+        { finishFlush: NaN },
+        { flush: 0 },
+        { flush: -1 },
+        { flush: Infinity },
+        { flush: String(zlib.Z_FULL_FLUSH) },
+        { flush: zlib.Z_FULL_FLUSH },
+        { level: 0 },
+        { level: zlib.Z_MAX_LEVEL + 1 },
+        { level: zlib.Z_MAX_LEVEL },
+        { level: zlib.Z_MIN_LEVEL - 1 },
+        { level: zlib.Z_MIN_LEVEL },
+        { level: Infinity },
+        { level: NaN },
+        { memLevel: zlib.Z_MAX_MEMLEVEL + 1 },
+        { memLevel: zlib.Z_MAX_MEMLEVEL },
+        { memLevel: zlib.Z_MIN_MEMLEVEL },
+        { memLevel: Infinity },
+        { memLevel: NaN },
+        { strategy: 0 },
+        { strategy: -1 },
+        { strategy: zlib.Z_FILTERED },
+        { strategy: Infinity },
+        { strategy: NaN },
+        { windowBits: zlib.Z_MAX_WINDOWBITS + 1 },
+        { windowBits: zlib.Z_MAX_WINDOWBITS },
+        { windowBits: zlib.Z_MIN_WINDOWBITS - 1 },
+        { windowBits: zlib.Z_MIN_WINDOWBITS },
+        { windowBits: Infinity },
+        { windowBits: NaN },
       ].forEach(checkOptions.bind(null, false, false));
 
       // finishFlush added in nodejs/node@97816679 (Node 7)
       // backported in nodejs/node@5f11b5369 (Node 6)
       [
-        {finishFlush: -1},
-        {finishFlush: Infinity},
-        {finishFlush: String(zlib.Z_FULL_FLUSH)},
+        { finishFlush: -1 },
+        { finishFlush: Infinity },
+        { finishFlush: String(zlib.Z_FULL_FLUSH) },
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, false));
 
       // Strategy checking tightened in nodejs/node@dd928b04fc6 (Node 8)
       [
-        {strategy: String(zlib.Z_FILTERED)},
+        { strategy: String(zlib.Z_FILTERED) },
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking falsey values changed in nodejs/node@efae43f0ee2 (Node 8)
       [
-        {chunkSize: 0},
-        {chunkSize: false},
-        {dictionary: 0},
-        {dictionary: false},
-        {memLevel: 0},
-        {memLevel: false},
-        {strategy: false},
-        {windowBits: 0},
-        {windowBits: false},
+        { chunkSize: 0 },
+        { chunkSize: false },
+        { dictionary: 0 },
+        { dictionary: false },
+        { memLevel: 0 },
+        { memLevel: false },
+        { strategy: false },
+        { windowBits: 0 },
+        { windowBits: false },
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
 
       // Checking for zero, NaN, Infinity, and strict types changed in
       // nodejs/node@add4b0ab8cc (Node 9)
       [
-        {finishFlush: false},
-        {flush: false},
-        {level: false},
-        {level: String(zlib.Z_MIN_LEVEL)},
-        {memLevel: String(zlib.Z_MIN_MEMLEVEL)},
-        {windowBits: String(zlib.Z_MIN_WINDOWBITS)},
+        { finishFlush: false },
+        { flush: false },
+        { level: false },
+        { level: String(zlib.Z_MIN_LEVEL) },
+        { memLevel: String(zlib.Z_MIN_MEMLEVEL) },
+        { windowBits: String(zlib.Z_MIN_WINDOWBITS) },
       ].forEach(checkOptions.bind(null, nodeVersion[0] < 9, false));
 
       // chunkSize checking relied on Buffer argument checking prior to
@@ -790,9 +797,9 @@ function defineFormatTests(format) {
       // RangeError: Invalid array buffer length
       // So allow error mismatch in Node < 9
       [
-        {chunkSize: zlib.Z_MAX_CHUNK + 1},
-        {chunkSize: zlib.Z_MAX_CHUNK},
-        {chunkSize: Infinity},
+        { chunkSize: zlib.Z_MAX_CHUNK + 1 },
+        { chunkSize: zlib.Z_MAX_CHUNK },
+        { chunkSize: Infinity },
       ].forEach(checkOptions.bind(null, false, nodeVersion[0] < 9));
 
       // Checking changed in nodejs/node@add4b0ab8cc (Node 9) to throw
@@ -801,14 +808,14 @@ function defineFormatTests(format) {
       // Before nodejs/node@85ab4a5f128 (Node 6) chunkSize passed to Buffer
       // constructor resulting in now error and incorrect sizing.
       [
-        {chunkSize: String(zlib.Z_MIN_CHUNK)},
+        { chunkSize: String(zlib.Z_MIN_CHUNK) },
       ].forEach(
         checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9),
       );
     });
 
     it('supports chunkSize', () => {
-      const options = {chunkSize: zlib.Z_MIN_CHUNK};
+      const options = { chunkSize: zlib.Z_MIN_CHUNK };
       const zlibStream = new Decompress(options);
       const inflateAuto = new InflateAuto(options);
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -818,7 +825,7 @@ function defineFormatTests(format) {
     });
 
     it('supports finishFlush', () => {
-      const options = {finishFlush: zlib.Z_SYNC_FLUSH};
+      const options = { finishFlush: zlib.Z_SYNC_FLUSH };
       const zlibStream = new Decompress(options);
       const inflateAuto = new InflateAuto(options);
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1429,10 +1436,6 @@ function defineFormatTests(format) {
           const result =
             streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-          function neverCalled() {
-            throw new Error('should not be called');
-          }
-
           const zeros = Buffer.alloc(10);
           zlibStream._processChunk(zeros, zlib.Z_FINISH, neverCalled);
           inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
@@ -1441,7 +1444,7 @@ function defineFormatTests(format) {
         });
 
         it('yields format error', (done) => {
-          const inflateAuto = new InflateAuto({defaultFormat: null});
+          const inflateAuto = new InflateAuto({ defaultFormat: null });
           const zeros = Buffer.alloc(10);
           inflateAuto.on('error', () => {
             throw new Error('error should not be emitted');
@@ -1465,7 +1468,7 @@ function defineFormatTests(format) {
           });
         };
 
-        const inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        const inflateAuto = new InflateAuto({ defaultFormat: AsyncTransform });
         const zeros = Buffer.alloc(10);
         inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
@@ -1542,7 +1545,7 @@ function defineFormatTests(format) {
         });
 
         it('throws format errors', () => {
-          const inflateAuto = new InflateAuto({defaultFormat: null});
+          const inflateAuto = new InflateAuto({ defaultFormat: null });
           const zeros = Buffer.alloc(10);
           inflateAuto.on('error', () => {
             throw new Error('error should not be emitted');
@@ -1563,7 +1566,7 @@ function defineFormatTests(format) {
           cb();
         };
 
-        const inflateAuto = new InflateAuto({defaultFormat: NoTransform});
+        const inflateAuto = new InflateAuto({ defaultFormat: NoTransform });
         const zeros = Buffer.alloc(10);
         inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
@@ -1582,7 +1585,7 @@ function defineFormatTests(format) {
         AsyncTransform.prototype.constructor = AsyncTransform;
         AsyncTransform.prototype._transform = function() {};
 
-        const inflateAuto = new InflateAuto({defaultFormat: AsyncTransform});
+        const inflateAuto = new InflateAuto({ defaultFormat: AsyncTransform });
         const zeros = Buffer.alloc(10);
         inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
@@ -1604,7 +1607,7 @@ function defineFormatTests(format) {
           cb(errTest);
         };
 
-        const inflateAuto = new InflateAuto({defaultFormat: ErrorTransform});
+        const inflateAuto = new InflateAuto({ defaultFormat: ErrorTransform });
         const zeros = Buffer.alloc(10);
         inflateAuto.on('error', () => {
           throw new Error('error should not be emitted');
@@ -1623,7 +1626,6 @@ function defineFormatTests(format) {
 describe('InflateAuto', () => {
   // Match constructor behavior of Gunzip/Inflate/InflateRaw
   it('instantiates without new', () => {
-    // eslint-disable-next-line new-cap
     const auto = InflateAuto();
     assertInstanceOf(auto, InflateAuto);
   });
@@ -1641,7 +1643,7 @@ describe('InflateAuto', () => {
   it('throws TypeError for non-Array-like detectors', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      () => { new InflateAuto({detectors: true}); },
+      () => { new InflateAuto({ detectors: true }); },
       TypeError,
     );
   });
@@ -1649,7 +1651,7 @@ describe('InflateAuto', () => {
   it('throws TypeError for non-function detector', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      () => { new InflateAuto({detectors: [zlib.Gunzip, null]}); },
+      () => { new InflateAuto({ detectors: [zlib.Gunzip, null] }); },
       TypeError,
     );
   });
@@ -1657,13 +1659,13 @@ describe('InflateAuto', () => {
   it('throws TypeError for non-function defaultFormat', () => {
     assert.throws(
       // eslint-disable-next-line no-new
-      () => { new InflateAuto({defaultFormat: true}); },
+      () => { new InflateAuto({ defaultFormat: true }); },
       TypeError,
     );
   });
 
   it('defaultFormat null disables default', (done) => {
-    const auto = new InflateAuto({defaultFormat: null});
+    const auto = new InflateAuto({ defaultFormat: null });
     const testData = Buffer.alloc(10);
     auto.on('error', (err) => {
       assert(err, 'expected format mismatch error');
@@ -1675,7 +1677,7 @@ describe('InflateAuto', () => {
   });
 
   it('emits error for format detection error in _transform', (done) => {
-    const inflateAuto = new InflateAuto({defaultFormat: null});
+    const inflateAuto = new InflateAuto({ defaultFormat: null });
     const zeros = Buffer.alloc(10);
     inflateAuto.once('error', (err) => {
       assert(err, 'expected format error');
