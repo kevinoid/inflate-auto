@@ -6,10 +6,9 @@
 'use strict';
 
 const assert = require('assert');
-const pify = require('pify');
 const stream = require('stream');
 const streamCompare = require('stream-compare');
-const util = require('util');
+const { inspect, promisify } = require('util');
 const zlib = require('zlib');
 const assignOwnPropertyDescriptors =
   require('../test-lib/assign-own-property-descriptors.js');
@@ -314,8 +313,8 @@ function defineFormatTests(format) {
     const inflateAuto = new InflateAuto();
     const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-    const zlibWriteP = pify(zlibStream.write);
-    const autoWriteP = pify(inflateAuto.write);
+    const zlibWriteP = promisify(zlibStream.write);
+    const autoWriteP = promisify(inflateAuto.write);
 
     return Promise.all([
       zlibWriteP.call(zlibStream, compressed),
@@ -675,7 +674,7 @@ function defineFormatTests(format) {
     describe('validation', () => {
       function checkOptions(stricter, looseType, options) {
         const descPrefix = stricter ? 'is stricter for ' : 'same for ';
-        it(descPrefix + util.inspect(options), () => {
+        it(descPrefix + inspect(options), () => {
           let errInflate;
           // eslint-disable-next-line no-new
           try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1112,8 +1111,8 @@ function defineFormatTests(format) {
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      const zlibWriteP = pify(zlibStream.write);
-      const autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = promisify(zlibStream.write);
+      const autoWriteP = promisify(inflateAuto.write);
 
       const partial = compressed.slice(0, 4);
       return Promise.all([
@@ -1181,8 +1180,8 @@ function defineFormatTests(format) {
           dataAuto.push(data);
         });
 
-        const zlibWriteP = pify(zlibStream.write);
-        const autoWriteP = pify(inflateAuto.write);
+        const zlibWriteP = promisify(zlibStream.write);
+        const autoWriteP = promisify(inflateAuto.write);
 
         const partial = compressed.slice(0, 1);
         return Promise.all([
@@ -1234,7 +1233,7 @@ function defineFormatTests(format) {
 
         // Note:  Only write to inflateAuto since zlib stream could error on
         // first byte due to invalid header.
-        const autoWriteP = pify(inflateAuto.write);
+        const autoWriteP = promisify(inflateAuto.write);
 
         // Write data with a different header before reset to check that reset
         // clears any partial-header state.
@@ -1260,8 +1259,8 @@ function defineFormatTests(format) {
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      const zlibWriteP = pify(zlibStream.write);
-      const autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = promisify(zlibStream.write);
+      const autoWriteP = promisify(inflateAuto.write);
 
       const partial = compressed.slice(0, headerLen + 1);
       return Promise.all([
@@ -1310,8 +1309,8 @@ function defineFormatTests(format) {
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 
-      const zlibWriteP = pify(zlibStream.write);
-      const autoWriteP = pify(inflateAuto.write);
+      const zlibWriteP = promisify(zlibStream.write);
+      const autoWriteP = promisify(inflateAuto.write);
 
       const chunk = compressed.slice(0, headerLen + 4);
       return Promise.all([
