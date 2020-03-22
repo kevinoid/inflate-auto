@@ -20,6 +20,21 @@ function isFunction(val) {
   return typeof val === 'function';
 }
 
+function runDetectors(chunk, detectors, detectorsLeft) {
+  for (let i = 0; i < detectors.length; i += 1) {
+    const detector = detectors[i];
+    const format = detector(chunk);
+    if (format) {
+      return format;
+    }
+    if (format === undefined) {
+      detectorsLeft.push(detector);
+    }
+  }
+
+  return null;
+}
+
 /** A function which detects the format for a given chunk of data.
  *
  * The function may be called any number of times with non-<code>null</code>,
@@ -301,19 +316,12 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
   if (chunk && chunk.length > 0) {
-    const detectors = this._detectorsLeft;
-    const plausible = [];
-    for (let i = 0; i < detectors.length; i += 1) {
-      const detector = detectors[i];
-      const format = detector(chunk);
-      if (format) {
-        return format;
-      }
-      if (format === undefined) {
-        plausible.push(detector);
-      }
+    const newDetectorsLeft = [];
+    const format = runDetectors(chunk, this._detectorsLeft, newDetectorsLeft);
+    if (format) {
+      return format;
     }
-    this._detectorsLeft = plausible;
+    this._detectorsLeft = newDetectorsLeft;
   }
 
   if (this._detectorsLeft.length === 0 || end) {
