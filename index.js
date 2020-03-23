@@ -314,6 +314,19 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
   return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
 };
 
+/** Implements {@link #destroy} on this stream by ensuring
+ * <code>_handle</code> is set <code>null</code> (for {@link _closed})
+ * as done by {@link zlib.ZlibBase#_destroy} since nodejs/node@8a02d941b6c
+ * (v12) and nodejs/node@c6a43fa2ef (v10.15.1).
+ *
+ * @param {Error} err Error passed to {@link #destroy}.
+ * @param {function(Error=)} callback Callback once destroyed.
+ */
+InflateAuto.prototype._destroy = function _destroy(err, callback) {
+  this._handle = null;
+  callback(err);
+};
+
 /** Detects the format of a given <code>Buffer</code>.
  *
  * This method passes <code>chunk</code> to each of the {@link
