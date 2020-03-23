@@ -1666,25 +1666,33 @@ describe('InflateAuto', () => {
   it('defaultFormat null disables default', (done) => {
     const auto = new InflateAuto({ defaultFormat: null });
     const testData = Buffer.alloc(10);
-    auto.on('error', (err) => {
+    // Note: 'error' not emitted if autoDestroy: true after
+    // nodejs/node@f24b070cb7f (v12), d6bcf8b98b (v11.2), a1b253a416 (v10.16)
+    // before f8f6a21580 (v13).  Use write callback to test.
+    auto.on('error', (err) => { /* avoid unhandled 'error' */ });
+    auto.on('end', neverCalled);
+    auto.write(testData, (err) => {
       assert(err, 'expected format mismatch error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, testData);
       done();
     });
-    auto.write(testData);
   });
 
   it('emits error for format detection error in _transform', (done) => {
     const inflateAuto = new InflateAuto({ defaultFormat: null });
     const zeros = Buffer.alloc(10);
-    inflateAuto.once('error', (err) => {
+    // Note: 'error' not emitted if autoDestroy: true after
+    // nodejs/node@f24b070cb7f (v12), d6bcf8b98b (v11.2), a1b253a416 (v10.16)
+    // before f8f6a21580 (v13).  Use write callback to test.
+    inflateAuto.on('error', (err) => { /* avoid unhandled 'error' */ });
+    inflateAuto.on('end', neverCalled);
+    inflateAuto.write(zeros, (err) => {
       assert(err, 'expected format error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, zeros);
       done();
     });
-    inflateAuto.write(zeros);
   });
 
   // Analogous to Gunzip/Inflate/InflateRaw
