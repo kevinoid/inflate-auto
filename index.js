@@ -143,9 +143,8 @@ function InflateAuto(opts) {
     this._inflate = new zlib.Inflate(opts);
   }
 
-  /** Whether #close() has been called.
-   * @private {boolean} */
-  this._closed = false;
+  // null if #close() has been called, otherwise a (dummy) object
+  this._handle = {};
 
   // For Zlib compatibility
   this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined'
@@ -208,6 +207,15 @@ function InflateAuto(opts) {
   this.once('end', this.close);
 }
 zlibInherits(InflateAuto, Transform);
+
+// Define _closed from _handle as Zlib does since nodejs/node@b53473f0e7e (v7)
+Object.defineProperty(InflateAuto.prototype, '_closed', {
+  configurable: true,
+  enumerable: true,
+  get() {
+    return !this._handle;
+  },
+});
 
 /** Creates an instance of {@link InflateAuto}.
  * Analogous to {@link zlib.createInflate}.
@@ -355,7 +363,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
  * @param {function(Error=)} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  if (this._closed) {
+  if (!this._handle) {
     callback(new Error('zlib binding closed'));
     return;
   }
@@ -545,7 +553,7 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
   callback) {
   if (!this._decoder) {
-    if (this._closed) {
+    if (!this._handle) {
       callback(new Error('zlib binding closed'));
       return;
     }
@@ -615,8 +623,8 @@ InflateAuto.prototype.close = function close(callback) {
     process.nextTick(callback);
   }
 
-  if (!this._closed) {
-    this._closed = true;
+  if (this._handle) {
+    this._handle = null;
     process.nextTick(this.emit.bind(this, 'close'));
   }
 
@@ -694,7 +702,7 @@ InflateAuto.prototype.reset = function reset() {
     return this._decoder.reset(...arguments);
   }
 
-  assert(!this._closed, 'zlib binding closed');
+  assert(!!this._handle, 'zlib binding closed');
   this._writeBuf = null;
   this._detectorsLeft = this._detectors;
   return undefined;
