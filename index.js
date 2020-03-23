@@ -532,20 +532,6 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     format.on(event, self.emit.bind(self, event));
   });
 
-  // 'close' handled specially to ensure correct order with 'end'
-  this.removeListener('end', this.close);
-  let endEmitted = false;
-  this.once('end', () => { endEmitted = true; });
-  let formatEndEmitted = false;
-  format.once('end', () => { formatEndEmitted = true; });
-  format.on('close', () => {
-    if (formatEndEmitted && !endEmitted) {
-      self.once('end', () => { self.emit('close'); });
-    } else {
-      self.emit('close');
-    }
-  });
-
   self.emit('format', format);
 
   if (this._queuedMethodCalls) {
