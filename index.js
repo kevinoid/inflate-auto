@@ -16,6 +16,19 @@ const { inherits } = require('util');
 const zlib = require('zlib');
 const zlibInternal = require('./lib/zlib-internal');
 
+/**
+ * Inherit the prototype methods from one constructor into another, as done
+ * by ES6 class declarations.
+ */
+function inheritsES6(Ctor, SuperCtor) {
+  Object.setPrototypeOf(Ctor.prototype, SuperCtor.prototype);
+  Object.setPrototypeOf(Ctor, SuperCtor);
+}
+
+// Apply inheritance using same style as zlib module
+// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
+const zlibInherits = zlib.Inflate.super_ ? inherits : inheritsES6;
+
 function isFunction(val) {
   return typeof val === 'function';
 }
@@ -194,7 +207,7 @@ function InflateAuto(opts) {
   // Behave like Zlib where close is unconditionally called on 'end'
   this.once('end', this.close);
 }
-inherits(InflateAuto, Transform);
+zlibInherits(InflateAuto, Transform);
 
 /** Creates an instance of {@link InflateAuto}.
  * Analogous to {@link zlib.createInflate}.
