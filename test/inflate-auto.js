@@ -724,147 +724,62 @@ function defineFormatTests(format) {
     }
   });
 
+  function itValidatesOptions(options) {
+    it(inspect(options), () => {
+      let errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(options); } catch (err) { errInflate = err; }
+
+      let errAuto;
+      // eslint-disable-next-line no-new
+      try { new InflateAuto(options); } catch (err) { errAuto = err; }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+    });
+  }
+
+  function itEmitsErrorForOptions(options) {
+    it(`on write with ${inspect(options)}`, () => {
+      let errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(options); } catch (err) { errInflate = err; }
+      assert(errInflate);
+
+      return assertWriteError(
+        new InflateAuto(options),
+        compressed,
+        (errAuto) => assert.deepStrictEqual(errAuto, errInflate),
+      );
+    });
+  }
+
   describe('Constructor', () => {
-    describe('validation', () => {
-      function checkOptions(stricter, looseType, options) {
-        const descPrefix = stricter ? 'is stricter for ' : 'same for ';
-        it(descPrefix + inspect(options), () => {
-          let errInflate;
-          // eslint-disable-next-line no-new
-          try { new Decompress(options); } catch (err) { errInflate = err; }
-
-          let errAuto;
-          // eslint-disable-next-line no-new
-          try { new InflateAuto(options); } catch (err) { errAuto = err; }
-
-          if (stricter) {
-            // InflateAuto throws an Error while Decompress does not
-            assert.ok(errAuto);
-            assert.ifError(errInflate);
-          } else if (looseType) {
-            // Both threw or neither threw
-            if (Boolean(errAuto) !== Boolean(errInflate)) {
-              // Fail due to mismatch
-              assert.deepStrictEqual(errAuto, errInflate);
-            }
-          } else {
-            // Both had same exception, with one possible difference:
-            // Convert to generic Error for pre-nodejs/node@b514bd231
-            if (nodeVersion[0] < 8
-                && errAuto
-                && errInflate
-                && Object.getPrototypeOf(errAuto)
-                  !== Object.getPrototypeOf(errInflate)) {
-              errAuto = makeError(errAuto);
-            }
-
-            assert.deepStrictEqual(errAuto, errInflate);
-          }
-        });
+    describe('validates', () => {
+      // ZlibBase added in:
+      // nodejs/node@3b9e0f2a0a9 for v12.0.0
+      // nodejs/node@e534dcd75eb for v11.7.0
+      // nodejs/node@dd8d1dabd7e for v10.16.0
+      // Copying code to validate parameters without ZlibBase doesn't appear
+      // to have a good cost/benefit tradeoff.  Skip until justified.
+      if (nodeVersion[0] < 10
+        || (nodeVersion[0] === 10 && nodeVersion[1] < 16)
+        || (nodeVersion[0] === 11 && nodeVersion[1] < 7)) {
+        before(function() { this.skip(); });
       }
 
-      [
-        null,
-        true,
-        { chunkSize: zlib.Z_MIN_CHUNK - 1 },
-        { chunkSize: zlib.Z_MIN_CHUNK },
-        { chunkSize: NaN },
-        { dictionary: Buffer.alloc(0) },
-        { dictionary: [] },
-        { dictionary: true },
-        { finishFlush: 0 },
-        { finishFlush: zlib.Z_FULL_FLUSH },
-        { finishFlush: NaN },
-        { flush: 0 },
-        { flush: -1 },
-        { flush: Infinity },
-        { flush: String(zlib.Z_FULL_FLUSH) },
-        { flush: zlib.Z_FULL_FLUSH },
-        { level: 0 },
-        { level: zlib.Z_MAX_LEVEL + 1 },
-        { level: zlib.Z_MAX_LEVEL },
-        { level: zlib.Z_MIN_LEVEL - 1 },
-        { level: zlib.Z_MIN_LEVEL },
-        { level: Infinity },
-        { level: NaN },
-        { memLevel: zlib.Z_MAX_MEMLEVEL + 1 },
-        { memLevel: zlib.Z_MAX_MEMLEVEL },
-        { memLevel: zlib.Z_MIN_MEMLEVEL },
-        { memLevel: Infinity },
-        { memLevel: NaN },
-        { strategy: 0 },
-        { strategy: -1 },
-        { strategy: zlib.Z_FILTERED },
-        { strategy: Infinity },
-        { strategy: NaN },
-        { windowBits: zlib.Z_MAX_WINDOWBITS + 1 },
-        { windowBits: zlib.Z_MAX_WINDOWBITS },
-        { windowBits: zlib.Z_MIN_WINDOWBITS - 1 },
-        { windowBits: zlib.Z_MIN_WINDOWBITS },
-        { windowBits: Infinity },
-        { windowBits: NaN },
-      ].forEach(checkOptions.bind(null, false, false));
+      // Test each of the Errors thrown by ZlibBase for good measure
+      itValidatesOptions({ chunkSize: zlib.Z_MIN_CHUNK - 1 });
+      itValidatesOptions({ chunkSize: NaN });
+      itValidatesOptions({ flush: -1 });
+      itValidatesOptions({ finishFlush: -1 });
+    });
 
-      // finishFlush added in nodejs/node@97816679 (Node 7)
-      // backported in nodejs/node@5f11b5369 (Node 6)
-      [
-        { finishFlush: -1 },
-        { finishFlush: Infinity },
-        { finishFlush: String(zlib.Z_FULL_FLUSH) },
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 6, false));
-
-      // Strategy checking tightened in nodejs/node@dd928b04fc6 (Node 8)
-      [
-        { strategy: String(zlib.Z_FILTERED) },
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
-
-      // Checking falsey values changed in nodejs/node@efae43f0ee2 (Node 8)
-      [
-        { chunkSize: 0 },
-        { chunkSize: false },
-        { dictionary: 0 },
-        { dictionary: false },
-        { memLevel: 0 },
-        { memLevel: false },
-        { strategy: false },
-        { windowBits: 0 },
-        { windowBits: false },
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 8, false));
-
-      // Checking for zero, NaN, Infinity, and strict types changed in
-      // nodejs/node@add4b0ab8cc (Node 9)
-      [
-        { finishFlush: false },
-        { flush: false },
-        { level: false },
-        { level: String(zlib.Z_MIN_LEVEL) },
-        { memLevel: String(zlib.Z_MIN_MEMLEVEL) },
-        { windowBits: String(zlib.Z_MIN_WINDOWBITS) },
-      ].forEach(checkOptions.bind(null, nodeVersion[0] < 9, false));
-
-      // chunkSize checking relied on Buffer argument checking prior to
-      // nodejs/node@add4b0ab8cc (Node 9)
-      // Buffer checking changed in nodejs/node@3d353c749cd to throw
-      // RangeError: "size" argument must not be larger than 2147483647
-      // instead of
-      // RangeError: Invalid array buffer length
-      // So allow error mismatch in Node < 9
-      [
-        { chunkSize: zlib.Z_MAX_CHUNK + 1 },
-        { chunkSize: zlib.Z_MAX_CHUNK },
-        { chunkSize: Infinity },
-      ].forEach(checkOptions.bind(null, false, nodeVersion[0] < 9));
-
-      // Checking changed in nodejs/node@add4b0ab8cc (Node 9) to throw
-      // RangeError in Zlib instead of TypeError in Buffer.
-      //
-      // Before nodejs/node@85ab4a5f128 (Node 6) chunkSize passed to Buffer
-      // constructor resulting in now error and incorrect sizing.
-      [
-        { chunkSize: String(zlib.Z_MIN_CHUNK) },
-      ].forEach(
-        checkOptions.bind(null, nodeVersion[0] < 6, nodeVersion[0] < 9),
-      );
+    describe('emits error', () => {
+      itEmitsErrorForOptions({ dictionary: true });
+      itEmitsErrorForOptions({ level: zlib.Z_MIN_LEVEL - 1 });
+      itEmitsErrorForOptions({ memLevel: zlib.Z_MIN_MEMLEVEL - 1 });
+      itEmitsErrorForOptions({ strategy: -1 });
+      itEmitsErrorForOptions({ windowBits: zlib.Z_MIN_WINDOWBITS - 1 });
     });
 
     it('supports chunkSize', () => {
