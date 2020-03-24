@@ -739,6 +739,22 @@ function defineFormatTests(format) {
   }
 
   function itEmitsErrorForOptions(options) {
+    it(`synchronously with ${inspect(options)}`, () => {
+      let errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(options); } catch (err) { errInflate = err; }
+      assert(errInflate);
+
+      let errAuto;
+      try {
+        InflateAuto.inflateAutoSync(compressed, options);
+      } catch (err) {
+        errAuto = err;
+      }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+    });
+
     it(`on write with ${inspect(options)}`, () => {
       let errInflate;
       // eslint-disable-next-line no-new
