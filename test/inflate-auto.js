@@ -1,5 +1,5 @@
 /**
- * @copyright Copyright 2016-2017 Kevin Locke <kevin@kevinlocke.name>
+ * @copyright Copyright 2016-2020 Kevin Locke <kevin@kevinlocke.name>
  * @license MIT
  */
 
