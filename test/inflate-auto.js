@@ -14,6 +14,7 @@ const assignOwnPropertyDescriptors =
   require('../test-lib/assign-own-property-descriptors.js');
 const InflateAuto = require('..');
 
+const { AssertionError } = assert;
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 
 // streamCompare options to read in flowing mode with exact matching of
@@ -137,6 +138,59 @@ function makeError(source) {
 
 function neverCalled() {
   throw new Error('should not be called');
+}
+
+/** Asserts that writing a given chunk to a given stream produces an error
+ * which satisfies given assertions.
+ *
+ * This function should only be used for errors specific to InflateAuto.
+ * Other errors should be tested using stream-compare.
+ *
+ * @param {!stream.Writable} writable Stream to be written.
+ * @param {!Buffer} chunk Data to write to writable.
+ * @param {function(Error=)} assertError Assertions for error produced (if any).
+ */
+function assertWriteError(writable, chunk, assertError) {
+  return new Promise((resolve, reject) => {
+    // 'error' stopped being emitted with autoDestroy: true in
+    // nodejs/node@f24b070cb7f for v12.0.0
+    // nodejs/node@d6bcf8b98b for v11.2.0
+    // nodejs/node@a1b253a416 for v10.16.0
+    // Previous behavior was restored in nodejs/node@f8f6a21580 for v13.0.0.
+    // Therefore, this function asserts that 'error' is emitted at most once,
+    // rather than exactly once.
+    let errorEmitted = false;
+    writable.on('error', (err) => {
+      if (errorEmitted) {
+        reject(new AssertionError({
+          message: 'error should be emitted at most once',
+          operator: 'fail',
+        }));
+        return;
+      }
+      errorEmitted = true;
+
+      try {
+        assertError(err);
+      } catch (errAssert) {
+        reject(errAssert);
+      }
+    });
+
+    writable.on('end', () => reject(new AssertionError({
+      message: 'end should not be emitted',
+      operator: 'fail',
+    })));
+
+    writable.write(chunk, (err) => {
+      try {
+        assertError(err);
+        resolve();
+      } catch (errAssert) {
+        reject(errAssert);
+      }
+    });
+  });
 }
 
 function normalizeEvent(event) {
@@ -1663,35 +1717,23 @@ describe('InflateAuto', () => {
     );
   });
 
-  it('defaultFormat null disables default', (done) => {
+  it('defaultFormat null disables default', () => {
     const auto = new InflateAuto({ defaultFormat: null });
     const testData = Buffer.alloc(10);
-    // Note: 'error' not emitted if autoDestroy: true after
-    // nodejs/node@f24b070cb7f (v12), d6bcf8b98b (v11.2), a1b253a416 (v10.16)
-    // before f8f6a21580 (v13).  Use write callback to test.
-    auto.on('error', (err) => { /* avoid unhandled 'error' */ });
-    auto.on('end', neverCalled);
-    auto.write(testData, (err) => {
+    return assertWriteError(auto, testData, (err) => {
       assert(err, 'expected format mismatch error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, testData);
-      done();
     });
   });
 
-  it('emits error for format detection error in _transform', (done) => {
+  it('emits error for format detection error in _transform', () => {
     const inflateAuto = new InflateAuto({ defaultFormat: null });
     const zeros = Buffer.alloc(10);
-    // Note: 'error' not emitted if autoDestroy: true after
-    // nodejs/node@f24b070cb7f (v12), d6bcf8b98b (v11.2), a1b253a416 (v10.16)
-    // before f8f6a21580 (v13).  Use write callback to test.
-    inflateAuto.on('error', (err) => { /* avoid unhandled 'error' */ });
-    inflateAuto.on('end', neverCalled);
-    inflateAuto.write(zeros, (err) => {
+    return assertWriteError(inflateAuto, zeros, (err) => {
       assert(err, 'expected format error');
       assert(/format/i.test(err.message));
       assert.deepStrictEqual(err.data, zeros);
-      done();
     });
   });
 
