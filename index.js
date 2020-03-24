@@ -527,8 +527,6 @@ if (zlib.Inflate.prototype._processChunk) {
  * @see #_detectFormat()
  */
 InflateAuto.prototype.setFormat = function setFormat(Format) {
-  const self = this;
-
   if (this._decoder && Format === this._decoder.constructor) {
     return;
   }
@@ -549,17 +547,17 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     format.constructor = Format;
   }
 
-  format.on('data', (chunk) => {
-    self.push(chunk);
-  });
+  format.on('data', (chunk) => this.push(chunk));
 
   // proxy important events from the format
   // Note:  Same events as Readable.wrap except pause/unpause and close.
   ['destroy', 'error'].forEach((event) => {
-    format.on(event, self.emit.bind(self, event));
+    format.on(event, (...args) => {
+      this.emit(event, ...args);
+    });
   });
 
-  self.emit('format', format);
+  this.emit('format', format);
 
   if (this._queuedMethodCalls) {
     this._queuedMethodCalls.forEach((mc) => {
