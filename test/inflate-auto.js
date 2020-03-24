@@ -1583,10 +1583,12 @@ function defineFormatTests(format) {
           throw new Error('error should not be emitted');
         });
         assert.throws(
-          () => {
-            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          () => inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH),
+          (err) => {
+            assert(err instanceof Error);
+            assert.strictEqual(err.code, 'ERR_SYNC_NOT_SUPPORTED');
+            return true;
           },
-          /NoTransform.*_processChunk/,
         );
       });
 
@@ -1602,10 +1604,12 @@ function defineFormatTests(format) {
           throw new Error('error should not be emitted');
         });
         assert.throws(
-          () => {
-            inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
+          () => inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH),
+          (err) => {
+            assert(err instanceof Error);
+            assert.strictEqual(err.code, 'ERR_SYNC_NOT_SUPPORTED');
+            return true;
           },
-          /AsyncTransform.*_processChunk/,
         );
       });
 

@@ -17,6 +17,7 @@ const zlib = require('zlib');
 
 const {
   ERR_INVALID_ARG_TYPE,
+  ERR_SYNC_NOT_SUPPORTED,
 } = require('./lib/errors');
 const zlibInternal = require('./lib/zlib-internal');
 
@@ -520,10 +521,10 @@ if (zlib.Inflate.prototype._processChunk) {
         }
       }
 
-      const formatName =
+      const fmtName =
         (this._decoder.constructor && this._decoder.constructor.name)
-        || 'format';
-      throw new Error(`${formatName} does not support _processChunk`);
+        || 'the detected format';
+      throw new ERR_SYNC_NOT_SUPPORTED(fmtName);
     }
 
     this._writeBuf = chunk;
