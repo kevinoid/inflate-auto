@@ -614,19 +614,24 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
+  const onclose = (...args) => {
+    this.destroy();
+
+    if (callback) {
+      // TODO [engine:node@>=14]: Use stream.finished as nodejs/node@a9401439c7b
+      // Can't currently due to passing ERR_STREAM_PREMATURE_CLOSE argument
+      // See https://github.com/nodejs/node/pull/32220#issuecomment-602865570
+      process.nextTick(callback, ...args);
+    }
+  };
+
   if (this._decoder && typeof this._decoder.close === 'function') {
-    return this._decoder.close(...arguments);
+    return this._decoder.close(
+      callback && typeof callback !== 'function' ? callback : onclose,
+    );
   }
 
-  if (callback) {
-    process.nextTick(callback);
-  }
-
-  if (this._handle) {
-    this._handle = null;
-    process.nextTick(this.emit.bind(this, 'close'));
-  }
-
+  onclose();
   return undefined;
 };
 
