@@ -12,9 +12,39 @@
 
 const { Transform } = require('stream');
 const assert = require('assert');
-const { inherits } = require('util');
+const { debuglog, inherits } = require('util');
 const zlib = require('zlib');
 const zlibInternal = require('./lib/zlib-internal');
+
+const {
+  Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
+} = zlib.constants;
+
+const debug = debuglog('inflate-auto');
+
+// ZlibBase is not considered to be a part of the Node.js API.
+// The risk that it will change is weighed against the value of more closely
+// matching the behavior of the zlib classes in several version-dependent ways
+// (e.g. autoDestroy, constructor argument validation, underscore properties).
+//
+// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
+const ZlibBase = zlib.Inflate.super_ ? zlib.Inflate.super_.super_
+  : Object.getPrototypeOf(Object.getPrototypeOf(zlib.Inflate));
+const useZlibBase = ZlibBase.name === 'ZlibBase' && ZlibBase.length === 4;
+if (!useZlibBase) {
+  debug(
+    'Not using zlib base class %s with %d arguments',
+    ZlibBase.name,
+    ZlibBase.length,
+  );
+}
+
+// Default options passed to ZlibBase by Zlib (i.e. classes other than Brotli)
+const zlibDefaultOpts = {
+  flush: Z_NO_FLUSH,
+  finishFlush: Z_FINISH,
+  fullFlush: Z_FULL_FLUSH,
+};
 
 /**
  * Inherit the prototype methods from one constructor into another, as done
@@ -117,38 +147,38 @@ function InflateAuto(opts) {
     return new InflateAuto(opts);
   }
 
-  // Ignore encoding, objectMode, and writableObjectMode
-  // as done in nodejs/node@add4b0ab8c (v9 and later)
-  if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
-    opts = { ...opts };
-    opts.encoding = null;
-    opts.objectMode = false;
-    opts.writableObjectMode = false;
-  }
+  if (useZlibBase) {
+    ZlibBase.call(
+      this,
+      opts,
+      zlib.constants.INFLATE,
+      {},
+      zlibDefaultOpts,
+    );
+  } else {
+    // Ignore encoding, objectMode, and writableObjectMode
+    // as done in nodejs/node@add4b0ab8c (v9 and later)
+    if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
+      opts = { ...opts };
+      opts.encoding = null;
+      opts.objectMode = false;
+      opts.writableObjectMode = false;
+    }
 
-  Transform.call(this, opts);
+    Transform.call(this, opts);
 
-  if (opts !== undefined && opts !== null) {
-    // Validate opts object for Zlib constructor
-    //
-    // Arguably this should be deferred until the decoder is constructed.
-    // Since the validation is the same for all Zlib subclasses (with the
-    // exception of windowBits == null or 0 for deflate vs inflate), the
-    // value of matching the behavior of Inflate/InflateRaw and reporting
-    // errors early (to avoid unknown/unrecoverable stream state) outweighs
-    // the performance penalty and validation edge cases.
-    //
-    // Save Inflate instance for later use due to (relatively) high cost of
-    // instantiation (which involves initializing a zlib instance).
-    this._inflate = new zlib.Inflate(opts);
+    // Required by zlibInternal.zlibBufferSync
+    this._finishFlushFlag =
+      opts && opts.finishFlush >= Z_NO_FLUSH && opts.finishFlush <= Z_BLOCK
+        ? opts.finishFlush
+        : zlibDefaultOpts.finishFlush;
+
+    // Behave like Zlib where close is unconditionally called on 'end'
+    this.once('end', this.close);
   }
 
   // null if #close() has been called, otherwise a (dummy) object
   this._handle = {};
-
-  // For Zlib compatibility
-  this._finishFlushFlag = opts && typeof opts.finishFlush !== 'undefined'
-    ? opts.finishFlush : zlib.Z_FINISH;
 
   /** Instance of a class which does the decoding for the detected data format.
    * @private {stream.Duplex} */
@@ -202,20 +232,19 @@ function InflateAuto(opts) {
    * Since writes are being forwarded or buffered.
    */
   this._writeBuf = null;
-
-  // Behave like Zlib where close is unconditionally called on 'end'
-  this.once('end', this.close);
 }
-zlibInherits(InflateAuto, Transform);
+zlibInherits(InflateAuto, useZlibBase ? ZlibBase : Transform);
 
-// Define _closed from _handle as Zlib does since nodejs/node@b53473f0e7e (v7)
-Object.defineProperty(InflateAuto.prototype, '_closed', {
-  configurable: true,
-  enumerable: true,
-  get() {
-    return !this._handle;
-  },
-});
+if (!useZlibBase) {
+  // Define _closed from _handle as Zlib does since nodejs/node@b53473f0e7e (v7)
+  Object.defineProperty(InflateAuto.prototype, '_closed', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return !this._handle;
+    },
+  });
+}
 
 /** Creates an instance of {@link InflateAuto}.
  * Analogous to {@link zlib.createInflate}.
@@ -511,9 +540,7 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   }
 
   // Reuse instance from option validation, if Format matches.
-  const format = Format === zlib.Inflate && this._inflate ? this._inflate
-    : new Format(this._opts);
-  delete this._inflate;
+  const format = new Format(this._opts);
 
   this._decoder = format;
 
