@@ -767,6 +767,33 @@ function defineFormatTests(format) {
         (errAuto) => assert.deepStrictEqual(errAuto, errInflate),
       );
     });
+
+    // Test handling in _flush
+    it(`on end with ${inspect(options)}`, (done) => {
+      let errInflate;
+      // eslint-disable-next-line no-new
+      try { new Decompress(options); } catch (err) { errInflate = err; }
+      assert(errInflate);
+
+      const inflateAuto = new InflateAuto({
+        ...options,
+        defaultFormat: Decompress,
+      });
+      let errorEmitted = false;
+      inflateAuto.on('error', (errAuto) => {
+        assert(!errorEmitted, 'error emitted at most once');
+        errorEmitted = true;
+        assert.deepStrictEqual(errAuto, errInflate);
+      });
+      inflateAuto.end((errAuto) => {
+        assert(errorEmitted, 'error emitted at least once');
+        // Errors passed to _flush callback may not be passed to end cb.
+        if (errAuto) {
+          assert.deepStrictEqual(errAuto, errInflate);
+        }
+        done();
+      });
+    });
   }
 
   describe('Constructor', () => {
