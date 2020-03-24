@@ -14,6 +14,10 @@ const { Transform } = require('stream');
 const assert = require('assert');
 const { debuglog, inherits } = require('util');
 const zlib = require('zlib');
+
+const {
+  ERR_INVALID_ARG_TYPE,
+} = require('./lib/errors');
 const zlibInternal = require('./lib/zlib-internal');
 
 const {
@@ -59,8 +63,8 @@ function inheritsES6(Ctor, SuperCtor) {
 // TODO [engine:node@>=12]: remove check for old-style super_ inheritance
 const zlibInherits = zlib.Inflate.super_ ? inherits : inheritsES6;
 
-function isFunction(val) {
-  return typeof val === 'function';
+function isNotFunction(val) {
+  return typeof val !== 'function';
 }
 
 function runDetectors(chunk, detectors, detectorsLeft) {
@@ -190,11 +194,20 @@ function InflateAuto(opts) {
   this._detectors = null;
   if (opts && opts.detectors) {
     if (Math.floor(opts.detectors.length) !== opts.detectors.length) {
-      throw new TypeError('detectors must be Array-like');
+      throw new ERR_INVALID_ARG_TYPE(
+        'opts.detectors',
+        'Array-like',
+        opts.detectors,
+      );
     }
 
-    if (!Array.prototype.every.call(opts.detectors, isFunction)) {
-      throw new TypeError('All detectors must be functions');
+    const nonFuncInd = Array.prototype.find.call(opts.detectors, isNotFunction);
+    if (nonFuncInd >= 0) {
+      throw new ERR_INVALID_ARG_TYPE(
+        `opts.detectors[${nonFuncInd}]`,
+        'function',
+        opts.detectors[nonFuncInd],
+      );
     }
 
     this._detectors = Array.prototype.slice.call(opts.detectors);
@@ -216,7 +229,11 @@ function InflateAuto(opts) {
   this._defaultFormat = null;
   if (opts && opts.defaultFormat) {
     if (typeof opts.defaultFormat !== 'function') {
-      throw new TypeError('defaultFormat must be a constructor function');
+      throw new ERR_INVALID_ARG_TYPE(
+        'opts.defaultFormat',
+        'function',
+        opts.defaultFormat,
+      );
     }
     this._defaultFormat = opts.defaultFormat;
   } else if (!opts || opts.defaultFormat === undefined) {
