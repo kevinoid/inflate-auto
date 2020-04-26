@@ -604,8 +604,23 @@ function defineFormatTests(format) {
       }
 
       const result = streamCompare(inflateAuto, zlibStream, compareOptions);
-      zlibStream.write(true);
-      inflateAuto.write(true);
+
+      let errInflate;
+      try {
+        zlibStream.write(true);
+      } catch (err) {
+        errInflate = err;
+      }
+
+      let errAuto;
+      try {
+        inflateAuto.write(true);
+      } catch (err) {
+        errAuto = err;
+      }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+
       zlibStream.end(compressed);
       inflateAuto.end(compressed);
       result.checkpoint();
