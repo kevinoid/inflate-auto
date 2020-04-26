@@ -491,7 +491,7 @@ if (zlib.Inflate.prototype._processChunk) {
         // zlib classes emit and listen for 'error' internally (in Node 0.12)
         let errorListener;
         if (typeof cb !== 'function') {
-          errorListener = function() {};
+          errorListener = () => {};
           this.on('error', errorListener);
         }
 
