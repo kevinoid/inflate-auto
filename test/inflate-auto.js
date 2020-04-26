@@ -870,7 +870,11 @@ function defineFormatTests(format) {
       return new Promise((resolve, reject) => {
         zlibStream.close((...zlibArgs) => {
           inflateAuto.close((...inflateArgs) => {
-            assert.deepStrictEqual(inflateArgs, zlibArgs);
+            assert.deepStrictEqual(
+              inflateArgs,
+              zlibArgs,
+              'same close arguments',
+            );
 
             setImmediate(() => {
               result.end();
