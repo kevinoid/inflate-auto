@@ -21,6 +21,7 @@ const nodeVersion = process.version.slice(1).split('.').map(Number);
 // event data for all events listed in the API.
 const COMPARE_OPTIONS = {
   compare: assert.deepStrictEqual,
+  endEvents: ['close', 'end', 'error'],
   events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
   readPolicy: 'none',
 };
@@ -876,10 +877,7 @@ function defineFormatTests(format) {
               'same close arguments',
             );
 
-            setImmediate(() => {
-              result.end();
-              resolve(result);
-            });
+            resolve(result);
           });
         });
       });
@@ -953,7 +951,6 @@ function defineFormatTests(format) {
 
       assert.deepStrictEqual(errAuto, errInflate);
 
-      result.end();
       return result;
     });
 
@@ -971,7 +968,6 @@ function defineFormatTests(format) {
           writeArgsByCall.push(writeArgs);
           if (writeArgsByCall.length === 2) {
             assert.deepStrictEqual(writeArgsByCall[0], writeArgsByCall[1]);
-            result.end();
             resolve(result);
           }
         }
