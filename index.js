@@ -660,25 +660,35 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
-  const onclose = (...args) => {
-    this.destroy();
+  if (!this._decoder) {
+    // Previous header checks inconclusive.  Must choose one now.
+    try {
+      this.setFormat(this._detectFormat(this._writeBuf, true));
+    } catch (err) {
+      callback(err);
+      return;
+    }
+  }
 
+  const onclose = (...args) => {
     if (callback) {
       // TODO [engine:node@>=14]: Use stream.finished as nodejs/node@a9401439c7b
       // Can't currently due to passing ERR_STREAM_PREMATURE_CLOSE argument
       // See https://github.com/nodejs/node/pull/32220#issuecomment-602865570
-      process.nextTick(callback, ...args);
+      callback(...args);
     }
   };
 
   if (this._decoder && typeof this._decoder.close === 'function') {
-    return this._decoder.close(
+    this._decoder.close(
+      // Pass invalid callback to close for appropriate exception
       callback && typeof callback !== 'function' ? callback : onclose,
     );
+  } else {
+    onclose();
   }
 
-  onclose();
-  return undefined;
+  this.destroy();
 };
 
 /** Gets the constructor function used to create the decoder for data written
