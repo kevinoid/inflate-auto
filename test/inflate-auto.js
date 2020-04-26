@@ -22,7 +22,7 @@ const nodeVersion = process.version.slice(1).split('.').map(Number);
 const COMPARE_OPTIONS = {
   compare: assert.deepStrictEqual,
   endEvents: ['close', 'end', 'error'],
-  events: ['close', 'data', 'destroy', 'end', 'error', 'pipe'],
+  events: ['close', 'data', 'destroy', 'end', 'error', 'finish', 'pipe'],
   readPolicy: 'none',
 };
 
@@ -124,6 +124,36 @@ function assertInstanceOf(obj, ctor) {
       null,
       'instanceof',
     );
+  }
+}
+
+/** Compare stream states where 'finish' may not occur on the zlib stream.
+ *
+ * If InflateRaw#end() is called with an invalid prefix, it emits 'error'
+ * without 'finish'.  This is difficult to mimic using Transform because
+ * 'finish' is emitted after _transform, not after _flush
+ * https://nodejs.org/api/stream.html#stream_events_finish_and_end
+ * so _transform would need to call _decoder.end() and delay the callback
+ * until 'finish' is emitted when _writableState.ending is true (after a tick,
+ * since it is not set when called) and avoid calling .end() in _flush.  This
+ * complexity is not currently justified, so this compare function ignores
+ * 'finish' before 'error'.
+ */
+function compareMaybeFinish(stateAuto, stateZlib) {
+  try {
+    assert.deepStrictEqual(stateAuto, stateZlib);
+  } catch (err) {
+    // Remove 'finish' immediately before 'error' and re-compare
+    const finishInd =
+      stateAuto.events.findIndex((event) => event.name === 'finish');
+    const errorInd =
+      stateAuto.events.findIndex((event) => event.name === 'error');
+    if (errorInd === finishInd + 1) {
+      stateAuto.events.splice(finishInd, 1);
+      assert.deepStrictEqual(stateAuto, stateZlib);
+    } else {
+      throw err;
+    }
   }
 }
 
@@ -437,8 +467,12 @@ function defineFormatTests(format) {
         it(`${len} bytes of ${formatName} header`, () => {
           const zlibStream = new Decompress();
           const inflateAuto = new InflateAuto();
+          const compareOptions = {
+            ...COMPARE_OPTIONS,
+            compare: compareMaybeFinish,
+          };
           const result =
-            streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+            streamCompare(inflateAuto, zlibStream, compareOptions);
           const partial = formatHeader.slice(0, len);
           zlibStream.end(partial);
           inflateAuto.end(partial);
