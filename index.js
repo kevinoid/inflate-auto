@@ -80,7 +80,7 @@ function runDetectors(chunk, detectors, detectorsLeft) {
     }
   }
 
-  return null;
+  return undefined;
 }
 
 /** A function which detects the format for a given chunk of data.
@@ -165,7 +165,7 @@ function InflateAuto(opts) {
     // as done in nodejs/node@add4b0ab8c (v9 and later)
     if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
       opts = { ...opts };
-      opts.encoding = null;
+      opts.encoding = undefined;
       opts.objectMode = false;
       opts.writableObjectMode = false;
     }
@@ -187,12 +187,12 @@ function InflateAuto(opts) {
 
   /** Instance of a class which does the decoding for the detected data format.
    * @private {stream.Duplex} */
-  this._decoder = null;
+  this._decoder = null; // eslint-disable-line unicorn/no-null
 
   /** Detectors for formats supported by this instance.
    * @private {!Array<InflateAuto.FormatDetector>}
    */
-  this._detectors = null;
+  this._detectors = undefined;
   if (opts && opts.detectors) {
     if (Math.floor(opts.detectors.length) !== opts.detectors.length) {
       throw new ERR_INVALID_ARG_TYPE(
@@ -227,7 +227,7 @@ function InflateAuto(opts) {
   /** Default format which is used if no detectors match.
    * @private {function(new:stream.Duplex, Object=)}
    */
-  this._defaultFormat = null;
+  this._defaultFormat = undefined;
   if (opts && opts.defaultFormat) {
     if (typeof opts.defaultFormat !== 'function') {
       throw new ERR_INVALID_ARG_TYPE(
@@ -246,10 +246,10 @@ function InflateAuto(opts) {
   this._opts = opts;
 
   /* Invariant:
-   * At most one of _decoder or _writeBuf is non-null.
+   * At most one of _decoder or _writeBuf is not undefined.
    * Since writes are being forwarded or buffered.
    */
-  this._writeBuf = null;
+  this._writeBuf = undefined;
 }
 zlibInherits(InflateAuto, useZlibBase ? ZlibBase : Transform);
 
@@ -301,6 +301,7 @@ InflateAuto.detectors = {
       }
     }
 
+    // eslint-disable-next-line unicorn/no-null
     return null;
   },
   /** Detects the GZIP format, as specified in RFC 1952.
@@ -330,6 +331,7 @@ InflateAuto.detectors = {
       }
     }
 
+    // eslint-disable-next-line unicorn/no-null
     return null;
   },
 };
@@ -370,6 +372,7 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
  * @param {function(Error=)} callback Callback once destroyed.
  */
 InflateAuto.prototype._destroy = function _destroy(err, callback) {
+  // eslint-disable-next-line unicorn/no-null
   this._handle = null;
   callback(err);
 };
@@ -414,7 +417,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
     throw err;
   }
 
-  return null;
+  return undefined;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -446,7 +449,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
   this._decoder.once('end', callback);
 
   const chunk = this._writeBuf;
-  this._writeBuf = null;
+  this._writeBuf = undefined;
   this._decoder.end(chunk);
 };
 
@@ -515,7 +518,7 @@ if (zlib.Inflate.prototype._processChunk) {
             retVal = result;
           };
         }
-        this._decoder._transform(chunk, null, cb);
+        this._decoder._transform(chunk, undefined, cb);
         if (!needCb || retVal) {
           return retVal;
         }
@@ -647,7 +650,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   }
 
   // Caller is responsible for writing or buffering returned data
-  this._writeBuf = null;
+  this._writeBuf = undefined;
   return signature;
 };
 
@@ -683,7 +686,7 @@ InflateAuto.prototype.close = function close(callback) {
  *
  * @return {?function(new:stream.Duplex,Object=)} Constructor for the stream
  * class which is used to decode data written to this stream, or
- * <code>null</code> if the format has not been detected or set.
+ * <code>undefined</code> if the format has not been detected or set.
  * @see #_detectFormat()
  * @see #setFormat()
  */
@@ -750,7 +753,7 @@ InflateAuto.prototype.reset = function reset() {
   }
 
   assert(!!this._handle, 'zlib binding closed');
-  this._writeBuf = null;
+  this._writeBuf = undefined;
   this._detectorsLeft = this._detectors;
   return undefined;
 };
