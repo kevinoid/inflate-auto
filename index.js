@@ -487,21 +487,16 @@ if (zlib.Inflate.prototype._processChunk) {
 
     if (this._decoder) {
       if (typeof this._decoder._processChunk === 'function') {
-        // Suppress throwing for unhandled 'error' event when called without cb.
-        // zlib classes emit and listen for 'error' internally (in Node 0.12)
-        let errorListener;
+        // Suppress throwing for unhandled 'error' event when called without cb,
+        // as done by processChunkSync.
+        // Note: Can't unregister handler when _processChunk returns due to
+        // #destroy(err) emitting after next tick on error since
+        // nodejs/node#32220 (v14).  processChunkSync leaves it permanently.
         if (typeof cb !== 'function') {
-          errorListener = () => {};
-          this.on('error', errorListener);
+          this.on('error', () => {});
         }
 
-        try {
-          return this._decoder._processChunk(chunk, flushFlag, cb);
-        } finally {
-          if (errorListener) {
-            this.removeListener('error', errorListener);
-          }
-        }
+        return this._decoder._processChunk(chunk, flushFlag, cb);
       }
 
       // Fallback to _transform, where possible.
