@@ -977,6 +977,42 @@ function defineFormatTests(format) {
         result.checkpoint();
       });
     });
+
+    it('errors for non-function truthy argument type', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      let errInflate;
+      try { zlibStream.close(true); } catch (err) { errInflate = err; }
+      let errAuto;
+      try { inflateAuto.close(true); } catch (err) { errAuto = err; }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+
+      // Streams may not emit any events.
+      // End comparison after event queue clears.
+      setImmediate(() => result.end());
+      return result;
+    });
+
+    it('errors for non-undefined/null falsey argument type', () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      let errInflate;
+      try { zlibStream.close(false); } catch (err) { errInflate = err; }
+      let errAuto;
+      try { inflateAuto.close(false); } catch (err) { errAuto = err; }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+
+      // Streams may not emit any events.
+      // End comparison after event queue clears.
+      setImmediate(() => result.end());
+      return result;
+    });
   });
 
   describe('#getFormat()', () => {
