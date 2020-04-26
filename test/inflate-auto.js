@@ -943,9 +943,12 @@ function defineFormatTests(format) {
 
       // nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
       // which is null rather than false in this case.  It's not worth
-      // complicating the code to mimic this.  Ignore the difference
-      if (errInflate) {
-        errInflate.actual = false;
+      // complicating the code to mimic this.
+      // Only test that they are equally falsey.
+      if (errInflate && errAuto
+        && errInflate.actual !== errAuto.actual
+        && !errInflate.actual === !errAuto.actual) {
+        errAuto.actual = errInflate.actual;
       }
 
       assert.deepStrictEqual(errAuto, errInflate);
