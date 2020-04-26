@@ -1641,6 +1641,7 @@ function defineFormatTests(format) {
 describe('InflateAuto', () => {
   // Match constructor behavior of Gunzip/Inflate/InflateRaw
   it('instantiates without new', () => {
+    // eslint-disable-next-line new-cap
     const auto = InflateAuto();
     assertInstanceOf(auto, InflateAuto);
   });
