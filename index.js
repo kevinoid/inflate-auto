@@ -569,13 +569,15 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   }
 
   format.on('data', (chunk) => this.push(chunk));
-
-  // proxy important events from the format
-  // Note:  Same events as Readable.wrap except pause/unpause and close.
-  ['destroy', 'error'].forEach((event) => {
-    format.on(event, (...args) => {
-      this.emit(event, ...args);
-    });
+  // Note: Readable.wrap proxies 'destroy' event.  No current use is known, but
+  // we proxy it here for compatibility with non-Zlib formats.
+  format.on('destroy', (...args) => this.emit('destroy', ...args));
+  format.on('error', (...args) => {
+    if (this._readableState && this._readableState.autoDestroy) {
+      this.destroy(...args);
+    } else {
+      this.emit('error', ...args);
+    }
   });
 
   this.emit('format', format);
