@@ -190,7 +190,7 @@ function InflateAuto(opts) {
   this._decoder = null; // eslint-disable-line unicorn/no-null
 
   /** Detectors for formats supported by this instance.
-   * @private {!Array<InflateAuto.FormatDetector>}
+   * @private {!Array<!InflateAuto.FormatDetector>}
    */
   this._detectors = undefined;
   if (opts && opts.detectors) {
@@ -220,7 +220,7 @@ function InflateAuto(opts) {
   }
 
   /** Detectors which are still plausible given previous data.
-   * @private {!Array<InflateAuto.FormatDetector>}
+   * @private {!Array<!InflateAuto.FormatDetector>}
    */
   this._detectorsLeft = this._detectors;
 
