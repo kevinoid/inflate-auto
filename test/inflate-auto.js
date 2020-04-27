@@ -382,6 +382,24 @@ function defineFormatTests(format) {
       });
     });
 
+    it('supports options.info', (done) => {
+      const opts = { info: true };
+      decompress(compressed, opts, (errDecompress, dataDecompress) => {
+        assert.ifError(errDecompress);
+        assertInstanceOf(dataDecompress.engine, Decompress);
+
+        InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) => {
+          assert.ifError(errAuto);
+          assertInstanceOf(dataAuto.engine, InflateAuto);
+
+          dataAuto.engine = dataDecompress.engine;
+          assert.deepStrictEqual(dataAuto, dataDecompress);
+
+          done();
+        });
+      });
+    });
+
     it('can use PassThrough as defaultFormat', (done) => {
       const opts = { defaultFormat: stream.PassThrough };
       InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) => {
@@ -777,6 +795,21 @@ function defineFormatTests(format) {
       const dataDecompress = decompressSync(compressedBuf);
       const dataAuto = InflateAuto.inflateAutoSync(compressedBuf);
       assert.deepStrictEqual(dataAuto, dataDecompress);
+    });
+
+    it('supports options.info', () => {
+      const options = { info: true };
+
+      const dataDecompress = decompressSync(compressed, options);
+      assertInstanceOf(dataDecompress.engine, Decompress);
+
+      const dataAuto = InflateAuto.inflateAutoSync(compressed, options);
+      assertInstanceOf(dataAuto.engine, InflateAuto);
+
+      dataAuto.engine = dataDecompress.engine;
+      assert.deepStrictEqual(dataAuto, dataDecompress);
+
+      assert.deepStrictEqual(dataAuto[0], dataDecompress[0]);
     });
 
     if (isDefaultFormat) {

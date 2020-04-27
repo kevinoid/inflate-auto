@@ -185,6 +185,7 @@ function InflateAuto(opts) {
       opts && opts.finishFlush >= Z_NO_FLUSH && opts.finishFlush <= Z_BLOCK
         ? opts.finishFlush
         : zlibDefaultOpts.finishFlush;
+    this._info = opts && opts.info;
 
     // Behave like Zlib where close is unconditionally called on 'end'
     this.once('end', this.close);
