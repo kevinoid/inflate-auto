@@ -1722,6 +1722,38 @@ function defineFormatTests(format) {
           (err) => err === errTest,
         );
       });
+
+      it('supports non-Buffer TypedArray', () => {
+        const compressedTA = new Uint8Array(compressed);
+        const dataDecompress =
+          new Decompress()._processChunk(compressedTA, zlib.Z_FINISH);
+        const dataAuto =
+          new InflateAuto()._processChunk(compressedTA, zlib.Z_FINISH);
+        assert.deepStrictEqual(dataAuto, dataDecompress);
+      });
+
+      it('supports ArrayBuffer', () => {
+        const compressedBuf = compressed.buffer.slice(
+          compressed.byteOffset,
+          compressed.byteOffset + compressed.length,
+        );
+        // As of Node v14, this would cause an assertion failure
+        // Test that InflateAuto matches Buffer/TypedArray behavior
+        const dataDecompress =
+          new Decompress()._processChunk(compressed, zlib.Z_FINISH);
+        const dataAuto =
+          new InflateAuto()._processChunk(compressedBuf, zlib.Z_FINISH);
+        assert.deepStrictEqual(dataAuto, dataDecompress);
+      });
+
+      it('throws for invalid chunk type', () => {
+        // As of Node v14, this would cause an assertion failure
+        // Test that InflateAuto throws TypeError
+        assert.throws(
+          () => new InflateAuto()._processChunk(10, zlib.Z_FINISH),
+          TypeError,
+        );
+      });
     });
   });
 }

@@ -12,7 +12,14 @@
 
 const { Transform } = require('stream');
 const assert = require('assert');
-const { debuglog, inherits } = require('util');
+const {
+  debuglog,
+  inherits,
+  types: {
+    isAnyArrayBuffer,
+    isArrayBufferView,
+  },
+} = require('util');
 const zlib = require('zlib');
 
 const {
@@ -452,7 +459,7 @@ if (zlib.Inflate.prototype._processChunk) {
   /** Process a chunk of data, synchronously or asynchronously.
    *
    * @protected
-   * @param {!Buffer} chunk Chunk of data to write.
+   * @param {!ArrayBufferView} chunk Chunk of data to write.
    * @param {number} flushFlag Flush flag with which to write the data.
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
    * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
@@ -462,6 +469,20 @@ if (zlib.Inflate.prototype._processChunk) {
    */
   InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
     cb) {
+    if (!Buffer.isBuffer(chunk)) {
+      if (isArrayBufferView(chunk)) {
+        chunk = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+      } else if (isAnyArrayBuffer(chunk) || typeof chunk === 'string') {
+        chunk = Buffer.from(chunk);
+      } else {
+        throw new ERR_INVALID_ARG_TYPE(
+          'chunk',
+          ['string', 'Buffer', 'TypedArray', 'DataView', 'ArrayBuffer'],
+          chunk,
+        );
+      }
+    }
+
     if (!this._decoder) {
       try {
         chunk = this._writeEarly(chunk);
