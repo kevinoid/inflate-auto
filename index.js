@@ -440,7 +440,14 @@ InflateAuto.prototype._flush = function _flush(callback) {
     try {
       this.setFormat(this._detectFormat(this._writeBuf, true));
     } catch (err) {
-      callback(err);
+      // Before nodejs/node#28979 (v13) _flush would be called after a write
+      // error.  If it returned an error, both would be emitted.  This occurrs
+      // when _writeEarly fails in both (e.g. due to defaultFormat: null).
+      // Avoid emitting an error twice in this case.
+      callback(
+        this._writableState && this._writableState.errorEmitted ? undefined
+          : err,
+      );
       return;
     }
   }
