@@ -426,11 +426,6 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
  * @param {function(Error=)} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  if (!this._handle) {
-    callback(new Error('zlib binding closed'));
-    return;
-  }
-
   if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
     try {
@@ -595,11 +590,6 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
   callback) {
   if (!this._decoder) {
-    if (!this._handle) {
-      callback(new Error('zlib binding closed'));
-      return;
-    }
-
     try {
       chunk = this._writeEarly(chunk);
     } catch (err) {
