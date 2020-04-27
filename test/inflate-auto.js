@@ -286,6 +286,83 @@ function defineFormatTests(format) {
       });
     });
 
+    it('handles compressed empty data', (done) => {
+      decompress(emptyCompressed, (errDecompress, dataDecompress) => {
+        assert.ifError(errDecompress);
+        InflateAuto.inflateAuto(emptyCompressed, (errAuto, dataAuto) => {
+          assert.ifError(errAuto);
+          assert.deepStrictEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
+
+    it('supports non-Buffer TypedArray', (done) => {
+      const compressedTA = new Uint8Array(compressed);
+      decompress(compressedTA, (errDecompress, dataDecompress) => {
+        assert.ifError(errDecompress);
+        InflateAuto.inflateAuto(compressedTA, (errAuto, dataAuto) => {
+          assert.deepStrictEqual(errAuto, errDecompress);
+          assert.deepStrictEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
+
+    it('supports ArrayBuffer', (done) => {
+      const compressedBuf = compressed.buffer.slice(
+        compressed.byteOffset,
+        compressed.byteOffset + compressed.length,
+      );
+      decompress(compressedBuf, (errDecompress, dataDecompress) => {
+        InflateAuto.inflateAuto(compressedBuf, (errAuto, dataAuto) => {
+          assert.deepStrictEqual(errAuto, errDecompress);
+          assert.deepStrictEqual(dataAuto, dataDecompress);
+          done();
+        });
+      });
+    });
+
+    it('handles null like zlib', function() {
+      // Before nodejs/node#24929 (v12) an exception was not thrown and an
+      // unhandled error would occur when callback attempted.
+      // Don't mimic this behavior.
+      if (nodeVersion[0] < 12) {
+        this.skip();
+        return;
+      }
+
+      let errInflate;
+      try { decompress(null); } catch (err) { errInflate = err; }
+
+      let errAuto;
+      try { InflateAuto.inflateAuto(null); } catch (err) { errAuto = err; }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+    });
+
+    it('throws when called without callback', function() {
+      // Before nodejs/node#24929 (v12) an exception was not thrown and an
+      // unhandled error would occur when callback attempted.
+      // Don't mimic this behavior.
+      if (nodeVersion[0] < 12) {
+        this.skip();
+        return;
+      }
+
+      let errInflate;
+      try { decompress(compressed); } catch (err) { errInflate = err; }
+
+      let errAuto;
+      try {
+        InflateAuto.inflateAuto(compressed);
+      } catch (err) {
+        errAuto = err;
+      }
+
+      assert.deepStrictEqual(errAuto, errInflate);
+    });
+
     it('can accept options argument', (done) => {
       const opts = { chunkSize: zlib.Z_MIN_CHUNK };
       InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) => {
@@ -685,6 +762,23 @@ function defineFormatTests(format) {
       }
 
       assert.deepStrictEqual(errAuto, errInflate);
+    });
+
+    it('supports non-Buffer TypedArray', () => {
+      const compressedTA = new Uint8Array(compressed);
+      const dataDecompress = decompressSync(compressedTA);
+      const dataAuto = InflateAuto.inflateAutoSync(compressedTA);
+      assert.deepStrictEqual(dataAuto, dataDecompress);
+    });
+
+    it('supports ArrayBuffer', () => {
+      const compressedBuf = compressed.buffer.slice(
+        compressed.byteOffset,
+        compressed.byteOffset + compressed.length,
+      );
+      const dataDecompress = decompressSync(compressedBuf);
+      const dataAuto = InflateAuto.inflateAutoSync(compressedBuf);
+      assert.deepStrictEqual(dataAuto, dataDecompress);
     });
 
     if (isDefaultFormat) {
