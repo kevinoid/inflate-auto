@@ -1066,16 +1066,16 @@ function defineFormatTests(format) {
       try { inflateAuto.reset(); } catch (err) { errAuto = err; }
 
       // nodejs/node@6441556 (v6.2.1) changed the assertion to check _handle
-      // which is null rather than false in this case.  It's not worth
-      // complicating the code to mimic this.
-      // Only test that they are equally falsey.
-      if (errInflate && errAuto
-        && errInflate.actual !== errAuto.actual
-        && !errInflate.actual === !errAuto.actual) {
-        errAuto.actual = errInflate.actual;
-      }
-
-      assert.deepStrictEqual(errAuto, errInflate);
+      // which is null rather than false in this case.
+      //
+      // nodejs/node#25956 (v12) changed from ERR_ASSERTION to
+      // ERR_INTERNAL_ASSERTION.
+      //
+      // It's not worth complicating the code to mimic this.
+      assert.deepStrictEqual(
+        errAuto instanceof Error,
+        errInflate instanceof Error,
+      );
 
       return result;
     });
