@@ -685,19 +685,17 @@ function defineFormatTests(format) {
     });
   }
 
-  if (!isDefaultFormat) {
-    it('emits error for format error in _flush', (done) => {
-      const inflateAuto = new InflateAuto({ defaultFormat: null });
-      const truncated = compressed.slice(0, 1);
-      inflateAuto.on('error', (err) => {
-        assert(err, 'expected format error');
-        assert(/format/i.test(err.message));
-        assert.deepStrictEqual(err.data, truncated);
-        done();
-      });
-      inflateAuto.end(truncated);
+  it('emits error for format error in _flush', (done) => {
+    const inflateAuto = new InflateAuto({ defaultFormat: null });
+    const truncated = compressed.slice(0, 1);
+    inflateAuto.on('error', (err) => {
+      assert(err, 'expected format error');
+      assert(/format/i.test(err.message));
+      assert.deepStrictEqual(err.data, truncated);
+      done();
     });
-  }
+    inflateAuto.end(truncated);
+  });
 
   // For objectMode: true validation is done in _transform.  Check we match.
   // This causes an assertion failure on Node v9.  Skip test on this version.
