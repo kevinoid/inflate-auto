@@ -24,6 +24,7 @@ const zlib = require('zlib');
 
 const {
   ERR_INVALID_ARG_TYPE,
+  ERR_STREAM_PREMATURE_CLOSE,
   ERR_SYNC_NOT_SUPPORTED,
 } = require('./lib/errors');
 const zlibInternal = require('./lib/zlib-internal');
@@ -668,32 +669,10 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  * freed.
  */
 InflateAuto.prototype.close = function close(callback) {
-  if (!this._decoder) {
-    // Previous header checks inconclusive.  Must choose one now.
-    try {
-      this.setFormat(this._detectFormat(this._writeBuf, true));
-    } catch (err) {
-      callback(err);
-      return;
-    }
-  }
-
-  const onclose = (...args) => {
-    if (callback) {
-      // TODO [engine:node@>=14]: Use stream.finished as nodejs/node@a9401439c7b
-      // Can't currently due to passing ERR_STREAM_PREMATURE_CLOSE argument
-      // See https://github.com/nodejs/node/pull/32220#issuecomment-602865570
-      callback(...args);
-    }
-  };
-
   if (this._decoder && typeof this._decoder.close === 'function') {
-    this._decoder.close(
-      // Pass invalid callback to close for appropriate exception
-      callback && typeof callback !== 'function' ? callback : onclose,
-    );
-  } else {
-    onclose();
+    this._decoder.close(callback);
+  } else if (callback) {
+    process.nextTick(callback, new ERR_STREAM_PREMATURE_CLOSE());
   }
 
   this.destroy();
