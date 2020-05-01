@@ -27,20 +27,96 @@
     <section>
         <article>
             <pre class="prettyprint source linenums"><code>/**
- * @copyright Copyright 2016-2017 Kevin Locke &lt;kevin@kevinlocke.name>
+ * @copyright Copyright 2016-2020 Kevin Locke &lt;kevin@kevinlocke.name>
  * @license MIT
  */
 
+// It's helpful to use named parameters for documentation, which makes
+// re-building the argument list annoying and error prone.  Since that is done
+// frequently in this module, disable prefer-rest-params here.
+/* eslint-disable prefer-rest-params */
+
 'use strict';
 
-var Transform = require('stream').Transform;
-var assert = require('assert').ok;
-var inherits = require('util').inherits;
-var zlib = require('zlib');
-var zlibInternal = require('./lib/zlib-internal');
+const { Transform } = require('stream');
+const assert = require('assert');
+const {
+  debuglog,
+  inherits,
+  types: {
+    isAnyArrayBuffer,
+    isArrayBufferView,
+  },
+} = require('util');
+const zlib = require('zlib');
 
-function isFunction(val) {
-  return typeof val === 'function';
+const {
+  ERR_INVALID_ARG_TYPE,
+  ERR_STREAM_PREMATURE_CLOSE,
+  ERR_SYNC_NOT_SUPPORTED,
+} = require('./lib/errors');
+const zlibInternal = require('./lib/zlib-internal');
+
+const {
+  Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
+} = zlib.constants;
+
+const debug = debuglog('inflate-auto');
+
+// ZlibBase is not considered to be a part of the Node.js API.
+// The risk that it will change is weighed against the value of more closely
+// matching the behavior of the zlib classes in several version-dependent ways
+// (e.g. autoDestroy, constructor argument validation, underscore properties).
+//
+// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
+const ZlibBase = zlib.Inflate.super_ ? zlib.Inflate.super_.super_
+  : Object.getPrototypeOf(Object.getPrototypeOf(zlib.Inflate));
+const useZlibBase = ZlibBase.name === 'ZlibBase' &amp;&amp; ZlibBase.length === 4;
+if (!useZlibBase) {
+  debug(
+    'Not using zlib base class %s with %d arguments',
+    ZlibBase.name,
+    ZlibBase.length,
+  );
+}
+
+// Default options passed to ZlibBase by Zlib (i.e. classes other than Brotli)
+const zlibDefaultOpts = {
+  flush: Z_NO_FLUSH,
+  finishFlush: Z_FINISH,
+  fullFlush: Z_FULL_FLUSH,
+};
+
+/**
+ * Inherit the prototype methods from one constructor into another, as done
+ * by ES6 class declarations.
+ */
+function inheritsES6(Ctor, SuperCtor) {
+  Object.setPrototypeOf(Ctor.prototype, SuperCtor.prototype);
+  Object.setPrototypeOf(Ctor, SuperCtor);
+}
+
+// Apply inheritance using same style as zlib module
+// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
+const zlibInherits = zlib.Inflate.super_ ? inherits : inheritsES6;
+
+function isNotFunction(val) {
+  return typeof val !== 'function';
+}
+
+function runDetectors(chunk, detectors, detectorsLeft) {
+  for (let i = 0; i &lt; detectors.length; i += 1) {
+    const detector = detectors[i];
+    const format = detector(chunk);
+    if (format) {
+      return format;
+    }
+    if (format === undefined) {
+      detectorsLeft.push(detector);
+    }
+  }
+
+  return undefined;
 }
 
 /** A function which detects the format for a given chunk of data.
@@ -112,57 +188,90 @@ function InflateAuto(opts) {
     return new InflateAuto(opts);
   }
 
-  Transform.call(this, opts);
+  if (useZlibBase) {
+    ZlibBase.call(
+      this,
+      opts,
+      zlib.constants.INFLATE,
+      {},
+      zlibDefaultOpts,
+    );
+  } else {
+    // Ignore encoding, objectMode, and writableObjectMode
+    // as done in nodejs/node@add4b0ab8c (v9 and later)
+    if (opts &amp;&amp; (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
+      opts = { ...opts };
+      opts.encoding = undefined;
+      opts.objectMode = false;
+      opts.writableObjectMode = false;
+    }
 
-  // Note:  Copy validation code rather than calling Zlib constructor to avoid
-  // overhead of zlib binding initialization.
-  zlibInternal.validateOptions(opts);
+    Transform.call(this, opts);
 
-  /** Whether #close() has been called.
-   * @private {boolean} */
-  this._closed = false;
+    // Required by zlibInternal.zlibBufferSync
+    this._finishFlushFlag =
+      opts &amp;&amp; opts.finishFlush >= Z_NO_FLUSH &amp;&amp; opts.finishFlush &lt;= Z_BLOCK
+        ? opts.finishFlush
+        : zlibDefaultOpts.finishFlush;
+    this._info = opts &amp;&amp; opts.info;
 
-  // For Zlib compatibility
-  this._finishFlushFlag = opts &amp;&amp; typeof opts.finishFlush !== 'undefined' ?
-    opts.finishFlush : zlib.Z_FINISH;
+    // Behave like Zlib where close is unconditionally called on 'end'
+    this.once('end', this.close);
+  }
+
+  // null if #close() has been called, otherwise a (dummy) object
+  this._handle = {};
 
   /** Instance of a class which does the decoding for the detected data format.
    * @private {stream.Duplex} */
-  this._decoder = null;
+  this._decoder = null; // eslint-disable-line unicorn/no-null
 
   /** Detectors for formats supported by this instance.
-   * @private {!Array&lt;InflateAuto.FormatDetector>}
+   * @private {!Array&lt;!InflateAuto.FormatDetector>}
    */
-  this._detectors = null;
+  this._detectors = undefined;
   if (opts &amp;&amp; opts.detectors) {
     if (Math.floor(opts.detectors.length) !== opts.detectors.length) {
-      throw new TypeError('detectors must be Array-like');
+      throw new ERR_INVALID_ARG_TYPE(
+        'opts.detectors',
+        'Array-like',
+        opts.detectors,
+      );
     }
 
-    if (!Array.prototype.every.call(opts.detectors, isFunction)) {
-      throw new TypeError('All detectors must be functions');
+    const nonFuncInd = Array.prototype.find.call(opts.detectors, isNotFunction);
+    if (nonFuncInd >= 0) {
+      throw new ERR_INVALID_ARG_TYPE(
+        `opts.detectors[${nonFuncInd}]`,
+        'function',
+        opts.detectors[nonFuncInd],
+      );
     }
 
     this._detectors = Array.prototype.slice.call(opts.detectors);
   } else {
     this._detectors = [
       InflateAuto.detectors.detectDeflate,
-      InflateAuto.detectors.detectGzip
+      InflateAuto.detectors.detectGzip,
     ];
   }
 
   /** Detectors which are still plausible given previous data.
-   * @private {!Array&lt;InflateAuto.FormatDetector>}
+   * @private {!Array&lt;!InflateAuto.FormatDetector>}
    */
   this._detectorsLeft = this._detectors;
 
   /** Default format which is used if no detectors match.
    * @private {function(new:stream.Duplex, Object=)}
    */
-  this._defaultFormat = null;
+  this._defaultFormat = undefined;
   if (opts &amp;&amp; opts.defaultFormat) {
     if (typeof opts.defaultFormat !== 'function') {
-      throw new TypeError('defaultFormat must be a constructor function');
+      throw new ERR_INVALID_ARG_TYPE(
+        'opts.defaultFormat',
+        'function',
+        opts.defaultFormat,
+      );
     }
     this._defaultFormat = opts.defaultFormat;
   } else if (!opts || opts.defaultFormat === undefined) {
@@ -174,15 +283,23 @@ function InflateAuto(opts) {
   this._opts = opts;
 
   /* Invariant:
-   * At most one of _decoder or _writeBuf is non-null.
+   * At most one of _decoder or _writeBuf is not undefined.
    * Since writes are being forwarded or buffered.
    */
-  this._writeBuf = null;
-
-  // Behave like Zlib where close is unconditionally called on 'end'
-  this.once('end', this.close);
+  this._writeBuf = undefined;
 }
-inherits(InflateAuto, Transform);
+zlibInherits(InflateAuto, useZlibBase ? ZlibBase : Transform);
+
+if (!useZlibBase) {
+  // Define _closed from _handle as Zlib does since nodejs/node@b53473f0e7e (v7)
+  Object.defineProperty(InflateAuto.prototype, '_closed', {
+    configurable: true,
+    enumerable: true,
+    get() {
+      return !this._handle;
+    },
+  });
+}
 
 /** Creates an instance of {@link InflateAuto}.
  * Analogous to {@link zlib.createInflate}.
@@ -207,16 +324,21 @@ InflateAuto.detectors = {
    */
   detectDeflate: function detectDeflate(chunk) {
     // CM field (least-significant 4 bits) must be 8
-    // FCHECK field ensures first 16-bit BE int is a multiple of 31
-    if ((chunk[0] &amp; 0x0f) === 8) {
+    // eslint-disable-next-line no-bitwise
+    if ((chunk[0] &amp; 0x0F) === 8) {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } else if ((chunk.readUInt16BE(0) % 31) === 0) {
+      }
+
+      // FCHECK field ensures first 16-bit BE int is a multiple of 31
+      if ((chunk.readUInt16BE(0) % 31) === 0) {
         // Valid ZLIB header
         return zlib.Inflate;
       }
     }
+
+    // eslint-disable-next-line unicorn/no-null
     return null;
   },
   /** Detects the GZIP format, as specified in RFC 1952.
@@ -227,22 +349,28 @@ InflateAuto.detectors = {
    */
   detectGzip: function detectGzip(chunk) {
     // Check for gzip header per Section 2.3.1 of RFC 1952
-    if (chunk[0] === 0x1f) {
+    if (chunk[0] === 0x1F) {
       if (chunk.length === 1) {
         // Can't know yet whether header is valid
         return undefined;
-      } else if (chunk[1] === 0x8b) {
+      }
+
+      if (chunk[1] === 0x8B) {
         if (chunk.length === 2) {
           // Can't know yet whether header is valid
           return undefined;
-        } else if (chunk[2] === 8) {
+        }
+
+        if (chunk[2] === 8) {
           // Valid gzip header
           return zlib.Gunzip;
         }
       }
     }
+
+    // eslint-disable-next-line unicorn/no-null
     return null;
-  }
+  },
 };
 
 /** Decompresses a compressed &lt;code>Buffer&lt;/code>.
@@ -261,19 +389,30 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
   return zlibInternal.zlibBuffer(new InflateAuto(opts), buffer, callback);
 };
 
-if (zlib.inflateSync) {
-  /** Decompresses a compressed Buffer synchronously.
-   * Analogous to {@link zlib.inflateSync}.
-   * Only defined when {@link zlib.inflateSync} is available.
-   *
-   * @param {!Buffer} buffer Compressed data to decompress.
-   * @param {Object=} opts Decompression options.
-   * @return {!Buffer} Decompressed data.
-   */
-  InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
-    return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
-  };
-}
+/** Decompresses a compressed Buffer synchronously.
+ * Analogous to {@link zlib.inflateSync}.
+ *
+ * @param {!Buffer} buffer Compressed data to decompress.
+ * @param {Object=} opts Decompression options.
+ * @return {!Buffer} Decompressed data.
+ */
+InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
+  return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
+};
+
+/** Implements {@link #destroy} on this stream by ensuring
+ * &lt;code>_handle&lt;/code> is set &lt;code>null&lt;/code> (for {@link _closed})
+ * as done by {@link zlib.ZlibBase#_destroy} since nodejs/node@8a02d941b6c
+ * (v12) and nodejs/node@c6a43fa2ef (v10.15.1).
+ *
+ * @param {Error} err Error passed to {@link #destroy}.
+ * @param {function(Error=)} callback Callback once destroyed.
+ */
+InflateAuto.prototype._destroy = function _destroy(err, callback) {
+  // eslint-disable-next-line unicorn/no-null
+  this._handle = null;
+  callback(err);
+};
 
 /** Detects the format of a given &lt;code>Buffer&lt;/code>.
  *
@@ -297,19 +436,12 @@ if (zlib.inflateSync) {
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
   if (chunk &amp;&amp; chunk.length > 0) {
-    var detectors = this._detectorsLeft;
-    var plausible = [];
-    for (var i = 0; i &lt; detectors.length; i += 1) {
-      var detector = detectors[i];
-      var format = detector(chunk);
-      if (format) {
-        return format;
-      }
-      if (format === undefined) {
-        plausible.push(detector);
-      }
+    const newDetectorsLeft = [];
+    const format = runDetectors(chunk, this._detectorsLeft, newDetectorsLeft);
+    if (format) {
+      return format;
     }
-    this._detectorsLeft = plausible;
+    this._detectorsLeft = newDetectorsLeft;
   }
 
   if (this._detectorsLeft.length === 0 || end) {
@@ -317,12 +449,12 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
       return this._defaultFormat;
     }
 
-    var err = new Error('data did not match any supported formats');
+    const err = new Error('data did not match any supported formats');
     err.data = chunk;
     throw err;
   }
 
-  return null;
+  return undefined;
 };
 
 /** Flushes any buffered data when the stream is ending.
@@ -331,17 +463,19 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
  * @param {function(Error=)} callback
  */
 InflateAuto.prototype._flush = function _flush(callback) {
-  if (this._closed) {
-    callback(new Error('zlib binding closed'));
-    return;
-  }
-
   if (!this._decoder) {
     // Previous header checks inconclusive.  Must choose one now.
     try {
       this.setFormat(this._detectFormat(this._writeBuf, true));
     } catch (err) {
-      callback(err);
+      // Before nodejs/node#28979 (v13) _flush would be called after a write
+      // error.  If it returned an error, both would be emitted.  This occurrs
+      // when _writeEarly fails in both (e.g. due to defaultFormat: null).
+      // Avoid emitting an error twice in this case.
+      callback(
+        this._writableState &amp;&amp; this._writableState.errorEmitted ? undefined
+          : err,
+      );
       return;
     }
   }
@@ -353,8 +487,8 @@ InflateAuto.prototype._flush = function _flush(callback) {
   // and should not emit 'end' after 'error'
   this._decoder.once('end', callback);
 
-  var chunk = this._writeBuf;
-  this._writeBuf = null;
+  const chunk = this._writeBuf;
+  this._writeBuf = undefined;
   this._decoder.end(chunk);
 };
 
@@ -362,7 +496,7 @@ if (zlib.Inflate.prototype._processChunk) {
   /** Process a chunk of data, synchronously or asynchronously.
    *
    * @protected
-   * @param {!Buffer} chunk Chunk of data to write.
+   * @param {!ArrayBufferView} chunk Chunk of data to write.
    * @param {number} flushFlag Flush flag with which to write the data.
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
    * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
@@ -372,6 +506,20 @@ if (zlib.Inflate.prototype._processChunk) {
    */
   InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
     cb) {
+    if (!Buffer.isBuffer(chunk)) {
+      if (isArrayBufferView(chunk)) {
+        chunk = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
+      } else if (isAnyArrayBuffer(chunk) || typeof chunk === 'string') {
+        chunk = Buffer.from(chunk);
+      } else {
+        throw new ERR_INVALID_ARG_TYPE(
+          'chunk',
+          ['string', 'Buffer', 'TypedArray', 'DataView', 'ArrayBuffer'],
+          chunk,
+        );
+      }
+    }
+
     if (!this._decoder) {
       try {
         chunk = this._writeEarly(chunk);
@@ -392,28 +540,23 @@ if (zlib.Inflate.prototype._processChunk) {
 
     if (this._decoder) {
       if (typeof this._decoder._processChunk === 'function') {
-        // Suppress throwing for unhandled 'error' event when called without cb.
-        // zlib classes emit and listen for 'error' internally (in Node 0.12)
-        var errorListener;
+        // Suppress throwing for unhandled 'error' event when called without cb,
+        // as done by processChunkSync.
+        // Note: Can't unregister handler when _processChunk returns due to
+        // #destroy(err) emitting after next tick on error since
+        // nodejs/node#32220 (v14).  processChunkSync leaves it permanently.
         if (typeof cb !== 'function') {
-          errorListener = function() {};
-          this.on('error', errorListener);
+          this.on('error', () => {});
         }
 
-        try {
-          return this._decoder._processChunk(chunk, flushFlag, cb);
-        } finally {
-          if (errorListener) {
-            this.removeListener('error', errorListener);
-          }
-        }
+        return this._decoder._processChunk(chunk, flushFlag, cb);
       }
 
       // Fallback to _transform, where possible.
       // Only works synchronously when callback is called with data immediately.
       if (typeof this._decoder._transform === 'function') {
-        var needCb = false;
-        var retVal;
+        let needCb = false;
+        let retVal;
         if (typeof cb !== 'function') {
           needCb = true;
           cb = function(err, result) {
@@ -423,16 +566,16 @@ if (zlib.Inflate.prototype._processChunk) {
             retVal = result;
           };
         }
-        this._decoder._transform(chunk, null, cb);
+        this._decoder._transform(chunk, undefined, cb);
         if (!needCb || retVal) {
           return retVal;
         }
       }
 
-      var formatName =
-        (this._decoder.constructor &amp;&amp; this._decoder.constructor.name) ||
-        'format';
-      throw new Error(formatName + ' does not support _processChunk');
+      const fmtName =
+        (this._decoder.constructor &amp;&amp; this._decoder.constructor.name)
+        || 'the detected format';
+      throw new ERR_SYNC_NOT_SUPPORTED(fmtName);
     }
 
     this._writeBuf = chunk;
@@ -453,8 +596,6 @@ if (zlib.Inflate.prototype._processChunk) {
  * @see #_detectFormat()
  */
 InflateAuto.prototype.setFormat = function setFormat(Format) {
-  var self = this;
-
   if (this._decoder &amp;&amp; Format === this._decoder.constructor) {
     return;
   }
@@ -465,7 +606,9 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     throw new Error('Changing format is not supported');
   }
 
-  var format = new Format(this._opts);
+  // Reuse instance from option validation, if Format matches.
+  const format = new Format(this._opts);
+
   this._decoder = format;
 
   // Ensure .constructor is set properly by Format constructor
@@ -473,35 +616,23 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
     format.constructor = Format;
   }
 
-  format.on('data', function(chunk) {
-    self.push(chunk);
-  });
-
-  // proxy important events from the format
-  // Note:  Same events as Readable.wrap except pause/unpause and close.
-  ['destroy', 'error'].forEach(function(event) {
-    format.on(event, self.emit.bind(self, event));
-  });
-
-  // 'close' handled specially to ensure correct order with 'end'
-  this.removeListener('end', this.close);
-  var endEmitted = false;
-  this.once('end', function() { endEmitted = true; });
-  var formatEndEmitted = false;
-  format.once('end', function() { formatEndEmitted = true; });
-  format.on('close', function() {
-    if (formatEndEmitted &amp;&amp; !endEmitted) {
-      self.once('end', function() { self.emit('close'); });
+  format.on('data', (chunk) => this.push(chunk));
+  // Note: Readable.wrap proxies 'destroy' event.  No current use is known, but
+  // we proxy it here for compatibility with non-Zlib formats.
+  format.on('destroy', (...args) => this.emit('destroy', ...args));
+  format.on('error', (...args) => {
+    if (this._readableState &amp;&amp; this._readableState.autoDestroy) {
+      this.destroy(...args);
     } else {
-      self.emit('close');
+      this.emit('error', ...args);
     }
   });
 
-  self.emit('format', format);
+  this.emit('format', format);
 
   if (this._queuedMethodCalls) {
-    this._queuedMethodCalls.forEach(function(mc) {
-      format[mc.name].apply(format, mc.args);
+    this._queuedMethodCalls.forEach((mc) => {
+      format[mc.name](...mc.args);
     });
     delete this._queuedMethodCalls;
   }
@@ -517,16 +648,6 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
 InflateAuto.prototype._transform = function _transform(chunk, encoding,
   callback) {
   if (!this._decoder) {
-    if (chunk !== null &amp;&amp; !(chunk instanceof Buffer)) {
-      callback(new Error('invalid input'));
-      return;
-    }
-
-    if (this._closed) {
-      callback(new Error('zlib binding closed'));
-      return;
-    }
-
     try {
       chunk = this._writeEarly(chunk);
     } catch (err) {
@@ -558,7 +679,7 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
     return chunk;
   }
 
-  var signature;
+  let signature;
   if (this._writeBuf) {
     signature = Buffer.concat([this._writeBuf, chunk]);
   } else {
@@ -568,13 +689,13 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   // If _detectFormat or setFormat throw, data will be buffered
   this._writeBuf = signature;
 
-  var Format = this._detectFormat(signature);
+  const Format = this._detectFormat(signature);
   if (Format) {
     this.setFormat(Format);
   }
 
   // Caller is responsible for writing or buffering returned data
-  this._writeBuf = null;
+  this._writeBuf = undefined;
   return signature;
 };
 
@@ -585,19 +706,12 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
  */
 InflateAuto.prototype.close = function close(callback) {
   if (this._decoder &amp;&amp; typeof this._decoder.close === 'function') {
-    return this._decoder.close.apply(this._decoder, arguments);
+    this._decoder.close(callback);
+  } else if (callback) {
+    process.nextTick(callback, new ERR_STREAM_PREMATURE_CLOSE());
   }
 
-  if (callback) {
-    process.nextTick(callback);
-  }
-
-  if (!this._closed) {
-    this._closed = true;
-    process.nextTick(this.emit.bind(this, 'close'));
-  }
-
-  return undefined;
+  this.destroy();
 };
 
 /** Gets the constructor function used to create the decoder for data written
@@ -605,7 +719,7 @@ InflateAuto.prototype.close = function close(callback) {
  *
  * @return {?function(new:stream.Duplex,Object=)} Constructor for the stream
  * class which is used to decode data written to this stream, or
- * &lt;code>null&lt;/code> if the format has not been detected or set.
+ * &lt;code>undefined&lt;/code> if the format has not been detected or set.
  * @see #_detectFormat()
  * @see #setFormat()
  */
@@ -621,7 +735,7 @@ InflateAuto.prototype.getFormat = function getFormat() {
  */
 InflateAuto.prototype.flush = function flush(kind, callback) {
   if (this._decoder) {
-    return this._decoder.flush.apply(this._decoder, arguments);
+    return this._decoder.flush(...arguments);
   }
 
   this._queueMethodCall('flush', arguments);
@@ -651,7 +765,7 @@ if (zlib.Inflate.prototype.params) {
    */
   InflateAuto.prototype.params = function params(level, strategy, callback) {
     if (this._decoder) {
-      return this._decoder.params.apply(this._decoder, arguments);
+      return this._decoder.params(...arguments);
     }
 
     this._queueMethodCall('params', arguments);
@@ -668,11 +782,11 @@ if (zlib.Inflate.prototype.params) {
  */
 InflateAuto.prototype.reset = function reset() {
   if (this._decoder) {
-    return this._decoder.reset.apply(this._decoder, arguments);
+    return this._decoder.reset(...arguments);
   }
 
-  assert(!this._closed, 'zlib binding closed');
-  this._writeBuf = null;
+  assert(!!this._handle, 'zlib binding closed');
+  this._writeBuf = undefined;
   this._detectorsLeft = this._detectors;
   return undefined;
 };
@@ -694,7 +808,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   // Ideally we would let the proxied method call the callback,
   // but callers may depend on a reply before the next write.
   // So call the callback now to avoid deadlocks.
-  var lastArg = args[args.length - 1];
+  const lastArg = args[args.length - 1];
   if (typeof lastArg === 'function') {
     args = Array.prototype.slice.call(args, 0, -1);
     process.nextTick(lastArg);
@@ -703,7 +817,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   if (!this._queuedMethodCalls) {
     this._queuedMethodCalls = [];
   }
-  this._queuedMethodCalls.push({name: name, args: args});
+  this._queuedMethodCalls.push({ name, args });
 };
 
 module.exports = InflateAuto;
@@ -717,13 +831,13 @@ module.exports = InflateAuto;
 </div>
 
 <nav>
-    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="InflateAuto.html">InflateAuto</a></li></ul>
+    <h2><a href="index.html">Home</a></h2><h3>Classes</h3><ul><li><a href="InflateAuto.html">InflateAuto</a></li></ul><h3>Global</h3><ul><li><a href="global.html#inheritsES6">inheritsES6</a></li></ul>
 </nav>
 
 <br class="clear">
 
 <footer>
-    Documentation generated by <a href="https://github.com/jsdoc3/jsdoc">JSDoc 3.4.3</a> on Fri Feb 24 2017 14:14:31 GMT-0700 (MST)
+    Documentation generated by <a href="https://github.com/jsdoc/jsdoc">JSDoc 3.6.4</a> on Fri May 01 2020 07:57:09 GMT-0600 (Mountain Daylight Time)
 </footer>
 
 <script> prettyPrint(); </script>
