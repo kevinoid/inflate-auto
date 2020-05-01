@@ -1,4 +1,34 @@
-# Change Log
+# [2.0.0](https://github.com/kevinoid/inflate-auto/compare/v1.0.0...v2.0.0) (2020-05-01)
+
+### BREAKING CHANGES
+
+* Require Node.js 10.13 or later.
+
+
+### Bug Fixes
+
+* Avoid unhandled 'error' in synchronous `_processChunk`
+  ([6541fa4](https://github.com/kevinoid/inflate-auto/commit/6541fa4ef3cc1987b6894f209aee5aaf43c0f9c7))
+* Call `#destroy()` when `autoDestroy` is enabled
+  ([5752c52](https://github.com/kevinoid/inflate-auto/commit/5752c52e383244b6d3d7c92e5f78d2813f6b4e1c))
+  ([2dc04f8](https://github.com/kevinoid/inflate-auto/commit/2dc04f82a39b9637b90347d1ef6f8e3edf280375))
+* Only emit `'error'` once for `_detectFormat` failures
+  ([03a220f](https://github.com/kevinoid/inflate-auto/commit/03a220fa2260e7be40b42b7ce0ef16e4e012d33d))
+
+
+### Features
+
+* `_processChunk` support `TypedArray`/`ArrayBuffer`
+  ([f663330](https://github.com/kevinoid/inflate-auto/commit/f66333030231015fba628137e431762496e0ee3d))
+* Inherit from `ZlibBase` where possible
+  ([808c06e](https://github.com/kevinoid/inflate-auto/commit/808c06e2ad3247450168b0afac8c73a615f6d785))
+* Support `options.info` for `.inflateAuto` and `.inflateAutoSync`
+  ([399a57e](https://github.com/kevinoid/inflate-auto/commit/399a57e76a5998f57788db70cf4d9be4df670ff0))
+* Throw `ERR_INVALID_ARG_TYPE` for invalid arguments
+  ([a24c602](https://github.com/kevinoid/inflate-auto/commit/a24c6026d3a626b8dd280892ea4f37b667d1273e))
+* Better `zlib` event compatibility.
+* Dependency updates.
+
 
 ## [v1.0.0](https://github.com/kevinoid/inflate-auto/tree/v1.0.0) (2017-02-24)
 
