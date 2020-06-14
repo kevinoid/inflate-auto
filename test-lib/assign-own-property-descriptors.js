@@ -5,12 +5,13 @@
 
 'use strict';
 
-/** Copies the (enumerable and non-enumerable) own property descriptors from
+/**
+ * Copies the (enumerable and non-enumerable) own property descriptors from
  * one or more source objects to a target object.
- * @param {!Object} target Object to which property descriptors are assigned.
- * @param {!Object} ...sources Objects from which property descriptors are
- * copied.
- * @return {!Object} target.
+ *
+ * @param {!object} target Object to which property descriptors are assigned.
+ * @param {!object} sources Objects from which property descriptors are copied.
+ * @returns {!object} target.
  */
 function assignOwnPropertyDescriptors(target, ...sources) {
   // eslint-disable-next-line no-new-object

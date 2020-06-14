@@ -127,7 +127,8 @@ function assertInstanceOf(obj, ctor) {
   }
 }
 
-/** Compare stream states where 'finish' may not occur on the zlib stream.
+/**
+ * Compare stream states where 'finish' may not occur on the zlib stream.
  *
  * If InflateRaw#end() is called with an invalid prefix, it emits 'error'
  * without 'finish'.  This is difficult to mimic using Transform because
@@ -138,6 +139,8 @@ function assertInstanceOf(obj, ctor) {
  * since it is not set when called) and avoid calling .end() in _flush.  This
  * complexity is not currently justified, so this compare function ignores
  * 'finish' before 'error'.
+ *
+ * @private
  */
 function compareMaybeFinish(stateAuto, stateZlib) {
   try {
@@ -157,7 +160,11 @@ function compareMaybeFinish(stateAuto, stateZlib) {
   }
 }
 
-/** Make an Error object with the same properties as a given object. */
+/**
+ * Make an Error object with the same properties as a given object.
+ *
+ * @private
+ */
 function makeError(source) {
   if (Object.getPrototypeOf(source) === Error.prototype) {
     return source;
@@ -180,6 +187,7 @@ function neverCalled() {
  * @param {!stream.Writable} writable Stream to be written.
  * @param {!Buffer} chunk Data to write to writable.
  * @param {function(Error=)} assertError Assertions for error produced (if any).
+ * @returns {Promise} Promise for assertion completion.
  */
 function assertWriteError(writable, chunk, assertError) {
   return new Promise((resolve, reject) => {
@@ -234,7 +242,11 @@ function normalizeEvent(event) {
   return event;
 }
 
-/** Compares StreamStates ignoring the prototype of Error events. */
+/**
+ * Compares StreamStates ignoring the prototype of Error events.
+ *
+ * @private
+ */
 function compareNoErrorTypes(actualState, expectedState) {
   const actual = { ...actualState };
   const expected = { ...expectedState };
@@ -245,7 +257,11 @@ function compareNoErrorTypes(actualState, expectedState) {
   assert.deepStrictEqual(actual, expected);
 }
 
-/** Defines tests which are run for a given format. */
+/**
+ * Defines tests which are run for a given format.
+ *
+ * @private
+ */
 function defineFormatTests(format) {
   const emptyCompressed = format.dataCompressed.empty;
   const largeCompressed = format.dataCompressed.large;

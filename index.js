@@ -62,6 +62,8 @@ const zlibDefaultOpts = {
 /**
  * Inherit the prototype methods from one constructor into another, as done
  * by ES6 class declarations.
+ *
+ * @private
  */
 function inheritsES6(Ctor, SuperCtor) {
   Object.setPrototypeOf(Ctor.prototype, SuperCtor.prototype);
@@ -110,11 +112,30 @@ function runDetectors(chunk, detectors, detectorsLeft) {
  *
  * @callback InflateAuto.FormatDetector
  * @param {!Buffer} chunk Non-empty chunk of data to check.
- * @return {?function(new:stream.Duplex, Object=)|undefined} Constructor for a
- * <code>stream.Duplex</code> class to decode <code>chunk</code> and subsequent
- * data written to the stream, <code>null</code> if the format is
- * unrecognized/unsupported, <code>undefined</code> if format detection requires
- * more data.
+ * @returns {?function(new: module:stream.Duplex, object=)|undefined}
+ * Constructor for a <code>stream.Duplex</code> class to decode
+ * <code>chunk</code> and subsequent data written to the stream,
+ * <code>null</code> if the format is unrecognized/unsupported,
+ * <code>undefined</code> if format detection requires more data.
+ */
+
+/**
+ * Define JSDoc type for <code>ArrayBufferView</code>
+ * {@see https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView}
+ * {@see ArrayBuffer.isView}
+ *
+ * @typedef {
+ *   Int8Array|
+ *   Uint8Array|
+ *   Uint8ClampedArray|
+ *   Int16Array|
+ *   Uint16Array|
+ *   Int32Array|
+ *   Uint32Array|
+ *   Float32Array|
+ *   Float64Array|
+ *   DataView|
+ *   Buffer} ArrayBufferView
  */
 
 /** Options for {@link InflateAuto}.
@@ -124,13 +145,15 @@ function runDetectors(chunk, detectors, detectorsLeft) {
  * additional properties to the ones defined here.
  *
  * @typedef {{
- *   defaultFormat: ?function(new:stream.Duplex, Object=)|false|undefined,
+ *   defaultFormat:
+ *     ?function(new:module:stream.Duplex, object=)|boolean|undefined,
  *   detectors: Array<!InflateAuto.FormatDetector>|undefined
  * }} InflateAuto.InflateAutoOptions
- * @extends zlib.Zlib.options
- * @property {function(new:stream.Duplex, Object=)=} defaultFormat Constructor
- * of the format which is used if no detectors match.  Pass <code>null</code>
- * or <code>false</code> for no default. (default: <code>InflateRaw</code>)
+ * @augments zlib.Zlib.options
+ * @property {function(new:module:stream.Duplex, object=)|boolean=
+ * } defaultFormat Constructor of the format which is used if no detectors
+ * match.  Pass <code>null</code> or <code>false</code> for no default.
+ * (default: <code>InflateRaw</code>)
  * @property {Array<!InflateAuto.FormatDetector>=} detectors Functions which
  * detect the data format for a chunk of data and return the constructor for a
  * class to decode the data.  If any detector requires large amounts of data,
@@ -150,8 +173,8 @@ function runDetectors(chunk, detectors, detectorsLeft) {
  * compression format has been set or detected with the instance of the format
  * class which will be used to decode the data.</p>
  *
- * @constructor
- * @extends stream.Transform
+ * @class
+ * @augments stream.Transform
  * @param {InflateAuto.InflateAutoOptions=} opts Combined options for this
  * class and for the detected format.
  */
@@ -194,12 +217,17 @@ function InflateAuto(opts) {
   // null if #close() has been called, otherwise a (dummy) object
   this._handle = {};
 
-  /** Instance of a class which does the decoding for the detected data format.
-   * @private {stream.Duplex} */
+  /**
+   * Instance of a class which does the decoding for the detected data format.
+   *
+   * @private
+   */
   this._decoder = null; // eslint-disable-line unicorn/no-null
 
-  /** Detectors for formats supported by this instance.
-   * @private {!Array<!InflateAuto.FormatDetector>}
+  /**
+   * Detectors for formats supported by this instance.
+   *
+   * @private
    */
   this._detectors = undefined;
   if (opts && opts.detectors) {
@@ -228,13 +256,17 @@ function InflateAuto(opts) {
     ];
   }
 
-  /** Detectors which are still plausible given previous data.
-   * @private {!Array<!InflateAuto.FormatDetector>}
+  /**
+   * Detectors which are still plausible given previous data.
+   *
+   * @private
    */
   this._detectorsLeft = this._detectors;
 
-  /** Default format which is used if no detectors match.
-   * @private {function(new:stream.Duplex, Object=)}
+  /**
+   * Default format which is used if no detectors match.
+   *
+   * @private
    */
   this._defaultFormat = undefined;
   if (opts && opts.defaultFormat) {
@@ -250,8 +282,11 @@ function InflateAuto(opts) {
     this._defaultFormat = zlib.InflateRaw;
   }
 
-  /** Options to pass to the format constructor when created.
-   * @private {Object} */
+  /**
+   * Options to pass to the format constructor when created.
+   *
+   * @private
+   */
   this._opts = opts;
 
   /* Invariant:
@@ -276,7 +311,8 @@ if (!useZlibBase) {
 /** Creates an instance of {@link InflateAuto}.
  * Analogous to {@link zlib.createInflate}.
  *
- * @param {Object=} opts Constructor options.
+ * @param {object=} opts Constructor options.
+ * @returns {InflateAuto} Instance of InflateAuto with <code>opts</code>.
  */
 InflateAuto.createInflateAuto = function createInflateAuto(opts) {
   return new InflateAuto(opts);
@@ -284,13 +320,15 @@ InflateAuto.createInflateAuto = function createInflateAuto(opts) {
 
 /**
  * Format detectors supported by default.
- * @const
+ *
+ * @constant
  * @enum {InflateAuto.FormatDetector}
  */
 InflateAuto.detectors = {
   /** Detects the ZLIB DEFLATE format, as specified in RFC 1950.
+   *
    * @param {!Buffer} chunk Chunk of data to check.
-   * @return {?zlib.Inflate|undefined} <code>zlib.Inflate</code> if the data
+   * @returns {?zlib.Inflate|undefined} <code>zlib.Inflate</code> if the data
    * conforms to RFC 1950 Section 2.2, <code>undefined</code> if the data may
    * conform, <code>null</code> if it does not conform.
    */
@@ -314,8 +352,9 @@ InflateAuto.detectors = {
     return null;
   },
   /** Detects the GZIP format, as specified in RFC 1952.
+   *
    * @param {!Buffer} chunk Chunk of data to check.
-   * @return {?zlib.Gunzip|undefined} <code>zlib.Gunzip</code> if the data
+   * @returns {?zlib.Gunzip|undefined} <code>zlib.Gunzip</code> if the data
    * conforms to RFC 1952, <code>undefined</code> if the data may conform,
    * <code>null</code> if it does not conform.
    */
@@ -349,7 +388,7 @@ InflateAuto.detectors = {
  * Analogous to {@link zlib.inflate}.
  *
  * @param {!Buffer} buffer Compressed data to decompress.
- * @param {Object=} opts Decompression options.
+ * @param {object=} opts Decompression options.
  * @param {!function(Error, Buffer=)} callback Callback which receives the
  * decompressed data.
  */
@@ -358,15 +397,15 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
     callback = opts;
     opts = {};
   }
-  return zlibInternal.zlibBuffer(new InflateAuto(opts), buffer, callback);
+  zlibInternal.zlibBuffer(new InflateAuto(opts), buffer, callback);
 };
 
 /** Decompresses a compressed Buffer synchronously.
  * Analogous to {@link zlib.inflateSync}.
  *
  * @param {!Buffer} buffer Compressed data to decompress.
- * @param {Object=} opts Decompression options.
- * @return {!Buffer} Decompressed data.
+ * @param {object=} opts Decompression options.
+ * @returns {!Buffer} Decompressed data.
  */
 InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
   return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
@@ -399,7 +438,7 @@ InflateAuto.prototype._destroy = function _destroy(err, callback) {
  * @param {Buffer} chunk Beginning of data for which to detect the
  * compression format.
  * @param {boolean} end Is <code>chunk</code> the end of the data stream?
- * @return {?function(new:stream.Duplex, Object=)}
+ * @returns {?function(new:module:stream.Duplex, object=)}
  * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
  * deduce the format conclusively and <code>end</code> is <code>false</code>.
@@ -432,7 +471,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
 /** Flushes any buffered data when the stream is ending.
  *
  * @protected
- * @param {function(Error=)} callback
+ * @param {function(Error=)} callback Callback once stream has ended.
  */
 InflateAuto.prototype._flush = function _flush(callback) {
   if (!this._decoder) {
@@ -471,7 +510,7 @@ if (zlib.Inflate.prototype._processChunk) {
    * @param {!ArrayBufferView} chunk Chunk of data to write.
    * @param {number} flushFlag Flush flag with which to write the data.
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
-   * @return {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
+   * @returns {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
    * <code>undefined</code>.
    * @throws If a detector or format constructor throws and <code>cb</code> is
    * not a function.
@@ -561,8 +600,8 @@ if (zlib.Inflate.prototype._processChunk) {
  * Note:  The current implementation only allows the format to be set once.
  * Calling this method after the format has been set will throw an exception.
  *
- * @param {function(new:stream.Duplex,Object=)} Format Constructor for the
- * stream class which will be used to decode data written to this stream.
+ * @param {function(new:module:stream.Duplex, object=)} Format Constructor for
+ * the stream class which will be used to decode data written to this stream.
  * @throws If previously set to a different <code>Format</code> or
  * <code>Format</code> constructor throws.
  * @see #_detectFormat()
@@ -641,7 +680,7 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
  *
  * @private
  * @param {Buffer} chunk Chunk of data to write.
- * @return {Buffer} <code>chunk</code> appended to any previously buffered
+ * @returns {Buffer} <code>chunk</code> appended to any previously buffered
  * data.
  * @throws If a detector or format constructor throws.  In this case the data
  * will be saved in <code>_writeBuf</code>.
@@ -689,8 +728,8 @@ InflateAuto.prototype.close = function close(callback) {
 /** Gets the constructor function used to create the decoder for data written
  * to this stream.
  *
- * @return {?function(new:stream.Duplex,Object=)} Constructor for the stream
- * class which is used to decode data written to this stream, or
+ * @returns {?function(new:module:stream.Duplex, object=)} Constructor for the
+ * stream class which is used to decode data written to this stream, or
  * <code>undefined</code> if the format has not been detected or set.
  * @see #_detectFormat()
  * @see #setFormat()
@@ -699,6 +738,8 @@ InflateAuto.prototype.getFormat = function getFormat() {
   return this._decoder && this._decoder.constructor;
 };
 
+// Not known to return anything, but passes through return value anyway.
+// eslint-disable-next-line jsdoc/require-returns
 /** Flushes queued writes with a given zlib flush behavior.
  *
  * @param {number=} kind Flush behavior of writes to zlib.  Must be one of the
@@ -715,6 +756,8 @@ InflateAuto.prototype.flush = function flush(kind, callback) {
 };
 
 if (zlib.Inflate.prototype.params) {
+  // Not known to return anything, but passes through return value anyway.
+  // eslint-disable-next-line jsdoc/require-returns
   /** Sets the inflate compression parameters.
    *
    * <p>For inflate, this has no effect.  This method is kept for compatibility
@@ -745,6 +788,8 @@ if (zlib.Inflate.prototype.params) {
   };
 }
 
+// Not known to return anything, but passes through return value anyway.
+// eslint-disable-next-line jsdoc/require-returns
 /** Discards any buffered data and resets the decoder to its initial state.
  *
  * <p><b>Note:</b>  If a format has been detected, reset does not currently
@@ -772,7 +817,7 @@ InflateAuto.prototype.reset = function reset() {
  *
  * @protected
  * @param {string} name Name of the method to call.
- * @param {!(Arguments|Array)} args Arguments to pass to the method call.
+ * @param {!(arguments|Array)} args Arguments to pass to the method call.
  */
 InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   assert(!this._decoder);
