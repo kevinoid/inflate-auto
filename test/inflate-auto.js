@@ -1046,28 +1046,32 @@ function defineFormatTests(format) {
       return new Promise((resolve, reject) => {
         zlibStream.close((...zlibArgs) => {
           inflateAuto.close((...inflateArgs) => {
-            // Before nodejs/node#32220 (v14) an error is not passed.
-            // Not worth the effort to match this behavior.  Always error.
-            if (zlibArgs[0] === undefined) {
-              assert.deepStrictEqual(
-                inflateArgs.slice(1),
-                zlibArgs.slice(1),
-                'same non-err close arguments',
-              );
-              assertInstanceOf(inflateArgs[0], Error);
-              assert.deepStrictEqual(
-                inflateArgs[0].code,
-                'ERR_STREAM_PREMATURE_CLOSE',
-              );
-            } else {
-              assert.deepStrictEqual(
-                inflateArgs,
-                zlibArgs,
-                'same close arguments',
-              );
-            }
+            try {
+              // Before nodejs/node#32220 (v14) an error is not passed.
+              // Not worth the effort to match this behavior.  Always error.
+              if (zlibArgs[0] === undefined) {
+                assert.deepStrictEqual(
+                  inflateArgs.slice(1),
+                  zlibArgs.slice(1),
+                  'same non-err close arguments',
+                );
+                assertInstanceOf(inflateArgs[0], Error);
+                assert.deepStrictEqual(
+                  inflateArgs[0].code,
+                  'ERR_STREAM_PREMATURE_CLOSE',
+                );
+              } else {
+                assert.deepStrictEqual(
+                  inflateArgs,
+                  zlibArgs,
+                  'same close arguments',
+                );
+              }
 
-            resolve(result);
+              resolve(result);
+            } catch (errAssert) {
+              reject(errAssert);
+            }
           });
         });
       });
