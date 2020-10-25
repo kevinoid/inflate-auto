@@ -10,6 +10,8 @@ const stream = require('stream');
 const streamCompare = require('stream-compare');
 const { inspect, promisify } = require('util');
 const zlib = require('zlib');
+
+const assertErrorEqual = require('../test-lib/assert-error-equal.js');
 const assignOwnPropertyDescriptors =
   require('../test-lib/assign-own-property-descriptors.js');
 const InflateAuto = require('..');
@@ -318,7 +320,7 @@ function defineFormatTests(format) {
       decompress(compressedTA, (errDecompress, dataDecompress) => {
         assert.ifError(errDecompress);
         InflateAuto.inflateAuto(compressedTA, (errAuto, dataAuto) => {
-          assert.deepStrictEqual(errAuto, errDecompress);
+          assertErrorEqual(errAuto, errDecompress);
           assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
         });
@@ -332,7 +334,7 @@ function defineFormatTests(format) {
       );
       decompress(compressedBuf, (errDecompress, dataDecompress) => {
         InflateAuto.inflateAuto(compressedBuf, (errAuto, dataAuto) => {
-          assert.deepStrictEqual(errAuto, errDecompress);
+          assertErrorEqual(errAuto, errDecompress);
           assert.deepStrictEqual(dataAuto, dataDecompress);
           done();
         });
@@ -354,7 +356,7 @@ function defineFormatTests(format) {
       let errAuto;
       try { InflateAuto.inflateAuto(null); } catch (err) { errAuto = err; }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
     });
 
     it('throws when called without callback', function() {
@@ -376,7 +378,7 @@ function defineFormatTests(format) {
         errAuto = err;
       }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
     });
 
     it('can accept options argument', (done) => {
@@ -438,7 +440,7 @@ function defineFormatTests(format) {
               compressedStr,
               opts,
               (errAuto, dataAuto) => {
-                assert.deepStrictEqual(errAuto, errDecompress);
+                assertErrorEqual(errAuto, errDecompress);
                 assert.deepStrictEqual(dataAuto, dataDecompress);
                 done();
               },
@@ -454,7 +456,7 @@ function defineFormatTests(format) {
         decompress(zeros, (errDecompress, dataDecompress) => {
           assert(errDecompress, 'expected Error to test');
           InflateAuto.inflateAuto(zeros, (errAuto, dataAuto) => {
-            assert.deepStrictEqual(errAuto, errDecompress);
+            assertErrorEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
@@ -465,7 +467,7 @@ function defineFormatTests(format) {
         const trunc = compressed.slice(0, 1);
         decompress(trunc, (errDecompress, dataDecompress) => {
           InflateAuto.inflateAuto(trunc, (errAuto, dataAuto) => {
-            assert.deepStrictEqual(errAuto, errDecompress);
+            assertErrorEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
@@ -478,7 +480,7 @@ function defineFormatTests(format) {
         const compressedStr = compressed.toString('binary');
         decompress(compressedStr, (errDecompress, dataDecompress) => {
           InflateAuto.inflateAuto(compressedStr, (errAuto, dataAuto) => {
-            assert.deepStrictEqual(errAuto, errDecompress);
+            assertErrorEqual(errAuto, errDecompress);
             assert.deepStrictEqual(dataAuto, dataDecompress);
             done();
           });
@@ -763,7 +765,7 @@ function defineFormatTests(format) {
         errAuto = err;
       }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
 
       zlibStream.end(compressed);
       inflateAuto.end(compressed);
@@ -793,7 +795,7 @@ function defineFormatTests(format) {
         errAuto.message = errInflate.message;
       }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
     });
 
     it('supports non-Buffer TypedArray', () => {
@@ -853,7 +855,7 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          assert.deepStrictEqual(errAuto, errInflate);
+          assertErrorEqual(errAuto, errInflate);
           assert.deepStrictEqual(dataAuto, dataInflate);
         });
       });
@@ -885,7 +887,7 @@ function defineFormatTests(format) {
           errAuto = err;
         }
 
-        assert.deepStrictEqual(errAuto, errInflate);
+        assertErrorEqual(errAuto, errInflate);
         assert.deepStrictEqual(dataAuto, dataInflate);
       });
 
@@ -909,7 +911,7 @@ function defineFormatTests(format) {
           errAuto = err;
         }
 
-        assert.deepStrictEqual(errAuto, errInflate);
+        assertErrorEqual(errAuto, errInflate);
         assert.deepStrictEqual(dataAuto, dataInflate);
       });
     }
@@ -925,7 +927,7 @@ function defineFormatTests(format) {
       // eslint-disable-next-line no-new
       try { new InflateAuto(options); } catch (err) { errAuto = err; }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
     });
   }
 
@@ -943,7 +945,7 @@ function defineFormatTests(format) {
         errAuto = err;
       }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
     });
 
     it(`on write with ${inspect(options)}`, () => {
@@ -955,7 +957,7 @@ function defineFormatTests(format) {
       return assertWriteError(
         new InflateAuto(options),
         compressed,
-        (errAuto) => assert.deepStrictEqual(errAuto, errInflate),
+        (errAuto) => assertErrorEqual(errAuto, errInflate),
       );
     });
 
@@ -1050,23 +1052,20 @@ function defineFormatTests(format) {
               // Before nodejs/node#32220 (v14) an error is not passed.
               // Not worth the effort to match this behavior.  Always error.
               if (zlibArgs[0] === undefined) {
-                assert.deepStrictEqual(
-                  inflateArgs.slice(1),
-                  zlibArgs.slice(1),
-                  'same non-err close arguments',
-                );
                 assertInstanceOf(inflateArgs[0], Error);
                 assert.deepStrictEqual(
                   inflateArgs[0].code,
                   'ERR_STREAM_PREMATURE_CLOSE',
                 );
               } else {
-                assert.deepStrictEqual(
-                  inflateArgs,
-                  zlibArgs,
-                  'same close arguments',
-                );
+                assertErrorEqual(inflateArgs[0], zlibArgs[0]);
               }
+
+              assert.deepStrictEqual(
+                inflateArgs.slice(1),
+                zlibArgs.slice(1),
+                'same non-err close arguments',
+              );
 
               resolve(result);
             } catch (errAssert) {
@@ -1186,7 +1185,7 @@ function defineFormatTests(format) {
       // to ERR_INVALID_ARG_TYPE (due to calling finished instead of nextTick).
       // It's not currently worth complicating the code to mimic this.
       if (errInflate && errInflate.code === 'ERR_INVALID_CALLBACK') {
-        assert.deepStrictEqual(errAuto, errInflate);
+        assertErrorEqual(errAuto, errInflate);
       } else {
         assert.deepStrictEqual(
           errAuto instanceof Error,
@@ -1210,7 +1209,7 @@ function defineFormatTests(format) {
       let errAuto;
       try { inflateAuto.close(false); } catch (err) { errAuto = err; }
 
-      assert.deepStrictEqual(errAuto, errInflate);
+      assertErrorEqual(errAuto, errInflate);
 
       // Streams may not emit any events.
       // End comparison after event queue clears.
@@ -1784,7 +1783,7 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          assert.deepStrictEqual(errAuto, errInflate);
+          assertErrorEqual(errAuto, errInflate);
         });
 
         it('throws with error listener', () => {
@@ -1809,7 +1808,7 @@ function defineFormatTests(format) {
             errAuto = err;
           }
 
-          assert.deepStrictEqual(errAuto, errInflate);
+          assertErrorEqual(errAuto, errInflate);
           result.checkpoint();
         });
 
