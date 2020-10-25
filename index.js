@@ -215,7 +215,9 @@ function InflateAuto(opts) {
   }
 
   // null if #close() has been called, otherwise a (dummy) object
-  this._handle = {};
+  this._handle = {
+    close: () => {},
+  };
 
   /**
    * Instance of a class which does the decoding for the detected data format.
