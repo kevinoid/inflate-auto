@@ -962,30 +962,49 @@ function defineFormatTests(format) {
     });
 
     // Test handling in _flush
-    it(`on end with ${inspect(options)}`, (done) => {
-      let errInflate;
-      // eslint-disable-next-line no-new
-      try { new Decompress(options); } catch (err) { errInflate = err; }
-      assert(errInflate);
+    //
+    // Starting in Node 15 (c7e55c6b72fb5a7032bc12c74329fa840076dec0)
+    // https://github.com/nodejs/node/pull/34101
+    // The .end() callback is not called on error in _flush.
+    //
+    // Test that InflateAuto behaves the same as stream.Transform when
+    // an error occurs in _flush.
+    it(`on end with ${inspect(options)}`, () => {
+      const transform = new stream.Transform({
+        transform: (chunk, encoding, cb) => cb(),
+        flush: (cb) => {
+          try {
+            // eslint-disable-next-line no-new
+            new Decompress(options);
+            assert.fail('Constructor should throw for invalid options');
+          } catch (err) {
+            cb(err);
+          }
+        },
+      });
 
       const inflateAuto = new InflateAuto({
         ...options,
         defaultFormat: Decompress,
       });
-      let errorEmitted = false;
-      inflateAuto.on('error', (errAuto) => {
-        assert(!errorEmitted, 'error emitted at most once');
-        errorEmitted = true;
-        assert.deepStrictEqual(errAuto, errInflate);
-      });
-      inflateAuto.end((errAuto) => {
-        assert(errorEmitted, 'error emitted at least once');
-        // Errors passed to _flush callback may not be passed to end cb.
-        if (errAuto) {
-          assert.deepStrictEqual(errAuto, errInflate);
-        }
-        done();
-      });
+
+      let errorCount = 0;
+      inflateAuto.on('error', () => { errorCount += 1; });
+
+      const result = streamCompare(inflateAuto, transform, COMPARE_OPTIONS)
+        .then(() => {
+          assert.strictEqual(errorCount, 1, 'error emitted once');
+        });
+
+      let transformEndArgs;
+      transform.end((...args) => { transformEndArgs = args; });
+      let inflateAutoEndArgs;
+      inflateAuto.end((...args) => { inflateAutoEndArgs = args; });
+
+      // end callback may or may not be called.  Check after stream compare.
+      return result.then(
+        () => assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+      );
     });
   }
 
