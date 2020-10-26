@@ -647,6 +647,19 @@ function defineFormatTests(format) {
     return result;
   });
 
+  it('handles concatenated 0 without end', () => {
+    const zeros = Buffer.alloc(20);
+    const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.write(compressedWithGarbage);
+    inflateAuto.write(compressedWithGarbage);
+    result.checkpoint();
+    setTimeout(() => result.end(), 100);
+    return result;
+  });
+
   it('handles concatenated 0', () => {
     const zeros = Buffer.alloc(20);
     const compressedWithZeros = Buffer.concat([compressed, zeros]);
@@ -655,6 +668,36 @@ function defineFormatTests(format) {
     const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(compressedWithZeros);
     inflateAuto.end(compressedWithZeros);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles concatenated 0 with late end', () => {
+    const zeros = Buffer.alloc(20);
+    const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.write(compressedWithGarbage);
+    inflateAuto.write(compressedWithGarbage);
+    result.checkpoint();
+    setTimeout(() => {
+      zlibStream.end();
+      inflateAuto.end();
+    }, 100);
+    return result;
+  });
+
+  // Causes ERR_STREAM_PUSH_AFTER_EOF, unlike zeros, garbage, or compressed
+  // data after compressed data in the other tests.
+  it('handles concatenated 0 then compressed data', () => {
+    const zeros = Buffer.alloc(20);
+    const doubledata = Buffer.concat([compressed, zeros, compressed]);
+    const zlibStream = new Decompress();
+    const inflateAuto = new InflateAuto();
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(doubledata);
+    inflateAuto.end(doubledata);
     result.checkpoint();
     return result;
   });
