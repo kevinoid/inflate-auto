@@ -630,6 +630,13 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   }
 
   format.on('data', (chunk) => this.push(chunk));
+  format.once('end', (chunk) => {
+    // format may emit 'end' before 'finish' (and before .end() is called)
+    // when there is data after the end of compressed input.
+    // https://github.com/nodejs/node/pull/26363
+    // Call push(null) to end this stream when the format has ended.
+    this.push(null);  // eslint-disable-line unicorn/no-null
+  });
   // Note: Readable.wrap proxies 'destroy' event.  No current use is known, but
   // we proxy it here for compatibility with non-Zlib formats.
   format.on('destroy', (...args) => this.emit('destroy', ...args));
