@@ -493,7 +493,7 @@ InflateAuto.prototype._flush = function _flush(callback) {
     }
   }
 
-  // callback must not be called until all data has been written.
+  // callback must not be called until all data has been pushed to this stream.
   // So call on 'end', not 'finish'.
   //
   // Note:  Not called on 'error' since errors events already forwarded
