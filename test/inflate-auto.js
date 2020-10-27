@@ -163,6 +163,63 @@ function compareMaybeFinish(stateAuto, stateZlib) {
 }
 
 /**
+ * Creates a copy of an array of events with 'end' events after all other
+ * events.
+ *
+ * @private
+ * @param {!Array<!{name: string, args: !Array}>} events Events to copy.
+ * @returns {!Array<!{name: string, args: !Array}>} Array of events where
+ * events with name 'end' occurring after all other events.
+ */
+function reorderEndEvents(events) {
+  const endEvents = [];
+  const otherEvents = [];
+  events.forEach((event) => {
+    if (event.name === 'end') {
+      endEvents.push(event);
+    } else {
+      otherEvents.push(event);
+    }
+  });
+  Array.prototype.push.apply(otherEvents, endEvents);
+  return otherEvents;
+}
+
+/**
+ * Compare stream states where 'end' may occur before or after other events.
+ *
+ * The order of 'finish' and 'end' changed in Node.js 15 due to
+ * https://github.com/nodejs/node/pull/34314 so that 'finish' is emitted
+ * first.  InflateAuto matches the zlib behavior in all cases except when
+ * there is additional data after compressed data.  In those cases, zlib
+ * streams call push(null) from processCallback() before 'prefinish'
+ * is emitted.  Since InflateAuto calls push(null) from an 'end' listener
+ * on format, which is emitted a tick after the write callback, it occurs
+ * after 'prefinish' which changes the event order.
+ *
+ * This could be avoided by calling push(null) in the _transform
+ * callback if _decoder._readableState.ended, but this is ugly and
+ * fragile.  Use this comparison to ignore the event order until/unless
+ * hackery is justified.
+ *
+ * @private
+ * @param {!module:stream-compare.StreamState} state1 First state to compare.
+ * @param {!module:stream-compare.StreamState} state2 Second state to compare.
+ * @throws If the states are not equivalent, ignoring 'end' event order.
+ */
+function compareReorderedEndEvents(state1, state2) {
+  const state1Reordered = {
+    ...state1,
+    events: reorderEndEvents(state1.events),
+  };
+  const state2Reordered = {
+    ...state2,
+    events: reorderEndEvents(state2.events),
+  };
+  assert.deepStrictEqual(state1Reordered, state2Reordered);
+}
+
+/**
  * Make an Error object with the same properties as a given object.
  *
  * @private
@@ -629,7 +686,10 @@ function defineFormatTests(format) {
     const doubledata = Buffer.concat([compressed, compressed]);
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const result = streamCompare(inflateAuto, zlibStream, {
+      ...COMPARE_OPTIONS,
+      compare: compareReorderedEndEvents,
+    });
     zlibStream.end(doubledata);
     inflateAuto.end(doubledata);
     result.checkpoint();
@@ -640,7 +700,10 @@ function defineFormatTests(format) {
     const doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const result = streamCompare(inflateAuto, zlibStream, {
+      ...COMPARE_OPTIONS,
+      compare: compareReorderedEndEvents,
+    });
     zlibStream.end(doubleempty);
     inflateAuto.end(doubleempty);
     result.checkpoint();
@@ -665,7 +728,10 @@ function defineFormatTests(format) {
     const compressedWithZeros = Buffer.concat([compressed, zeros]);
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const result = streamCompare(inflateAuto, zlibStream, {
+      ...COMPARE_OPTIONS,
+      compare: compareReorderedEndEvents,
+    });
     zlibStream.end(compressedWithZeros);
     inflateAuto.end(compressedWithZeros);
     result.checkpoint();
@@ -695,7 +761,10 @@ function defineFormatTests(format) {
     const doubledata = Buffer.concat([compressed, zeros, compressed]);
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const result = streamCompare(inflateAuto, zlibStream, {
+      ...COMPARE_OPTIONS,
+      compare: compareReorderedEndEvents,
+    });
     zlibStream.end(doubledata);
     inflateAuto.end(doubledata);
     result.checkpoint();
@@ -707,7 +776,10 @@ function defineFormatTests(format) {
     const compressedWithGarbage = Buffer.concat([compressed, garbage]);
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    const result = streamCompare(inflateAuto, zlibStream, {
+      ...COMPARE_OPTIONS,
+      compare: compareReorderedEndEvents,
+    });
     zlibStream.end(compressedWithGarbage);
     inflateAuto.end(compressedWithGarbage);
     result.checkpoint();
