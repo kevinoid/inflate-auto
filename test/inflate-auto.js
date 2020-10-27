@@ -24,7 +24,16 @@ const nodeVersion = process.version.slice(1).split('.').map(Number);
 const COMPARE_OPTIONS = {
   compare: assert.deepStrictEqual,
   endEvents: ['close', 'end', 'error'],
-  events: ['close', 'data', 'destroy', 'end', 'error', 'finish', 'pipe'],
+  events: [
+    'close',
+    'data',
+    'destroy',
+    'end',
+    'error',
+    'finish',
+    'pipe',
+    'prefinish',
+  ],
   readPolicy: 'none',
 };
 
@@ -148,13 +157,16 @@ function compareMaybeFinish(stateAuto, stateZlib) {
   try {
     assert.deepStrictEqual(stateAuto, stateZlib);
   } catch (err) {
-    // Remove 'finish' immediately before 'error' and re-compare
+    // Remove 'prefinish'+'finish' immediately before 'error' and re-compare
+    const prefinishInd =
+      stateAuto.events.findIndex((event) => event.name === 'prefinish');
     const finishInd =
       stateAuto.events.findIndex((event) => event.name === 'finish');
     const errorInd =
       stateAuto.events.findIndex((event) => event.name === 'error');
-    if (errorInd === finishInd + 1) {
-      stateAuto.events.splice(finishInd, 1);
+    if (finishInd === prefinishInd + 1
+      && errorInd === finishInd + 1) {
+      stateAuto.events.splice(prefinishInd, 2);
       assert.deepStrictEqual(stateAuto, stateZlib);
     } else {
       throw err;
@@ -1106,7 +1118,25 @@ function defineFormatTests(format) {
       let errorCount = 0;
       inflateAuto.on('error', () => { errorCount += 1; });
 
-      const result = streamCompare(inflateAuto, transform, COMPARE_OPTIONS)
+      // InflateAuto emits 'prefinish' before 'error'.  Transform does not
+      // emit 'prefinish' on Node.js v15 and later due to
+      // https://github.com/nodejs/node/pull/34314
+      // Could set InflateAuto.prototype._finish = Transform.prototype._finish
+      // to get Transform behavior if there is a reason to do so.
+      // For now, keep zlib behavior and ignore 'prefinish' in comparison.
+      const result = streamCompare(inflateAuto, transform, {
+        ...COMPARE_OPTIONS,
+        compare: (state1, state2) => assert.deepStrictEqual(
+          {
+            ...state1,
+            events: state1.events.filter((e) => e.name !== 'prefinish'),
+          },
+          {
+            ...state2,
+            events: state2.events.filter((e) => e.name !== 'prefinish'),
+          },
+        ),
+      })
         .then(() => {
           assert.strictEqual(errorCount, 1, 'error emitted once');
         });
