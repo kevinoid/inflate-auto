@@ -12,8 +12,6 @@ const { inspect, promisify } = require('util');
 const zlib = require('zlib');
 
 const assertErrorEqual = require('../test-lib/assert-error-equal.js');
-const assignOwnPropertyDescriptors =
-  require('../test-lib/assign-own-property-descriptors.js');
 const InflateAuto = require('..');
 
 const { AssertionError } = assert;
@@ -231,20 +229,6 @@ function compareReorderedEndEvents(state1, state2) {
   assert.deepStrictEqual(state1Reordered, state2Reordered);
 }
 
-/**
- * Make an Error object with the same properties as a given object.
- *
- * @private
- */
-function makeError(source) {
-  if (Object.getPrototypeOf(source) === Error.prototype) {
-    return source;
-  }
-  const error = new Error(source.message);
-  assignOwnPropertyDescriptors(error, source);
-  return error;
-}
-
 function neverCalled() {
   throw new Error('should not be called');
 }
@@ -301,31 +285,6 @@ function assertWriteError(writable, chunk, assertError) {
       }
     });
   });
-}
-
-function normalizeEvent(event) {
-  if (event.name === 'error') {
-    const normEvent = { ...event };
-    normEvent.args = normEvent.args.map(makeError);
-    return normEvent;
-  }
-
-  return event;
-}
-
-/**
- * Compares StreamStates ignoring the prototype of Error events.
- *
- * @private
- */
-function compareNoErrorTypes(actualState, expectedState) {
-  const actual = { ...actualState };
-  const expected = { ...expectedState };
-
-  actual.events = actual.events.map(normalizeEvent);
-  expected.events = expected.events.map(normalizeEvent);
-
-  assert.deepStrictEqual(actual, expected);
 }
 
 /**
@@ -870,11 +829,6 @@ function defineFormatTests(format) {
       const inflateAuto = new InflateAuto(options);
       const compareOptions = { ...COMPARE_OPTIONS };
       compareOptions.endEvents = ['end'];
-
-      // nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-      if (nodeVersion[0] < 8) {
-        compareOptions.compare = compareNoErrorTypes;
-      }
 
       const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 
