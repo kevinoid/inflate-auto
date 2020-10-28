@@ -11,6 +11,8 @@ const {
   strictEqual,
 } = require('assert');
 
+const nodeVersion = process.version.slice(1).split('.').map(Number);
+
 // Dummy function value for equality comparison
 const funcValue = () => {};
 
@@ -31,11 +33,25 @@ function collectPropertyDescriptors(propMap, obj) {
       // Treat accessor and data properties as equal if value returned by
       // getter is equal to the data property value.
       desc.value = obj[p];
+
+      // Function values (e.g. toString) are not asserted to be equal
+      if (typeof desc.value === 'function') {
+        desc.value = funcValue;
+      }
     }
 
-    // Function values (e.g. toString) are not asserted to be equal
-    if (typeof desc.value === 'function') {
-      desc.value = funcValue;
+    // Changed in 87fb1c297ad https://github.com/nodejs/node/pull/29677
+    if (p === 'code'
+      && (nodeVersion[0] < 12
+        || (nodeVersion[0] === 12 && nodeVersion[1] < 12))) {
+      delete desc.enumerable;
+      delete desc.writable;
+    }
+
+    // Changed in 1ed3c54ecbd https://github.com/nodejs/node/pull/26738
+    if (p === 'name' && nodeVersion[0] < 12) {
+      delete desc.writable;
+      delete desc.value;
     }
 
     propMap.set(p, desc);
