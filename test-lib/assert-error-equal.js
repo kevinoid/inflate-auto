@@ -22,6 +22,12 @@ function collectPropertyDescriptors(propMap, obj) {
     collectPropertyDescriptors(propMap, proto);
   }
   Object.entries(Object.getOwnPropertyDescriptors(obj)).forEach(([p, d]) => {
+    // Removed (below Error.prototype in inheritance hierarchy) in
+    // a86a295fd7 https://github.com/nodejs/node/pull/33857
+    if (p === 'constructor' && nodeVersion[0] < 15) {
+      return;
+    }
+
     const desc = {
       configurable: d.configurable,
       enumerable: d.enumerable,
