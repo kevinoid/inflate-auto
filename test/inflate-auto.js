@@ -757,15 +757,44 @@ function defineFormatTests(format) {
     return result;
   });
 
-  it('handles corrupted compressed data', () => {
+  it('handles corrupted compressed data with autoDestroy', () => {
     const corrupted = Buffer.from(compressed);
     // Leave signature intact
     corrupted.fill(42, headerLen);
-    const zlibStream = new Decompress();
-    const inflateAuto = new InflateAuto();
+    const options = { autoDestroy: true };
+    const zlibStream = new Decompress(options);
+    const inflateAuto = new InflateAuto(options);
     const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
     zlibStream.end(corrupted);
     inflateAuto.end(corrupted);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles corrupted compressed data without autoDestroy', () => {
+    const corrupted = Buffer.from(compressed);
+    // Leave signature intact
+    corrupted.fill(42, headerLen);
+    const options = { autoDestroy: false };
+    const zlibStream = new Decompress(options);
+    const inflateAuto = new InflateAuto(options);
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.end(corrupted);
+    inflateAuto.end(corrupted);
+    result.checkpoint();
+    return result;
+  });
+
+  it('handles corrupted compressed data without autoDestroy or end', () => {
+    const corrupted = Buffer.from(compressed);
+    // Leave signature intact
+    corrupted.fill(255, headerLen);
+    const options = { autoDestroy: false };
+    const zlibStream = new Decompress(options);
+    const inflateAuto = new InflateAuto(options);
+    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+    zlibStream.write(corrupted);
+    inflateAuto.write(corrupted);
     result.checkpoint();
     return result;
   });
