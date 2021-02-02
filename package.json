@@ -30,10 +30,10 @@
     "!**/.*"
   ],
   "main": "index.js",
-  "//": "All scripts should run in POSIX sh and Windows cmd.exe",
-  "// exports": {
+  "// Next major version will declare exports": {
     ".": "./index.js"
   },
+  "//": "All scripts should run in POSIX sh and Windows cmd.exe",
   "scripts": {
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -u",
     "clean": "rimraf coverage && rimraf doc",
