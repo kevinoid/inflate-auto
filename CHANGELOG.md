@@ -1,3 +1,18 @@
+# [2.1.0](https://github.com/kevinoid/inflate-auto/compare/v2.0.0...v2.1.0) (2021-02-02)
+
+### Bug Fixes
+
+* Add `#close()` to `_handle` dummy object to prevent errors on Node.js v15
+  ([1b2d26c](https://github.com/kevinoid/inflate-auto/commit/1b2d26c4d3b44f368df329ebf8b3369ebf2cc76b))
+* Fix `ERR_BUFFER_TOO_LARGE` creation on Node.js v14.6 and later
+  ([be03b73](https://github.com/kevinoid/inflate-auto/commit/be03b73232eda1c22d45707c8a04c6d75b8945ea))
+
+### Features
+
+* Emit `'end'` early if detected format ends early
+  ([b460af3](https://github.com/kevinoid/inflate-auto/commit/b460af3cf25eff9def75e9280ce2f091fa7f4642))
+
+
 # [2.0.0](https://github.com/kevinoid/inflate-auto/compare/v1.0.0...v2.0.0) (2020-05-01)
 
 ### BREAKING CHANGES
