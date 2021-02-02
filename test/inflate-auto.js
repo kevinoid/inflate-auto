@@ -2183,6 +2183,21 @@ describe('InflateAuto', () => {
     });
   });
 
+  it('proxies destroy event from detected format', (done) => {
+    class DestroyStream extends stream.Transform {
+      _transform(chunk, encoding, callback) {
+        this.emit('destroy');
+        callback();
+      }
+    }
+    const inflateAuto = new InflateAuto({
+      defaultFormat: DestroyStream,
+      detectors: [],
+    });
+    inflateAuto.on('destroy', done);
+    inflateAuto.write(Buffer.alloc(1));
+  });
+
   // Analogous to Gunzip/Inflate/InflateRaw
   describe('.createInflateAuto()', () => {
     it('is a factory function', () => {
