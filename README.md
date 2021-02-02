@@ -44,7 +44,7 @@ compressor(testData, (errCompress, compressed) => {
 `InflateAuto` should behave identically to any of the `zlib` decompression
 types, with the exception of `instanceof` and `.constructor` checks.  Using
 the class should be as simple as `s/Inflate(Raw)?/InflateAuto/g`
-in existing code.  If any real-world which code requires modification (other
+in existing code.  If any real-world code requires modification (other
 than mentioned above) to work with `InflateAuto` it is considered a bug in
 `InflateAuto`.  Please [report any such
 issues](https://github.com/kevinoid/inflate-auto/issues/new).
