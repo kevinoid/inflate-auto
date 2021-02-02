@@ -21,11 +21,11 @@ function collectPropertyDescriptors(propMap, obj) {
   if (proto !== Error.prototype) {
     collectPropertyDescriptors(propMap, proto);
   }
-  Object.entries(Object.getOwnPropertyDescriptors(obj)).forEach(([p, d]) => {
+  for (const [p, d] of Object.entries(Object.getOwnPropertyDescriptors(obj))) {
     // Removed (below Error.prototype in inheritance hierarchy) in
     // a86a295fd7 https://github.com/nodejs/node/pull/33857
     if (p === 'constructor' && nodeVersion[0] < 15) {
-      return;
+      continue; // eslint-disable-line no-continue
     }
 
     const desc = {
@@ -61,7 +61,7 @@ function collectPropertyDescriptors(propMap, obj) {
     }
 
     propMap.set(p, desc);
-  });
+  }
 }
 
 /**

@@ -17,6 +17,13 @@ const InflateAuto = require('..');
 const { AssertionError } = assert;
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 
+// TODO [eslint-plugin-unicorn@>27.0.0] Enable prefer-spread once fixed.
+// https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
+/* eslint-disable unicorn/prefer-spread */
+
+// Don't warn about array.deepStrictEqual due to destructuring AssertionError
+/* eslint-disable unicorn/consistent-destructuring */
+
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
 const COMPARE_OPTIONS = {
@@ -184,13 +191,13 @@ function compareMaybeFinish(stateAuto, stateZlib) {
 function reorderEndEvents(events) {
   const endEvents = [];
   const otherEvents = [];
-  events.forEach((event) => {
+  for (const event of events) {
     if (event.name === 'end') {
       endEvents.push(event);
     } else {
       otherEvents.push(event);
     }
-  });
+  }
   Array.prototype.push.apply(otherEvents, endEvents);
   return otherEvents;
 }
@@ -555,7 +562,7 @@ function defineFormatTests(format) {
     });
   });
 
-  [1, 2, 3].forEach((blockSize) => {
+  for (const blockSize of [1, 2, 3]) {
     it(`${blockSize} byte writes`, () => {
       const zlibStream = new Decompress();
       const inflateAuto = new InflateAuto();
@@ -574,7 +581,7 @@ function defineFormatTests(format) {
 
       return result;
     });
-  });
+  }
 
   if (isDefaultFormat) {
     it('no writes', () => {
@@ -598,33 +605,33 @@ function defineFormatTests(format) {
     return result;
   });
 
-  if (isDefaultFormat) {
-    SUPPORTED_FORMATS.forEach((supportedFormat) => {
-      const formatName = supportedFormat.Compress.name;
-      const formatHeader = supportedFormat.header;
-      const formatHeaderLen = formatHeader.length;
+  function testPartialHeader(supportedFormat, len) {
+    const formatName = supportedFormat.Compress.name;
+    const formatHeader = supportedFormat.header;
 
-      function testPartialHeader(len) {
-        it(`${len} bytes of ${formatName} header`, () => {
-          const zlibStream = new Decompress();
-          const inflateAuto = new InflateAuto();
-          const compareOptions = {
-            ...COMPARE_OPTIONS,
-            compare: compareMaybeFinish,
-          };
-          const result =
-            streamCompare(inflateAuto, zlibStream, compareOptions);
-          const partial = formatHeader.slice(0, len);
-          zlibStream.end(partial);
-          inflateAuto.end(partial);
-          result.checkpoint();
-          return result;
-        });
-      }
-      for (let i = 1; i < formatHeaderLen; i += 1) {
-        testPartialHeader(i);
-      }
+    it(`${len} bytes of ${formatName} header`, () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const compareOptions = {
+        ...COMPARE_OPTIONS,
+        compare: compareMaybeFinish,
+      };
+      const result =
+        streamCompare(inflateAuto, zlibStream, compareOptions);
+      const partial = formatHeader.slice(0, len);
+      zlibStream.end(partial);
+      inflateAuto.end(partial);
+      result.checkpoint();
+      return result;
     });
+  }
+
+  if (isDefaultFormat) {
+    for (const supportedFormat of SUPPORTED_FORMATS) {
+      for (let i = 1; i < supportedFormat.header.length; i += 1) {
+        testPartialHeader(supportedFormat, i);
+      }
+    }
   }
 
   it('compressed empty data', () => {
@@ -983,34 +990,32 @@ function defineFormatTests(format) {
     });
 
     if (isDefaultFormat) {
-      SUPPORTED_FORMATS.forEach((supportedFormat) => {
+      for (const supportedFormat of SUPPORTED_FORMATS) {
         const formatName = supportedFormat.Compress.name;
         const formatHeader = supportedFormat.header;
-        if (formatHeader.length <= 1) {
-          return;
+        if (formatHeader.length > 1) {
+          it(`partial ${formatName} header`, () => {
+            const partial = formatHeader.slice(0, 1);
+
+            let dataInflate, errInflate;
+            try {
+              dataInflate = decompressSync(partial);
+            } catch (err) {
+              errInflate = err;
+            }
+
+            let dataAuto, errAuto;
+            try {
+              dataAuto = InflateAuto.inflateAutoSync(partial);
+            } catch (err) {
+              errAuto = err;
+            }
+
+            assertErrorEqual(errAuto, errInflate);
+            assert.deepStrictEqual(dataAuto, dataInflate);
+          });
         }
-
-        it(`partial ${formatName} header`, () => {
-          const partial = formatHeader.slice(0, 1);
-
-          let dataInflate, errInflate;
-          try {
-            dataInflate = decompressSync(partial);
-          } catch (err) {
-            errInflate = err;
-          }
-
-          let dataAuto, errAuto;
-          try {
-            dataAuto = InflateAuto.inflateAutoSync(partial);
-          } catch (err) {
-            errAuto = err;
-          }
-
-          assertErrorEqual(errAuto, errInflate);
-          assert.deepStrictEqual(dataAuto, dataInflate);
-        });
-      });
+      }
     }
 
     it('can use PassThrough as defaultFormat', () => {
@@ -2213,9 +2218,9 @@ describe('InflateAuto', () => {
     });
   }
 
-  SUPPORTED_FORMATS.forEach((format) => {
+  for (const format of SUPPORTED_FORMATS) {
     describe(`${format.Compress.name} support`, () => {
       defineFormatTests(format);
     });
-  });
+  }
 });

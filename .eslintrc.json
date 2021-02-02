@@ -57,7 +57,8 @@
         "no-use-before-define": ["error", { "functions": false }],
         "nonblock-statement-body-position": ["error", "below"],
         "operator-linebreak": ["error", "after"],
-        "unicorn/no-null": "off"
+        "unicorn/no-null": "off",
+        "unicorn/prefer-spread": "off"
       }
     }
   ]

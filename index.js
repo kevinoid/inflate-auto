@@ -30,7 +30,7 @@ const {
 const zlibInternal = require('./lib/zlib-internal');
 
 const {
-  Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
+  INFLATE, Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
 } = zlib.constants;
 
 const debug = debuglog('inflate-auto');
@@ -79,8 +79,7 @@ function isNotFunction(val) {
 }
 
 function runDetectors(chunk, detectors, detectorsLeft) {
-  for (let i = 0; i < detectors.length; i += 1) {
-    const detector = detectors[i];
+  for (const detector of detectors) {
     const format = detector(chunk);
     if (format) {
       return format;
@@ -187,7 +186,7 @@ function InflateAuto(opts) {
     ZlibBase.call(
       this,
       opts,
-      zlib.constants.INFLATE,
+      INFLATE,
       {},
       zlibDefaultOpts,
     );
@@ -509,7 +508,7 @@ if (zlib.Inflate.prototype._processChunk) {
   /** Process a chunk of data, synchronously or asynchronously.
    *
    * @protected
-   * @param {!ArrayBufferView} chunk Chunk of data to write.
+   * @param {!external:ArrayBufferView} chunk Chunk of data to write.
    * @param {number} flushFlag Flush flag with which to write the data.
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
    * @returns {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
@@ -651,9 +650,9 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
   this.emit('format', format);
 
   if (this._queuedMethodCalls) {
-    this._queuedMethodCalls.forEach((mc) => {
+    for (const mc of this._queuedMethodCalls) {
       format[mc.name](...mc.args);
-    });
+    }
     delete this._queuedMethodCalls;
   }
 };
@@ -701,6 +700,9 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
 
   let signature;
   if (this._writeBuf) {
+    // TODO [eslint-plugin-unicorn@>27.0.0] Enable prefer-spread once fixed.
+    // https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
+    // eslint-disable-next-line unicorn/prefer-spread
     signature = Buffer.concat([this._writeBuf, chunk]);
   } else {
     signature = chunk;
