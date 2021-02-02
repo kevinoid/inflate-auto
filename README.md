@@ -1,6 +1,7 @@
 InflateAuto
 ===========
 
+[![Build Status](https://img.shields.io/github/workflow/status/kevinoid/inflate-auto/Node.js%20CI/master.svg?style=flat&label=build)](https://github.com/kevinoid/inflate-auto/actions?query=branch%3Amaster)
 [![Build Status: Linux](https://img.shields.io/travis/kevinoid/inflate-auto/master.svg?style=flat&label=build+on+linux)](https://travis-ci.org/kevinoid/inflate-auto)
 [![Build Status: Windows](https://img.shields.io/appveyor/ci/kevinoid/inflate-auto/master.svg?style=flat&label=build+on+windows)](https://ci.appveyor.com/project/kevinoid/inflate-auto)
 [![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat)](https://codecov.io/github/kevinoid/inflate-auto?branch=master)
