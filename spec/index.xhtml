@@ -26,10 +26,12 @@ section section section section {
       <h1>InflateAuto</h1>
       <dl>
         <dt>instantiates without new</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>// eslint-disable-next-line new-cap
 const auto = InflateAuto();
 assertInstanceOf(auto, InflateAuto);</code></pre></dd>
         <dt>accepts Array-like detectors</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>const auto = new InflateAuto({
   detectors: {
     0: zlib.Gunzip,
@@ -38,24 +40,28 @@ assertInstanceOf(auto, InflateAuto);</code></pre></dd>
 });
 assert.deepStrictEqual(auto._detectors, [zlib.Gunzip]);</code></pre></dd>
         <dt>throws TypeError for non-Array-like detectors</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>assert.throws(
   // eslint-disable-next-line no-new
   () =&#x3E; { new InflateAuto({ detectors: true }); },
   TypeError,
 );</code></pre></dd>
         <dt>throws TypeError for non-function detector</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>assert.throws(
   // eslint-disable-next-line no-new
   () =&#x3E; { new InflateAuto({ detectors: [zlib.Gunzip, null] }); },
   TypeError,
 );</code></pre></dd>
         <dt>throws TypeError for non-function defaultFormat</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>assert.throws(
   // eslint-disable-next-line no-new
   () =&#x3E; { new InflateAuto({ defaultFormat: true }); },
   TypeError,
 );</code></pre></dd>
         <dt>defaultFormat null disables default</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>const auto = new InflateAuto({ defaultFormat: null });
 const testData = Buffer.alloc(10);
 return assertWriteError(auto, testData, (err) =&#x3E; {
@@ -64,6 +70,7 @@ return assertWriteError(auto, testData, (err) =&#x3E; {
   assert.deepStrictEqual(err.data, testData);
 });</code></pre></dd>
         <dt>emits error for format detection error in _transform</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
         <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const zeros = Buffer.alloc(10);
 return assertWriteError(inflateAuto, zeros, (err) =&#x3E; {
@@ -71,10 +78,25 @@ return assertWriteError(inflateAuto, zeros, (err) =&#x3E; {
   assert(/format/i.test(err.message));
   assert.deepStrictEqual(err.data, zeros);
 });</code></pre></dd>
+        <dt>proxies destroy event from detected format</dt>
+        <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+        <dd><pre><code>class DestroyStream extends stream.Transform {
+  _transform(chunk, encoding, callback) {
+    this.emit(&#x27;destroy&#x27;);
+    callback();
+  }
+}
+const inflateAuto = new InflateAuto({
+  defaultFormat: DestroyStream,
+  detectors: [],
+});
+inflateAuto.on(&#x27;destroy&#x27;, done);
+inflateAuto.write(Buffer.alloc(1));</code></pre></dd>
         <section class="suite">
           <h1>.createInflateAuto()</h1>
           <dl>
             <dt>is a factory function</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const auto = InflateAuto.createInflateAuto();
 assertInstanceOf(auto, InflateAuto);</code></pre></dd>
           </dl>
@@ -83,6 +105,7 @@ assertInstanceOf(auto, InflateAuto);</code></pre></dd>
           <h1>#flush()</h1>
           <dl>
             <dt>calls its callback before format detection</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const auto = new InflateAuto();
 auto.on(&#x27;error&#x27;, done);
 auto.flush(done);</code></pre></dd>
@@ -92,6 +115,7 @@ auto.flush(done);</code></pre></dd>
           <h1>#getFormat()</h1>
           <dl>
             <dt>returns null before format detection</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const inflateAuto = new InflateAuto();
 assert.strictEqual(inflateAuto.getFormat(), null);</code></pre></dd>
           </dl>
@@ -100,6 +124,7 @@ assert.strictEqual(inflateAuto.getFormat(), null);</code></pre></dd>
           <h1>#params()</h1>
           <dl>
             <dt>calls its callback before format detection</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const auto = new InflateAuto();
 auto.on(&#x27;error&#x27;, done);
 auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);</code></pre></dd>
@@ -109,10 +134,12 @@ auto.params(zlib.Z_BEST_COMPRESSION, zlib.Z_FILTERED, done);</code></pre></dd>
           <h1>Gzip support</h1>
           <dl>
             <dt>as synchronous function</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const dataDecompress = decompressSync(compressed);
 const dataAuto = InflateAuto.inflateAutoSync(compressed);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
             <dt>single-write with immediate end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -122,6 +149,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>single-write delayed end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -138,6 +166,7 @@ return Promise.all([
   return result;
 });</code></pre></dd>
             <dt>1 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -152,6 +181,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>2 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -166,6 +196,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>3 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -180,6 +211,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>no data after header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -188,6 +220,7 @@ inflateAuto.end(header);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>compressed empty data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -196,6 +229,7 @@ inflateAuto.end(emptyCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles truncated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>// Truncate shortly after the header (if any) for type detection
 const truncated = compressed.slice(0, headerLen + 1);
 const zlibStream = new Decompress();
@@ -206,55 +240,177 @@ inflateAuto.end(truncated);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubledata = Buffer.concat([compressed, compressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubledata);
 inflateAuto.end(doubledata);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated empty compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubleempty);
 inflateAuto.end(doubleempty);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 without end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; result.end(), 100);
+return result;</code></pre></dd>
             <dt>handles concatenated 0</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zeros = Buffer.alloc(20);
 const compressedWithZeros = Buffer.concat([compressed, zeros]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithZeros);
 inflateAuto.end(compressedWithZeros);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 with late end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; {
+  zlibStream.end();
+  inflateAuto.end();
+}, 100);
+return result;</code></pre></dd>
+            <dt>handles concatenated 0 then compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const doubledata = Buffer.concat([compressed, zeros, compressed]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>handles concatenated garbage</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const garbage = Buffer.alloc(20, 42);
 const compressedWithGarbage = Buffer.concat([compressed, garbage]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithGarbage);
 inflateAuto.end(compressedWithGarbage);
 result.checkpoint();
 return result;</code></pre></dd>
-            <dt>handles corrupted compressed data</dt>
+            <dt>handles corrupted compressed data with autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const corrupted = Buffer.from(compressed);
 // Leave signature intact
 corrupted.fill(42, headerLen);
-const zlibStream = new Decompress();
-const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const options = { autoDestroy: true };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] &#x3C; 14) {
+  // #destroy() was not called (and &#x27;close&#x27; not emitted) before
+  // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 zlibStream.end(corrupted);
 inflateAuto.end(corrupted);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy or end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(255, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(corrupted);
+inflateAuto.write(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>corrupted checksum</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -264,6 +420,7 @@ inflateAuto.end(invalid);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>emits error for format error in _flush</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const truncated = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
@@ -274,15 +431,12 @@ inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
 });
 inflateAuto.end(truncated);</code></pre></dd>
             <dt>errors on write of invalid type</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const options = { objectMode: true };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
 const compareOptions = { ...COMPARE_OPTIONS };
 compareOptions.endEvents = [&#x27;end&#x27;];
-// nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-if (nodeVersion[0] &#x3C; 8) {
-  compareOptions.compare = compareNoErrorTypes;
-}
 const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 let errInflate;
 try {
@@ -296,7 +450,7 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 zlibStream.end(compressed);
 inflateAuto.end(compressed);
 result.checkpoint();
@@ -305,6 +459,7 @@ return result;</code></pre></dd>
               <h1>.inflateAuto</h1>
               <dl>
                 <dt>decompresses all data in a single call</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(compressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressed, (errAuto, dataAuto) =&#x3E; {
@@ -314,6 +469,7 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>handles compressed empty data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(emptyCompressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(emptyCompressed, (errAuto, dataAuto) =&#x3E; {
@@ -323,28 +479,63 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 decompress(compressedTA, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressedTA, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
 );
 decompress(compressedBuf, (errDecompress, dataDecompress) =&#x3E; {
   InflateAuto.inflateAuto(compressedBuf, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
+                <dt>handles null like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(null); } catch (err) { errInflate = err; }
+let errAuto;
+try { InflateAuto.inflateAuto(null); } catch (err) { errAuto = err; }
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>throws when called without callback</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(compressed); } catch (err) { errInflate = err; }
+let errAuto;
+try {
+  InflateAuto.inflateAuto(compressed);
+} catch (err) {
+  errAuto = err;
+}
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>can accept options argument</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { chunkSize: zlib.Z_MIN_CHUNK };
 InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -360,6 +551,7 @@ InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { info: true };
 decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
@@ -373,6 +565,7 @@ decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -380,6 +573,7 @@ InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   done();
 });</code></pre></dd>
                 <dt>handles string defaultEncoding like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 const opts = { defaultEncoding: &#x27;binary&#x27; };
 decompress(
@@ -390,7 +584,7 @@ decompress(
       compressedStr,
       opts,
       (errAuto, dataAuto) =&#x3E; {
-        assert.deepStrictEqual(errAuto, errDecompress);
+        assertErrorEqual(errAuto, errDecompress);
         assert.deepStrictEqual(dataAuto, dataDecompress);
         done();
       },
@@ -403,6 +597,7 @@ decompress(
               <h1>.inflateAutoSync()</h1>
               <dl>
                 <dt>invalid type synchronously</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let errInflate;
 try {
   decompressSync(true);
@@ -419,13 +614,15 @@ if (errAuto &#x26;&#x26; errInflate) {
   // message changed in 2ced07c (Node 8).  Ignore in comparison.
   errAuto.message = errInflate.message;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress = decompressSync(compressedTA);
 const dataAuto = InflateAuto.inflateAutoSync(compressedTA);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -434,6 +631,7 @@ const dataDecompress = decompressSync(compressedBuf);
 const dataAuto = InflateAuto.inflateAutoSync(compressedBuf);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { info: true };
 const dataDecompress = decompressSync(compressed, options);
 assertInstanceOf(dataDecompress.engine, Decompress);
@@ -443,6 +641,7 @@ dataAuto.engine = dataDecompress.engine;
 assert.deepStrictEqual(dataAuto, dataDecompress);
 assert.deepStrictEqual(dataAuto[0], dataDecompress[0]);</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
 assert.deepStrictEqual(dataAuto, uncompressed);</code></pre></dd>
@@ -452,6 +651,7 @@ assert.deepStrictEqual(dataAuto, uncompressed);</code></pre></dd>
               <h1>Constructor</h1>
               <dl>
                 <dt>supports chunkSize</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { chunkSize: zlib.Z_MIN_CHUNK };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -460,6 +660,7 @@ zlibStream.end(largeCompressed);
 inflateAuto.end(largeCompressed);
 return result;</code></pre></dd>
                 <dt>supports finishFlush</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { finishFlush: zlib.Z_SYNC_FLUSH };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -472,43 +673,48 @@ return result;</code></pre></dd>
                   <h1>validates</h1>
                   <dl>
                     <dt>{ chunkSize: 63 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ chunkSize: NaN }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ flush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ finishFlush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                   </dl>
                 </section>
                 <section class="suite">
                   <h1>emits error</h1>
                   <dl>
                     <dt>synchronously with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -519,8 +725,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -528,32 +735,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { dictionary: true }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -564,8 +799,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -573,32 +809,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { level: -2 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -609,8 +873,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -618,32 +883,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { memLevel: 0 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -654,8 +947,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -663,32 +957,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { strategy: -1 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -699,8 +1021,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -708,31 +1031,58 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { windowBits: 7 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                   </dl>
                 </section>
               </dl>
@@ -741,37 +1091,39 @@ inflateAuto.end((errAuto) =&#x3E; {
               <h1>#close()</h1>
               <dl>
                 <dt>without writing</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 return new Promise((resolve, reject) =&#x3E; {
   zlibStream.close((...zlibArgs) =&#x3E; {
     inflateAuto.close((...inflateArgs) =&#x3E; {
-      // Before nodejs/node#32220 (v14) an error is not passed.
-      // Not worth the effort to match this behavior.  Always error.
-      if (zlibArgs[0] === undefined) {
+      try {
+        // Before nodejs/node#32220 (v14) an error is not passed.
+        // Not worth the effort to match this behavior.  Always error.
+        if (zlibArgs[0] === undefined) {
+          assertInstanceOf(inflateArgs[0], Error);
+          assert.deepStrictEqual(
+            inflateArgs[0].code,
+            &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
+          );
+        } else {
+          assertErrorEqual(inflateArgs[0], zlibArgs[0]);
+        }
         assert.deepStrictEqual(
           inflateArgs.slice(1),
           zlibArgs.slice(1),
           &#x27;same non-err close arguments&#x27;,
         );
-        assertInstanceOf(inflateArgs[0], Error);
-        assert.deepStrictEqual(
-          inflateArgs[0].code,
-          &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
-        );
-      } else {
-        assert.deepStrictEqual(
-          inflateArgs,
-          zlibArgs,
-          &#x27;same close arguments&#x27;,
-        );
+        resolve(result);
+      } catch (errAssert) {
+        reject(errAssert);
       }
-      resolve(result);
     });
   });
 });</code></pre></dd>
                 <dt>emits once for multiple calls</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let closeEmitted = false;
 inflateAuto.on(&#x27;close&#x27;, () =&#x3E; {
@@ -790,6 +1142,7 @@ return new Promise((resolve, reject) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>before #end()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -801,6 +1154,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>#reset() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -824,6 +1178,7 @@ assert.deepStrictEqual(
 );
 return result;</code></pre></dd>
                 <dt>#write() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -844,6 +1199,7 @@ return new Promise((resolve, reject) =&#x3E; {
   result.checkpoint();
 });</code></pre></dd>
                 <dt>errors for non-function truthy argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -855,7 +1211,7 @@ try { inflateAuto.close(true); } catch (err) { errAuto = err; }
 // to ERR_INVALID_ARG_TYPE (due to calling finished instead of nextTick).
 // It&#x27;s not currently worth complicating the code to mimic this.
 if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;) {
-  assert.deepStrictEqual(errAuto, errInflate);
+  assertErrorEqual(errAuto, errInflate);
 } else {
   assert.deepStrictEqual(
     errAuto instanceof Error,
@@ -867,6 +1223,7 @@ if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;
 setImmediate(() =&#x3E; result.end());
 return result;</code></pre></dd>
                 <dt>errors for non-undefined/null falsey argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -874,7 +1231,7 @@ let errInflate;
 try { zlibStream.close(false); } catch (err) { errInflate = err; }
 let errAuto;
 try { inflateAuto.close(false); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 // Streams may not emit any events.
 // End comparison after event queue clears.
 setImmediate(() =&#x3E; result.end());
@@ -885,14 +1242,17 @@ return result;</code></pre></dd>
               <h1>#getFormat()</h1>
               <dl>
                 <dt>returns format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
                 <dt>returns custom format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(MyDecompress);
 assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
                 <dt>returns the detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.on(&#x27;format&#x27;, () =&#x3E; {
   assert.strictEqual(inflateAuto.getFormat(), Decompress);
@@ -905,6 +1265,7 @@ inflateAuto.write(compressed);</code></pre></dd>
               <h1>#flush()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -916,6 +1277,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -927,6 +1289,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -941,6 +1304,7 @@ inflateAuto.end(compressed.slice(4));
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -960,6 +1324,7 @@ return result;</code></pre></dd>
               <h1>#params()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype.params;
 let zlibType = typeof Decompress.prototype.params;
 assert.strictEqual(autoType, zlibType);
@@ -967,6 +1332,7 @@ autoType = typeof new InflateAuto().params;
 zlibType = typeof new Decompress().params;
 assert.strictEqual(autoType, zlibType);</code></pre></dd>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -983,6 +1349,7 @@ inflateAuto.params(level, strategy, (err) =&#x3E; {
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1020,6 +1387,7 @@ return Promise.all([
               <h1>#reset()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1031,6 +1399,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>discards partial header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1078,6 +1447,7 @@ return Promise.all([
   });
 });</code></pre></dd>
                 <dt>forgets partial header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1099,6 +1469,7 @@ return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
     return result;
   });</code></pre></dd>
                 <dt>discards post-header data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1126,6 +1497,7 @@ return Promise.all([
               <h1>#setEncoding()</h1>
               <dl>
                 <dt>behaves the same before writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1137,6 +1509,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>behaves the same after format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1163,6 +1536,7 @@ return Promise.all([
               <h1>#setFormat()</h1>
               <dl>
                 <dt>emits &#x27;format&#x27; event with decoder</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let gotFormat = false;
 inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
@@ -1172,6 +1546,7 @@ inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(gotFormat, true);</code></pre></dd>
                 <dt>can set correct format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1182,6 +1557,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set incorrect format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1192,6 +1568,7 @@ inflateAuto.end(otherCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set same format twice</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1203,6 +1580,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>throws if changing format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(zlib.Inflate);
 try {
@@ -1212,6 +1590,7 @@ try {
   assert(/\bformat\b/i.test(err.message));
 }</code></pre></dd>
                 <dt>throws if changing detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.write(otherHeader);
 try {
@@ -1226,6 +1605,7 @@ try {
               <h1>#_processChunk()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype._processChunk;
 let zlibType = typeof Decompress.prototype._processChunk;
 assert.strictEqual(autoType, zlibType);
@@ -1236,6 +1616,7 @@ assert.strictEqual(autoType, zlibType);</code></pre></dd>
                   <h1>with cb</h1>
                   <dl>
                     <dt>works if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -1254,6 +1635,7 @@ inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
   done();
 });</code></pre></dd>
                     <dt>buffers inconclusive data</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const inflateAuto = new InflateAuto();
 const trunc = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, () =&#x3E; {
@@ -1270,6 +1652,7 @@ inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
                   <h1>without cb</h1>
                   <dl>
                     <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function NoTransform(...args) { stream.Duplex.apply(this, args); }
 NoTransform.prototype = Object.create(stream.Duplex.prototype);
 NoTransform.prototype.constructor = NoTransform;
@@ -1292,6 +1675,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -1310,6 +1694,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform yields Error</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const errTest = new Error(&#x27;test&#x27;);
 function ErrorTransform(...args) { stream.Transform.apply(this, args); }
 ErrorTransform.prototype = Object.create(stream.Transform.prototype);
@@ -1329,6 +1714,7 @@ assert.throws(
   (err) =&#x3E; err === errTest,
 );</code></pre></dd>
                     <dt>supports non-Buffer TypedArray</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress =
   new Decompress()._processChunk(compressedTA, zlib.Z_FINISH);
@@ -1336,6 +1722,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedTA, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>supports ArrayBuffer</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -1348,6 +1735,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedBuf, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>throws for invalid chunk type</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>// As of Node v14, this would cause an assertion failure
 // Test that InflateAuto throws TypeError
 assert.throws(
@@ -1364,10 +1752,12 @@ assert.throws(
           <h1>Deflate support</h1>
           <dl>
             <dt>as synchronous function</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const dataDecompress = decompressSync(compressed);
 const dataAuto = InflateAuto.inflateAutoSync(compressed);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
             <dt>single-write with immediate end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1377,6 +1767,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>single-write delayed end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1393,6 +1784,7 @@ return Promise.all([
   return result;
 });</code></pre></dd>
             <dt>1 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1407,6 +1799,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>2 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1421,6 +1814,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>3 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1435,6 +1829,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>no data after header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1443,6 +1838,7 @@ inflateAuto.end(header);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>compressed empty data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1451,6 +1847,7 @@ inflateAuto.end(emptyCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles truncated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>// Truncate shortly after the header (if any) for type detection
 const truncated = compressed.slice(0, headerLen + 1);
 const zlibStream = new Decompress();
@@ -1461,55 +1858,177 @@ inflateAuto.end(truncated);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubledata = Buffer.concat([compressed, compressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubledata);
 inflateAuto.end(doubledata);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated empty compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubleempty);
 inflateAuto.end(doubleempty);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 without end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; result.end(), 100);
+return result;</code></pre></dd>
             <dt>handles concatenated 0</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zeros = Buffer.alloc(20);
 const compressedWithZeros = Buffer.concat([compressed, zeros]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithZeros);
 inflateAuto.end(compressedWithZeros);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 with late end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; {
+  zlibStream.end();
+  inflateAuto.end();
+}, 100);
+return result;</code></pre></dd>
+            <dt>handles concatenated 0 then compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const doubledata = Buffer.concat([compressed, zeros, compressed]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>handles concatenated garbage</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const garbage = Buffer.alloc(20, 42);
 const compressedWithGarbage = Buffer.concat([compressed, garbage]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithGarbage);
 inflateAuto.end(compressedWithGarbage);
 result.checkpoint();
 return result;</code></pre></dd>
-            <dt>handles corrupted compressed data</dt>
+            <dt>handles corrupted compressed data with autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const corrupted = Buffer.from(compressed);
 // Leave signature intact
 corrupted.fill(42, headerLen);
-const zlibStream = new Decompress();
-const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const options = { autoDestroy: true };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] &#x3C; 14) {
+  // #destroy() was not called (and &#x27;close&#x27; not emitted) before
+  // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 zlibStream.end(corrupted);
 inflateAuto.end(corrupted);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy or end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(255, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(corrupted);
+inflateAuto.write(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>corrupted checksum</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1519,6 +2038,7 @@ inflateAuto.end(invalid);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles dictionary</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const options = { dictionary: uncompressed };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -1528,6 +2048,7 @@ inflateAuto.end(compressedWithDict);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles missing dictionary</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1536,6 +2057,7 @@ inflateAuto.end(compressedWithDict);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>emits error for format error in _flush</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const truncated = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
@@ -1546,15 +2068,12 @@ inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
 });
 inflateAuto.end(truncated);</code></pre></dd>
             <dt>errors on write of invalid type</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const options = { objectMode: true };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
 const compareOptions = { ...COMPARE_OPTIONS };
 compareOptions.endEvents = [&#x27;end&#x27;];
-// nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-if (nodeVersion[0] &#x3C; 8) {
-  compareOptions.compare = compareNoErrorTypes;
-}
 const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 let errInflate;
 try {
@@ -1568,7 +2087,7 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 zlibStream.end(compressed);
 inflateAuto.end(compressed);
 result.checkpoint();
@@ -1577,6 +2096,7 @@ return result;</code></pre></dd>
               <h1>.inflateAuto</h1>
               <dl>
                 <dt>decompresses all data in a single call</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(compressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressed, (errAuto, dataAuto) =&#x3E; {
@@ -1586,6 +2106,7 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>handles compressed empty data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(emptyCompressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(emptyCompressed, (errAuto, dataAuto) =&#x3E; {
@@ -1595,28 +2116,63 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 decompress(compressedTA, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressedTA, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
 );
 decompress(compressedBuf, (errDecompress, dataDecompress) =&#x3E; {
   InflateAuto.inflateAuto(compressedBuf, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
+                <dt>handles null like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(null); } catch (err) { errInflate = err; }
+let errAuto;
+try { InflateAuto.inflateAuto(null); } catch (err) { errAuto = err; }
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>throws when called without callback</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(compressed); } catch (err) { errInflate = err; }
+let errAuto;
+try {
+  InflateAuto.inflateAuto(compressed);
+} catch (err) {
+  errAuto = err;
+}
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>can accept options argument</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { chunkSize: zlib.Z_MIN_CHUNK };
 InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -1632,6 +2188,7 @@ InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { info: true };
 decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
@@ -1645,6 +2202,7 @@ decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -1652,6 +2210,7 @@ InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   done();
 });</code></pre></dd>
                 <dt>handles string defaultEncoding like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 const opts = { defaultEncoding: &#x27;binary&#x27; };
 decompress(
@@ -1662,7 +2221,7 @@ decompress(
       compressedStr,
       opts,
       (errAuto, dataAuto) =&#x3E; {
-        assert.deepStrictEqual(errAuto, errDecompress);
+        assertErrorEqual(errAuto, errDecompress);
         assert.deepStrictEqual(dataAuto, dataDecompress);
         done();
       },
@@ -1675,6 +2234,7 @@ decompress(
               <h1>.inflateAutoSync()</h1>
               <dl>
                 <dt>invalid type synchronously</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let errInflate;
 try {
   decompressSync(true);
@@ -1691,13 +2251,15 @@ if (errAuto &#x26;&#x26; errInflate) {
   // message changed in 2ced07c (Node 8).  Ignore in comparison.
   errAuto.message = errInflate.message;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress = decompressSync(compressedTA);
 const dataAuto = InflateAuto.inflateAutoSync(compressedTA);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -1706,6 +2268,7 @@ const dataDecompress = decompressSync(compressedBuf);
 const dataAuto = InflateAuto.inflateAutoSync(compressedBuf);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { info: true };
 const dataDecompress = decompressSync(compressed, options);
 assertInstanceOf(dataDecompress.engine, Decompress);
@@ -1715,6 +2278,7 @@ dataAuto.engine = dataDecompress.engine;
 assert.deepStrictEqual(dataAuto, dataDecompress);
 assert.deepStrictEqual(dataAuto[0], dataDecompress[0]);</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
 assert.deepStrictEqual(dataAuto, uncompressed);</code></pre></dd>
@@ -1724,6 +2288,7 @@ assert.deepStrictEqual(dataAuto, uncompressed);</code></pre></dd>
               <h1>Constructor</h1>
               <dl>
                 <dt>supports chunkSize</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { chunkSize: zlib.Z_MIN_CHUNK };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -1732,6 +2297,7 @@ zlibStream.end(largeCompressed);
 inflateAuto.end(largeCompressed);
 return result;</code></pre></dd>
                 <dt>supports finishFlush</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { finishFlush: zlib.Z_SYNC_FLUSH };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -1744,43 +2310,48 @@ return result;</code></pre></dd>
                   <h1>validates</h1>
                   <dl>
                     <dt>{ chunkSize: 63 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ chunkSize: NaN }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ flush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ finishFlush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                   </dl>
                 </section>
                 <section class="suite">
                   <h1>emits error</h1>
                   <dl>
                     <dt>synchronously with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1791,8 +2362,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1800,32 +2372,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { dictionary: true }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1836,8 +2436,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1845,32 +2446,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { level: -2 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1881,8 +2510,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1890,32 +2520,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { memLevel: 0 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1926,8 +2584,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1935,32 +2594,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { strategy: -1 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1971,8 +2658,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -1980,31 +2668,58 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { windowBits: 7 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                   </dl>
                 </section>
               </dl>
@@ -2013,37 +2728,39 @@ inflateAuto.end((errAuto) =&#x3E; {
               <h1>#close()</h1>
               <dl>
                 <dt>without writing</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 return new Promise((resolve, reject) =&#x3E; {
   zlibStream.close((...zlibArgs) =&#x3E; {
     inflateAuto.close((...inflateArgs) =&#x3E; {
-      // Before nodejs/node#32220 (v14) an error is not passed.
-      // Not worth the effort to match this behavior.  Always error.
-      if (zlibArgs[0] === undefined) {
+      try {
+        // Before nodejs/node#32220 (v14) an error is not passed.
+        // Not worth the effort to match this behavior.  Always error.
+        if (zlibArgs[0] === undefined) {
+          assertInstanceOf(inflateArgs[0], Error);
+          assert.deepStrictEqual(
+            inflateArgs[0].code,
+            &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
+          );
+        } else {
+          assertErrorEqual(inflateArgs[0], zlibArgs[0]);
+        }
         assert.deepStrictEqual(
           inflateArgs.slice(1),
           zlibArgs.slice(1),
           &#x27;same non-err close arguments&#x27;,
         );
-        assertInstanceOf(inflateArgs[0], Error);
-        assert.deepStrictEqual(
-          inflateArgs[0].code,
-          &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
-        );
-      } else {
-        assert.deepStrictEqual(
-          inflateArgs,
-          zlibArgs,
-          &#x27;same close arguments&#x27;,
-        );
+        resolve(result);
+      } catch (errAssert) {
+        reject(errAssert);
       }
-      resolve(result);
     });
   });
 });</code></pre></dd>
                 <dt>emits once for multiple calls</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let closeEmitted = false;
 inflateAuto.on(&#x27;close&#x27;, () =&#x3E; {
@@ -2062,6 +2779,7 @@ return new Promise((resolve, reject) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>before #end()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2073,6 +2791,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>#reset() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2096,6 +2815,7 @@ assert.deepStrictEqual(
 );
 return result;</code></pre></dd>
                 <dt>#write() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2116,6 +2836,7 @@ return new Promise((resolve, reject) =&#x3E; {
   result.checkpoint();
 });</code></pre></dd>
                 <dt>errors for non-function truthy argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2127,7 +2848,7 @@ try { inflateAuto.close(true); } catch (err) { errAuto = err; }
 // to ERR_INVALID_ARG_TYPE (due to calling finished instead of nextTick).
 // It&#x27;s not currently worth complicating the code to mimic this.
 if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;) {
-  assert.deepStrictEqual(errAuto, errInflate);
+  assertErrorEqual(errAuto, errInflate);
 } else {
   assert.deepStrictEqual(
     errAuto instanceof Error,
@@ -2139,6 +2860,7 @@ if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;
 setImmediate(() =&#x3E; result.end());
 return result;</code></pre></dd>
                 <dt>errors for non-undefined/null falsey argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2146,7 +2868,7 @@ let errInflate;
 try { zlibStream.close(false); } catch (err) { errInflate = err; }
 let errAuto;
 try { inflateAuto.close(false); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 // Streams may not emit any events.
 // End comparison after event queue clears.
 setImmediate(() =&#x3E; result.end());
@@ -2157,14 +2879,17 @@ return result;</code></pre></dd>
               <h1>#getFormat()</h1>
               <dl>
                 <dt>returns format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
                 <dt>returns custom format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(MyDecompress);
 assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
                 <dt>returns the detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.on(&#x27;format&#x27;, () =&#x3E; {
   assert.strictEqual(inflateAuto.getFormat(), Decompress);
@@ -2177,6 +2902,7 @@ inflateAuto.write(compressed);</code></pre></dd>
               <h1>#flush()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2188,6 +2914,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2199,6 +2926,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2213,6 +2941,7 @@ inflateAuto.end(compressed.slice(4));
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2232,6 +2961,7 @@ return result;</code></pre></dd>
               <h1>#params()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype.params;
 let zlibType = typeof Decompress.prototype.params;
 assert.strictEqual(autoType, zlibType);
@@ -2239,6 +2969,7 @@ autoType = typeof new InflateAuto().params;
 zlibType = typeof new Decompress().params;
 assert.strictEqual(autoType, zlibType);</code></pre></dd>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2255,6 +2986,7 @@ inflateAuto.params(level, strategy, (err) =&#x3E; {
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2292,6 +3024,7 @@ return Promise.all([
               <h1>#reset()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2303,6 +3036,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>discards partial header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2350,6 +3084,7 @@ return Promise.all([
   });
 });</code></pre></dd>
                 <dt>forgets partial header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2371,6 +3106,7 @@ return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
     return result;
   });</code></pre></dd>
                 <dt>discards post-header data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2398,6 +3134,7 @@ return Promise.all([
               <h1>#setEncoding()</h1>
               <dl>
                 <dt>behaves the same before writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2409,6 +3146,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>behaves the same after format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2435,6 +3173,7 @@ return Promise.all([
               <h1>#setFormat()</h1>
               <dl>
                 <dt>emits &#x27;format&#x27; event with decoder</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let gotFormat = false;
 inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
@@ -2444,6 +3183,7 @@ inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(gotFormat, true);</code></pre></dd>
                 <dt>can set correct format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2454,6 +3194,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set incorrect format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2464,6 +3205,7 @@ inflateAuto.end(otherCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set same format twice</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2475,6 +3217,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>throws if changing format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(zlib.Inflate);
 try {
@@ -2484,6 +3227,7 @@ try {
   assert(/\bformat\b/i.test(err.message));
 }</code></pre></dd>
                 <dt>throws if changing detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.write(otherHeader);
 try {
@@ -2498,6 +3242,7 @@ try {
               <h1>#_processChunk()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype._processChunk;
 let zlibType = typeof Decompress.prototype._processChunk;
 assert.strictEqual(autoType, zlibType);
@@ -2508,6 +3253,7 @@ assert.strictEqual(autoType, zlibType);</code></pre></dd>
                   <h1>with cb</h1>
                   <dl>
                     <dt>works if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -2526,6 +3272,7 @@ inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
   done();
 });</code></pre></dd>
                     <dt>buffers inconclusive data</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const inflateAuto = new InflateAuto();
 const trunc = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, () =&#x3E; {
@@ -2542,6 +3289,7 @@ inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
                   <h1>without cb</h1>
                   <dl>
                     <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function NoTransform(...args) { stream.Duplex.apply(this, args); }
 NoTransform.prototype = Object.create(stream.Duplex.prototype);
 NoTransform.prototype.constructor = NoTransform;
@@ -2564,6 +3312,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -2582,6 +3331,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform yields Error</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const errTest = new Error(&#x27;test&#x27;);
 function ErrorTransform(...args) { stream.Transform.apply(this, args); }
 ErrorTransform.prototype = Object.create(stream.Transform.prototype);
@@ -2601,6 +3351,7 @@ assert.throws(
   (err) =&#x3E; err === errTest,
 );</code></pre></dd>
                     <dt>supports non-Buffer TypedArray</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress =
   new Decompress()._processChunk(compressedTA, zlib.Z_FINISH);
@@ -2608,6 +3359,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedTA, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>supports ArrayBuffer</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -2620,6 +3372,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedBuf, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>throws for invalid chunk type</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>// As of Node v14, this would cause an assertion failure
 // Test that InflateAuto throws TypeError
 assert.throws(
@@ -2636,10 +3389,12 @@ assert.throws(
           <h1>DeflateRaw support</h1>
           <dl>
             <dt>as synchronous function</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const dataDecompress = decompressSync(compressed);
 const dataAuto = InflateAuto.inflateAutoSync(compressed);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
             <dt>single-write with immediate end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2649,6 +3404,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>single-write delayed end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2665,6 +3421,7 @@ return Promise.all([
   return result;
 });</code></pre></dd>
             <dt>1 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2679,6 +3436,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>2 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2693,6 +3451,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>3 byte writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2707,6 +3466,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>no writes</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2715,6 +3475,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>no data after header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2723,6 +3484,7 @@ inflateAuto.end(header);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>1 bytes of Gzip header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const compareOptions = {
@@ -2737,6 +3499,7 @@ inflateAuto.end(partial);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>2 bytes of Gzip header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const compareOptions = {
@@ -2751,6 +3514,7 @@ inflateAuto.end(partial);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>1 bytes of Deflate header</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const compareOptions = {
@@ -2765,6 +3529,7 @@ inflateAuto.end(partial);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>compressed empty data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2773,6 +3538,7 @@ inflateAuto.end(emptyCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles truncated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>// Truncate shortly after the header (if any) for type detection
 const truncated = compressed.slice(0, headerLen + 1);
 const zlibStream = new Decompress();
@@ -2783,55 +3549,177 @@ inflateAuto.end(truncated);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubledata = Buffer.concat([compressed, compressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubledata);
 inflateAuto.end(doubledata);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles concatenated empty compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const doubleempty = Buffer.concat([emptyCompressed, emptyCompressed]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(doubleempty);
 inflateAuto.end(doubleempty);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 without end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; result.end(), 100);
+return result;</code></pre></dd>
             <dt>handles concatenated 0</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zeros = Buffer.alloc(20);
 const compressedWithZeros = Buffer.concat([compressed, zeros]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithZeros);
 inflateAuto.end(compressedWithZeros);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles concatenated 0 with late end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const compressedWithGarbage = Buffer.concat([compressed, zeros]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+zlibStream.write(compressedWithGarbage);
+inflateAuto.write(compressedWithGarbage);
+result.checkpoint();
+setTimeout(() =&#x3E; {
+  zlibStream.end();
+  inflateAuto.end();
+}, 100);
+return result;</code></pre></dd>
+            <dt>handles concatenated 0 then compressed data</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const zeros = Buffer.alloc(20);
+const doubledata = Buffer.concat([compressed, zeros, compressed]);
+const zlibStream = new Decompress();
+const inflateAuto = new InflateAuto();
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
+zlibStream.end(doubledata);
+inflateAuto.end(doubledata);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>handles concatenated garbage</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const garbage = Buffer.alloc(20, 42);
 const compressedWithGarbage = Buffer.concat([compressed, garbage]);
 const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const result = streamCompare(inflateAuto, zlibStream, {
+  ...COMPARE_OPTIONS,
+  compare: compareReorderedEndEvents,
+});
 zlibStream.end(compressedWithGarbage);
 inflateAuto.end(compressedWithGarbage);
 result.checkpoint();
 return result;</code></pre></dd>
-            <dt>handles corrupted compressed data</dt>
+            <dt>handles corrupted compressed data with autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const corrupted = Buffer.from(compressed);
 // Leave signature intact
 corrupted.fill(42, headerLen);
-const zlibStream = new Decompress();
-const inflateAuto = new InflateAuto();
-const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+const options = { autoDestroy: true };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] &#x3C; 14) {
+  // #destroy() was not called (and &#x27;close&#x27; not emitted) before
+  // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 zlibStream.end(corrupted);
 inflateAuto.end(corrupted);
 result.checkpoint();
 return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(42, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.end(corrupted);
+inflateAuto.end(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
+            <dt>handles corrupted compressed data without autoDestroy or end</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+            <dd><pre><code>const corrupted = Buffer.from(compressed);
+// Leave signature intact
+corrupted.fill(255, headerLen);
+const options = { autoDestroy: false };
+const zlibStream = new Decompress(options);
+const inflateAuto = new InflateAuto(options);
+// #destroy() is called (and &#x27;close&#x27; emitted) unconditionally since
+// nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+// which differs from other error code paths that respect autoDestroy.
+//
+// Stick with pre-14 behavior for now.  Re-evaluate after next release.
+let compareOptions = COMPARE_OPTIONS;
+if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+  compareOptions = {
+    ...COMPARE_OPTIONS,
+    endEvents: COMPARE_OPTIONS.endEvents.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+    events: COMPARE_OPTIONS.events.filter((e) =&#x3E; e !== &#x27;close&#x27;),
+  };
+}
+const result = streamCompare(inflateAuto, zlibStream, compareOptions);
+zlibStream.write(corrupted);
+inflateAuto.write(corrupted);
+result.checkpoint();
+return result;</code></pre></dd>
             <dt>handles dictionary</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const options = { dictionary: uncompressed };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -2841,6 +3729,7 @@ inflateAuto.end(compressedWithDict);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>handles missing dictionary</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -2849,6 +3738,7 @@ inflateAuto.end(compressedWithDict);
 result.checkpoint();
 return result;</code></pre></dd>
             <dt>emits error for format error in _flush</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const truncated = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
@@ -2859,15 +3749,12 @@ inflateAuto.on(&#x27;error&#x27;, (err) =&#x3E; {
 });
 inflateAuto.end(truncated);</code></pre></dd>
             <dt>errors on write of invalid type</dt>
+            <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
             <dd><pre><code>const options = { objectMode: true };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
 const compareOptions = { ...COMPARE_OPTIONS };
 compareOptions.endEvents = [&#x27;end&#x27;];
-// nodejs/node@b514bd231 (Node 8) changed Error to TypeError.
-if (nodeVersion[0] &#x3C; 8) {
-  compareOptions.compare = compareNoErrorTypes;
-}
 const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 let errInflate;
 try {
@@ -2881,7 +3768,7 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 zlibStream.end(compressed);
 inflateAuto.end(compressed);
 result.checkpoint();
@@ -2890,6 +3777,7 @@ return result;</code></pre></dd>
               <h1>.inflateAuto</h1>
               <dl>
                 <dt>decompresses all data in a single call</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(compressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressed, (errAuto, dataAuto) =&#x3E; {
@@ -2899,6 +3787,7 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>handles compressed empty data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>decompress(emptyCompressed, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(emptyCompressed, (errAuto, dataAuto) =&#x3E; {
@@ -2908,28 +3797,63 @@ return result;</code></pre></dd>
   });
 });</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 decompress(compressedTA, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
   InflateAuto.inflateAuto(compressedTA, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
 );
 decompress(compressedBuf, (errDecompress, dataDecompress) =&#x3E; {
   InflateAuto.inflateAuto(compressedBuf, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
+                <dt>handles null like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(null); } catch (err) { errInflate = err; }
+let errAuto;
+try { InflateAuto.inflateAuto(null); } catch (err) { errAuto = err; }
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
+                <dt>throws when called without callback</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                <dd><pre><code>// Before nodejs/node#24929 (v12) an exception was not thrown and an
+// unhandled error would occur when callback attempted.
+// Don&#x27;t mimic this behavior.
+if (nodeVersion[0] &#x3C; 12) {
+  this.skip();
+  return;
+}
+let errInflate;
+try { decompress(compressed); } catch (err) { errInflate = err; }
+let errAuto;
+try {
+  InflateAuto.inflateAuto(compressed);
+} catch (err) {
+  errAuto = err;
+}
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>can accept options argument</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { chunkSize: zlib.Z_MIN_CHUNK };
 InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -2945,6 +3869,7 @@ InflateAuto.inflateAuto(compressed, opts, (errAuto, dataAuto) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { info: true };
 decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   assert.ifError(errDecompress);
@@ -2958,6 +3883,7 @@ decompress(compressed, opts, (errDecompress, dataDecompress) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   assert.ifError(errAuto);
@@ -2965,6 +3891,7 @@ InflateAuto.inflateAuto(uncompressed, opts, (errAuto, dataAuto) =&#x3E; {
   done();
 });</code></pre></dd>
                 <dt>handles string defaultEncoding like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 const opts = { defaultEncoding: &#x27;binary&#x27; };
 decompress(
@@ -2975,7 +3902,7 @@ decompress(
       compressedStr,
       opts,
       (errAuto, dataAuto) =&#x3E; {
-        assert.deepStrictEqual(errAuto, errDecompress);
+        assertErrorEqual(errAuto, errDecompress);
         assert.deepStrictEqual(dataAuto, dataDecompress);
         done();
       },
@@ -2983,29 +3910,32 @@ decompress(
   },
 );</code></pre></dd>
                 <dt>passes format Error to the callback like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zeros = Buffer.alloc(20);
 decompress(zeros, (errDecompress, dataDecompress) =&#x3E; {
   assert(errDecompress, &#x27;expected Error to test&#x27;);
   InflateAuto.inflateAuto(zeros, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
                 <dt>handles truncated header like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const trunc = compressed.slice(0, 1);
 decompress(trunc, (errDecompress, dataDecompress) =&#x3E; {
   InflateAuto.inflateAuto(trunc, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
 });</code></pre></dd>
                 <dt>handles string argument like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 decompress(compressedStr, (errDecompress, dataDecompress) =&#x3E; {
   InflateAuto.inflateAuto(compressedStr, (errAuto, dataAuto) =&#x3E; {
-    assert.deepStrictEqual(errAuto, errDecompress);
+    assertErrorEqual(errAuto, errDecompress);
     assert.deepStrictEqual(dataAuto, dataDecompress);
     done();
   });
@@ -3016,6 +3946,7 @@ decompress(compressedStr, (errDecompress, dataDecompress) =&#x3E; {
               <h1>.inflateAutoSync()</h1>
               <dl>
                 <dt>invalid type synchronously</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let errInflate;
 try {
   decompressSync(true);
@@ -3032,13 +3963,15 @@ if (errAuto &#x26;&#x26; errInflate) {
   // message changed in 2ced07c (Node 8).  Ignore in comparison.
   errAuto.message = errInflate.message;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                 <dt>supports non-Buffer TypedArray</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress = decompressSync(compressedTA);
 const dataAuto = InflateAuto.inflateAutoSync(compressedTA);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports ArrayBuffer</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -3047,6 +3980,7 @@ const dataDecompress = decompressSync(compressedBuf);
 const dataAuto = InflateAuto.inflateAutoSync(compressedBuf);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                 <dt>supports options.info</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { info: true };
 const dataDecompress = decompressSync(compressed, options);
 assertInstanceOf(dataDecompress.engine, Decompress);
@@ -3056,6 +3990,7 @@ dataAuto.engine = dataDecompress.engine;
 assert.deepStrictEqual(dataAuto, dataDecompress);
 assert.deepStrictEqual(dataAuto[0], dataDecompress[0]);</code></pre></dd>
                 <dt>partial Gzip header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const partial = formatHeader.slice(0, 1);
 let dataInflate, errInflate;
 try {
@@ -3069,9 +4004,10 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 assert.deepStrictEqual(dataAuto, dataInflate);</code></pre></dd>
                 <dt>partial Deflate header</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const partial = formatHeader.slice(0, 1);
 let dataInflate, errInflate;
 try {
@@ -3085,13 +4021,15 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 assert.deepStrictEqual(dataAuto, dataInflate);</code></pre></dd>
                 <dt>can use PassThrough as defaultFormat</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const opts = { defaultFormat: stream.PassThrough };
 const dataAuto = InflateAuto.inflateAutoSync(uncompressed, opts);
 assert.deepStrictEqual(dataAuto, uncompressed);</code></pre></dd>
                 <dt>handles string argument like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 let dataInflate, errInflate;
 try {
@@ -3105,9 +4043,10 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 assert.deepStrictEqual(dataAuto, dataInflate);</code></pre></dd>
                 <dt>handles string with defaultEncoding like zlib</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const compressedStr = compressed.toString(&#x27;binary&#x27;);
 const opts = { defaultEncoding: &#x27;binary&#x27; };
 let dataInflate, errInflate;
@@ -3122,7 +4061,7 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 assert.deepStrictEqual(dataAuto, dataInflate);</code></pre></dd>
               </dl>
             </section>
@@ -3130,6 +4069,7 @@ assert.deepStrictEqual(dataAuto, dataInflate);</code></pre></dd>
               <h1>Constructor</h1>
               <dl>
                 <dt>supports chunkSize</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { chunkSize: zlib.Z_MIN_CHUNK };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -3138,6 +4078,7 @@ zlibStream.end(largeCompressed);
 inflateAuto.end(largeCompressed);
 return result;</code></pre></dd>
                 <dt>supports finishFlush</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const options = { finishFlush: zlib.Z_SYNC_FLUSH };
 const zlibStream = new Decompress(options);
 const inflateAuto = new InflateAuto(options);
@@ -3150,43 +4091,48 @@ return result;</code></pre></dd>
                   <h1>validates</h1>
                   <dl>
                     <dt>{ chunkSize: 63 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ chunkSize: NaN }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ flush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>{ finishFlush: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
 let errAuto;
 // eslint-disable-next-line no-new
 try { new InflateAuto(options); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                   </dl>
                 </section>
                 <section class="suite">
                   <h1>emits error</h1>
                   <dl>
                     <dt>synchronously with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3197,8 +4143,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { dictionary: true }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3206,32 +4153,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { dictionary: true }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3242,8 +4217,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { level: -2 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3251,32 +4227,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { level: -2 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3287,8 +4291,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { memLevel: 0 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3296,32 +4301,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { memLevel: 0 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3332,8 +4365,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { strategy: -1 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3341,32 +4375,60 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { strategy: -1 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                     <dt>synchronously with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3377,8 +4439,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>on write with { windowBits: 7 }</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>let errInflate;
 // eslint-disable-next-line no-new
 try { new Decompress(options); } catch (err) { errInflate = err; }
@@ -3386,31 +4449,58 @@ assert(errInflate);
 return assertWriteError(
   new InflateAuto(options),
   compressed,
-  (errAuto) =&#x3E; assert.deepStrictEqual(errAuto, errInflate),
+  (errAuto) =&#x3E; assertErrorEqual(errAuto, errInflate),
 );</code></pre></dd>
                     <dt>on end with { windowBits: 7 }</dt>
-                    <dd><pre><code>let errInflate;
-// eslint-disable-next-line no-new
-try { new Decompress(options); } catch (err) { errInflate = err; }
-assert(errInflate);
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
+                    <dd><pre><code>const transform = new stream.Transform({
+  transform: (chunk, encoding, cb) =&#x3E; cb(),
+  flush: (cb) =&#x3E; {
+    try {
+      // eslint-disable-next-line no-new
+      new Decompress(options);
+      assert.fail(&#x27;Constructor should throw for invalid options&#x27;);
+    } catch (err) {
+      cb(err);
+    }
+  },
+});
 const inflateAuto = new InflateAuto({
   ...options,
   defaultFormat: Decompress,
 });
-let errorEmitted = false;
-inflateAuto.on(&#x27;error&#x27;, (errAuto) =&#x3E; {
-  assert(!errorEmitted, &#x27;error emitted at most once&#x27;);
-  errorEmitted = true;
-  assert.deepStrictEqual(errAuto, errInflate);
-});
-inflateAuto.end((errAuto) =&#x3E; {
-  assert(errorEmitted, &#x27;error emitted at least once&#x27;);
-  // Errors passed to _flush callback may not be passed to end cb.
-  if (errAuto) {
-    assert.deepStrictEqual(errAuto, errInflate);
-  }
-  done();
-});</code></pre></dd>
+let errorCount = 0;
+inflateAuto.on(&#x27;error&#x27;, () =&#x3E; { errorCount += 1; });
+// InflateAuto emits &#x27;prefinish&#x27; before &#x27;error&#x27;.  Transform does not
+// emit &#x27;prefinish&#x27; on Node.js v15 and later due to
+// https://github.com/nodejs/node/pull/34314
+// Could set InflateAuto.prototype._finish = Transform.prototype._finish
+// to get Transform behavior if there is a reason to do so.
+// For now, keep zlib behavior and ignore &#x27;prefinish&#x27; in comparison.
+const result = streamCompare(inflateAuto, transform, {
+  ...COMPARE_OPTIONS,
+  compare: (state1, state2) =&#x3E; assert.deepStrictEqual(
+    {
+      ...state1,
+      events: state1.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+    {
+      ...state2,
+      events: state2.events.filter((e) =&#x3E; e.name !== &#x27;prefinish&#x27;),
+    },
+  ),
+})
+  .then(() =&#x3E; {
+    assert.strictEqual(errorCount, 1, &#x27;error emitted once&#x27;);
+  });
+let transformEndArgs;
+transform.end((...args) =&#x3E; { transformEndArgs = args; });
+let inflateAutoEndArgs;
+inflateAuto.end((...args) =&#x3E; { inflateAutoEndArgs = args; });
+// end callback may or may not be called.  Check after stream compare.
+return result.then(
+  () =&#x3E; assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
+);</code></pre></dd>
                   </dl>
                 </section>
               </dl>
@@ -3419,37 +4509,39 @@ inflateAuto.end((errAuto) =&#x3E; {
               <h1>#close()</h1>
               <dl>
                 <dt>without writing</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
 return new Promise((resolve, reject) =&#x3E; {
   zlibStream.close((...zlibArgs) =&#x3E; {
     inflateAuto.close((...inflateArgs) =&#x3E; {
-      // Before nodejs/node#32220 (v14) an error is not passed.
-      // Not worth the effort to match this behavior.  Always error.
-      if (zlibArgs[0] === undefined) {
+      try {
+        // Before nodejs/node#32220 (v14) an error is not passed.
+        // Not worth the effort to match this behavior.  Always error.
+        if (zlibArgs[0] === undefined) {
+          assertInstanceOf(inflateArgs[0], Error);
+          assert.deepStrictEqual(
+            inflateArgs[0].code,
+            &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
+          );
+        } else {
+          assertErrorEqual(inflateArgs[0], zlibArgs[0]);
+        }
         assert.deepStrictEqual(
           inflateArgs.slice(1),
           zlibArgs.slice(1),
           &#x27;same non-err close arguments&#x27;,
         );
-        assertInstanceOf(inflateArgs[0], Error);
-        assert.deepStrictEqual(
-          inflateArgs[0].code,
-          &#x27;ERR_STREAM_PREMATURE_CLOSE&#x27;,
-        );
-      } else {
-        assert.deepStrictEqual(
-          inflateArgs,
-          zlibArgs,
-          &#x27;same close arguments&#x27;,
-        );
+        resolve(result);
+      } catch (errAssert) {
+        reject(errAssert);
       }
-      resolve(result);
     });
   });
 });</code></pre></dd>
                 <dt>emits once for multiple calls</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let closeEmitted = false;
 inflateAuto.on(&#x27;close&#x27;, () =&#x3E; {
@@ -3468,6 +4560,7 @@ return new Promise((resolve, reject) =&#x3E; {
   });
 });</code></pre></dd>
                 <dt>before #end()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3479,6 +4572,7 @@ inflateAuto.end();
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>#reset() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3502,6 +4596,7 @@ assert.deepStrictEqual(
 );
 return result;</code></pre></dd>
                 <dt>#write() after #close()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new zlib.Inflate();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3522,6 +4617,7 @@ return new Promise((resolve, reject) =&#x3E; {
   result.checkpoint();
 });</code></pre></dd>
                 <dt>errors for non-function truthy argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3533,7 +4629,7 @@ try { inflateAuto.close(true); } catch (err) { errAuto = err; }
 // to ERR_INVALID_ARG_TYPE (due to calling finished instead of nextTick).
 // It&#x27;s not currently worth complicating the code to mimic this.
 if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;) {
-  assert.deepStrictEqual(errAuto, errInflate);
+  assertErrorEqual(errAuto, errInflate);
 } else {
   assert.deepStrictEqual(
     errAuto instanceof Error,
@@ -3545,6 +4641,7 @@ if (errInflate &#x26;&#x26; errInflate.code === &#x27;ERR_INVALID_CALLBACK&#x27;
 setImmediate(() =&#x3E; result.end());
 return result;</code></pre></dd>
                 <dt>errors for non-undefined/null falsey argument type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3552,7 +4649,7 @@ let errInflate;
 try { zlibStream.close(false); } catch (err) { errInflate = err; }
 let errAuto;
 try { inflateAuto.close(false); } catch (err) { errAuto = err; }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 // Streams may not emit any events.
 // End comparison after event queue clears.
 setImmediate(() =&#x3E; result.end());
@@ -3563,14 +4660,17 @@ return result;</code></pre></dd>
               <h1>#getFormat()</h1>
               <dl>
                 <dt>returns format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(inflateAuto.getFormat(), Decompress);</code></pre></dd>
                 <dt>returns custom format set by #setFormat()</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(MyDecompress);
 assert.strictEqual(inflateAuto.getFormat(), MyDecompress);</code></pre></dd>
                 <dt>returns the detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.on(&#x27;format&#x27;, () =&#x3E; {
   assert.strictEqual(inflateAuto.getFormat(), Decompress);
@@ -3583,6 +4683,7 @@ inflateAuto.write(compressed);</code></pre></dd>
               <h1>#flush()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3594,6 +4695,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3605,6 +4707,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3619,6 +4722,7 @@ inflateAuto.end(compressed.slice(4));
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>Z_FINISH between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3638,6 +4742,7 @@ return result;</code></pre></dd>
               <h1>#params()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype.params;
 let zlibType = typeof Decompress.prototype.params;
 assert.strictEqual(autoType, zlibType);
@@ -3645,6 +4750,7 @@ autoType = typeof new InflateAuto().params;
 zlibType = typeof new Decompress().params;
 assert.strictEqual(autoType, zlibType);</code></pre></dd>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3661,6 +4767,7 @@ inflateAuto.params(level, strategy, (err) =&#x3E; {
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>between writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3698,6 +4805,7 @@ return Promise.all([
               <h1>#reset()</h1>
               <dl>
                 <dt>before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3709,6 +4817,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>discards post-header data</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3736,6 +4845,7 @@ return Promise.all([
               <h1>#setEncoding()</h1>
               <dl>
                 <dt>behaves the same before writes</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3747,6 +4857,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>behaves the same after format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3773,6 +4884,7 @@ return Promise.all([
               <h1>#setFormat()</h1>
               <dl>
                 <dt>emits &#x27;format&#x27; event with decoder</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 let gotFormat = false;
 inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
@@ -3782,6 +4894,7 @@ inflateAuto.on(&#x27;format&#x27;, (decoder) =&#x3E; {
 inflateAuto.setFormat(Decompress);
 assert.strictEqual(gotFormat, true);</code></pre></dd>
                 <dt>can set correct format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3792,6 +4905,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set incorrect format before write</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3802,6 +4916,7 @@ inflateAuto.end(otherCompressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>can set same format twice</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -3813,6 +4928,7 @@ inflateAuto.end(compressed);
 result.checkpoint();
 return result;</code></pre></dd>
                 <dt>throws if changing format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.setFormat(zlib.Inflate);
 try {
@@ -3822,6 +4938,7 @@ try {
   assert(/\bformat\b/i.test(err.message));
 }</code></pre></dd>
                 <dt>throws if changing detected format</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>const inflateAuto = new InflateAuto();
 inflateAuto.write(otherHeader);
 try {
@@ -3836,6 +4953,7 @@ try {
               <h1>#_processChunk()</h1>
               <dl>
                 <dt>has the same type</dt>
+                <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                 <dd><pre><code>let autoType = typeof InflateAuto.prototype._processChunk;
 let zlibType = typeof Decompress.prototype._processChunk;
 assert.strictEqual(autoType, zlibType);
@@ -3846,6 +4964,7 @@ assert.strictEqual(autoType, zlibType);</code></pre></dd>
                   <h1>with cb</h1>
                   <dl>
                     <dt>emits error without calling callback</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result =
@@ -3856,6 +4975,7 @@ inflateAuto._processChunk(zeros, zlib.Z_FINISH, neverCalled);
 result.checkpoint();
 return result;</code></pre></dd>
                     <dt>yields format error</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const zeros = Buffer.alloc(10);
 inflateAuto.on(&#x27;error&#x27;, () =&#x3E; {
@@ -3868,6 +4988,7 @@ inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err) =&#x3E; {
   done();
 });</code></pre></dd>
                     <dt>works if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -3886,6 +5007,7 @@ inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
   done();
 });</code></pre></dd>
                     <dt>buffers inconclusive data</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const inflateAuto = new InflateAuto();
 const trunc = compressed.slice(0, 1);
 inflateAuto.on(&#x27;error&#x27;, () =&#x3E; {
@@ -3902,6 +5024,7 @@ inflateAuto._processChunk(trunc, zlib.Z_NO_FLUSH, (err, data) =&#x3E; {
                   <h1>without cb</h1>
                   <dl>
                     <dt>throws without error listener</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const zeros = Buffer.alloc(10);
@@ -3917,8 +5040,9 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);</code></pre></dd>
+assertErrorEqual(errAuto, errInflate);</code></pre></dd>
                     <dt>throws with error listener</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const zlibStream = new Decompress();
 const inflateAuto = new InflateAuto();
 const result =
@@ -3936,9 +5060,10 @@ try {
 } catch (err) {
   errAuto = err;
 }
-assert.deepStrictEqual(errAuto, errInflate);
+assertErrorEqual(errAuto, errInflate);
 result.checkpoint();</code></pre></dd>
                     <dt>throws format errors</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const inflateAuto = new InflateAuto({ defaultFormat: null });
 const zeros = Buffer.alloc(10);
 inflateAuto.on(&#x27;error&#x27;, () =&#x3E; {
@@ -3948,6 +5073,7 @@ assert.throws(() =&#x3E; {
   inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH);
 });</code></pre></dd>
                     <dt>throws if format lacks _processChunk and _transform</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function NoTransform(...args) { stream.Duplex.apply(this, args); }
 NoTransform.prototype = Object.create(stream.Duplex.prototype);
 NoTransform.prototype.constructor = NoTransform;
@@ -3970,6 +5096,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform does not yield synchronously</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>function AsyncTransform(...args) { stream.Transform.apply(this, args); }
 AsyncTransform.prototype = Object.create(stream.Transform.prototype);
 AsyncTransform.prototype.constructor = AsyncTransform;
@@ -3988,6 +5115,7 @@ assert.throws(
   },
 );</code></pre></dd>
                     <dt>throws if _transform yields Error</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const errTest = new Error(&#x27;test&#x27;);
 function ErrorTransform(...args) { stream.Transform.apply(this, args); }
 ErrorTransform.prototype = Object.create(stream.Transform.prototype);
@@ -4007,6 +5135,7 @@ assert.throws(
   (err) =&#x3E; err === errTest,
 );</code></pre></dd>
                     <dt>supports non-Buffer TypedArray</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedTA = new Uint8Array(compressed);
 const dataDecompress =
   new Decompress()._processChunk(compressedTA, zlib.Z_FINISH);
@@ -4014,6 +5143,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedTA, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>supports ArrayBuffer</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>const compressedBuf = compressed.buffer.slice(
   compressed.byteOffset,
   compressed.byteOffset + compressed.length,
@@ -4026,6 +5156,7 @@ const dataAuto =
   new InflateAuto()._processChunk(compressedBuf, zlib.Z_FINISH);
 assert.deepStrictEqual(dataAuto, dataDecompress);</code></pre></dd>
                     <dt>throws for invalid chunk type</dt>
+                    <dt>/home/kevin/src/node-projects/inflate-auto/test/inflate-auto.js</dt>
                     <dd><pre><code>// As of Node v14, this would cause an assertion failure
 // Test that InflateAuto throws TypeError
 assert.throws(
