@@ -764,7 +764,19 @@ function defineFormatTests(format) {
     const options = { autoDestroy: true };
     const zlibStream = new Decompress(options);
     const inflateAuto = new InflateAuto(options);
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+    let compareOptions = COMPARE_OPTIONS;
+    if (nodeVersion[0] < 14) {
+      // #destroy() was not called (and 'close' not emitted) before
+      // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+      compareOptions = {
+        ...COMPARE_OPTIONS,
+        endEvents: COMPARE_OPTIONS.endEvents.filter((e) => e !== 'close'),
+        events: COMPARE_OPTIONS.events.filter((e) => e !== 'close'),
+      };
+    }
+
+    const result = streamCompare(inflateAuto, zlibStream, compareOptions);
     zlibStream.end(corrupted);
     inflateAuto.end(corrupted);
     result.checkpoint();
@@ -778,7 +790,22 @@ function defineFormatTests(format) {
     const options = { autoDestroy: false };
     const zlibStream = new Decompress(options);
     const inflateAuto = new InflateAuto(options);
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+    // #destroy() is called (and 'close' emitted) unconditionally since
+    // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+    // which differs from other error code paths that respect autoDestroy.
+    //
+    // Stick with pre-14 behavior for now.  Re-evaluate after next release.
+    let compareOptions = COMPARE_OPTIONS;
+    if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+      compareOptions = {
+        ...COMPARE_OPTIONS,
+        endEvents: COMPARE_OPTIONS.endEvents.filter((e) => e !== 'close'),
+        events: COMPARE_OPTIONS.events.filter((e) => e !== 'close'),
+      };
+    }
+
+    const result = streamCompare(inflateAuto, zlibStream, compareOptions);
     zlibStream.end(corrupted);
     inflateAuto.end(corrupted);
     result.checkpoint();
@@ -792,7 +819,22 @@ function defineFormatTests(format) {
     const options = { autoDestroy: false };
     const zlibStream = new Decompress(options);
     const inflateAuto = new InflateAuto(options);
-    const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+    // #destroy() is called (and 'close' emitted) unconditionally since
+    // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
+    // which differs from other error code paths that respect autoDestroy.
+    //
+    // Stick with pre-14 behavior for now.  Re-evaluate after next release.
+    let compareOptions = COMPARE_OPTIONS;
+    if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+      compareOptions = {
+        ...COMPARE_OPTIONS,
+        endEvents: COMPARE_OPTIONS.endEvents.filter((e) => e !== 'close'),
+        events: COMPARE_OPTIONS.events.filter((e) => e !== 'close'),
+      };
+    }
+
+    const result = streamCompare(inflateAuto, zlibStream, compareOptions);
     zlibStream.write(corrupted);
     inflateAuto.write(corrupted);
     result.checkpoint();
