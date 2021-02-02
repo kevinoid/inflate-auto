@@ -30,7 +30,8 @@
     "!**/.*"
   ],
   "main": "index.js",
-  "exports": {
+  "//": "Declare exports in next major version",
+  "// exports": {
     ".": "./index.js"
   },
   "//": "All scripts should run in POSIX sh and Windows cmd.exe",
