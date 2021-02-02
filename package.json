@@ -1,6 +1,6 @@
 {
   "name": "inflate-auto",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "Decompression stream which detects the compression format from the compressed data with minimal buffering.  Detects Gzip, Deflate, and DeflateRaw by default.",
   "keywords": [
     "compression",
@@ -30,11 +30,10 @@
     "!**/.*"
   ],
   "main": "index.js",
-  "//": "Declare exports in next major version",
+  "//": "All scripts should run in POSIX sh and Windows cmd.exe",
   "// exports": {
     ".": "./index.js"
   },
-  "//": "All scripts should run in POSIX sh and Windows cmd.exe",
   "scripts": {
     "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -u",
     "clean": "rimraf coverage && rimraf doc",
