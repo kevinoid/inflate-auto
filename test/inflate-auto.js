@@ -17,10 +17,6 @@ const InflateAuto = require('..');
 const { AssertionError } = assert;
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 
-// TODO [eslint-plugin-unicorn@>27.0.0] Enable prefer-spread once fixed.
-// https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
-/* eslint-disable unicorn/prefer-spread */
-
 // Don't warn about array.deepStrictEqual due to destructuring AssertionError
 /* eslint-disable unicorn/consistent-destructuring */
 

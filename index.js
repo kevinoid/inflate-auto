@@ -700,9 +700,6 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
 
   let signature;
   if (this._writeBuf) {
-    // TODO [eslint-plugin-unicorn@>27.0.0] Enable prefer-spread once fixed.
-    // https://github.com/sindresorhus/eslint-plugin-unicorn/issues/1068
-    // eslint-disable-next-line unicorn/prefer-spread
     signature = Buffer.concat([this._writeBuf, chunk]);
   } else {
     signature = chunk;
