@@ -1,6 +1,7 @@
 /**
  * @copyright Copyright 2016-2020 Kevin Locke <kevin@kevinlocke.name>
  * @license MIT
+ * @module modulename
  */
 
 // It's helpful to use named parameters for documentation, which makes
