@@ -27,8 +27,8 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_STREAM_PREMATURE_CLOSE,
   ERR_SYNC_NOT_SUPPORTED,
-} = require('./lib/errors');
-const zlibInternal = require('./lib/zlib-internal');
+} = require('./lib/errors.js');
+const zlibInternal = require('./lib/zlib-internal.js');
 
 const {
   INFLATE, Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
