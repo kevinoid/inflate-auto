@@ -128,9 +128,26 @@ function assertErrorEqual(actual, expected, message) {
   collectPropertyDescriptors(actualProps, actual);
   const expectedProps = new Map();
   collectPropertyDescriptors(expectedProps, expected);
-  deepStrictEqual(actualProps, expectedProps, message);
 
-  strictEqual(String(actual), String(expected), message);
+  // message changed in https://github.com/nodejs/node/pull/29675
+  // ac2fc0dd5f for v14.0.0
+  // 33c5dbe197 for v13.6.0
+  // df94cfb67c for v12.16.0
+  // Note: difficult to check in collectPropertyDescriptors because .message
+  // is field of Error while .code can be get/set of Error or prop of TypeError
+  // Changed in 87fb1c297ad https://github.com/nodejs/node/pull/29677
+  if (actual.code === 'ERR_INVALID_ARG_TYPE'
+    && expected.code === 'ERR_INVALID_ARG_TYPE'
+    && (nodeVersion[0] < 12
+      || (nodeVersion[0] === 12 && nodeVersion[1] < 16)
+      || (nodeVersion[0] === 13 && nodeVersion[1] < 6))) {
+    actualProps.delete('message');
+    expectedProps.delete('message');
+  } else {
+    strictEqual(String(actual), String(expected), message);
+  }
+
+  deepStrictEqual(actualProps, expectedProps, message);
 }
 
 module.exports = assertErrorEqual;
