@@ -3,6 +3,8 @@
  * @license MIT
  */
 
+/* eslint-disable max-classes-per-file */
+
 'use strict';
 
 const assert = require('assert');
@@ -1917,14 +1919,14 @@ function defineFormatTests(format) {
       }
 
       it('works if _transform does not yield synchronously', (done) => {
-        function AsyncTransform(...args) { stream.Transform.apply(this, args); }
-        AsyncTransform.prototype = Object.create(stream.Transform.prototype);
-        AsyncTransform.prototype.constructor = AsyncTransform;
-        AsyncTransform.prototype._transform = function(data, enc, cb) {
-          process.nextTick(() => {
-            cb(null, data);
-          });
-        };
+        class AsyncTransform extends stream.Transform {
+          // eslint-disable-next-line class-methods-use-this
+          _transform(data, enc, cb) {
+            process.nextTick(() => {
+              cb(null, data);
+            });
+          }
+        }
 
         const inflateAuto = new InflateAuto({ defaultFormat: AsyncTransform });
         const zeros = Buffer.alloc(10);
@@ -2015,14 +2017,15 @@ function defineFormatTests(format) {
       }
 
       it('throws if format lacks _processChunk and _transform', () => {
-        function NoTransform(...args) { stream.Duplex.apply(this, args); }
-        NoTransform.prototype = Object.create(stream.Duplex.prototype);
-        NoTransform.prototype.constructor = NoTransform;
-        NoTransform.prototype._read = function() {};
-        NoTransform.prototype._write = function(chunk, enc, cb) {
-          this.push(chunk);
-          cb();
-        };
+        class NoTransform extends stream.Duplex {
+          // eslint-disable-next-line class-methods-use-this
+          _read() {}
+
+          _write(chunk, enc, cb) {
+            this.push(chunk);
+            cb();
+          }
+        }
 
         const inflateAuto = new InflateAuto({ defaultFormat: NoTransform });
         const zeros = Buffer.alloc(10);
@@ -2040,10 +2043,10 @@ function defineFormatTests(format) {
       });
 
       it('throws if _transform does not yield synchronously', () => {
-        function AsyncTransform(...args) { stream.Transform.apply(this, args); }
-        AsyncTransform.prototype = Object.create(stream.Transform.prototype);
-        AsyncTransform.prototype.constructor = AsyncTransform;
-        AsyncTransform.prototype._transform = function() {};
+        class AsyncTransform extends stream.Transform {
+          // eslint-disable-next-line class-methods-use-this
+          _transform() {}
+        }
 
         const inflateAuto = new InflateAuto({ defaultFormat: AsyncTransform });
         const zeros = Buffer.alloc(10);
@@ -2062,12 +2065,12 @@ function defineFormatTests(format) {
 
       it('throws if _transform yields Error', () => {
         const errTest = new Error('test');
-        function ErrorTransform(...args) { stream.Transform.apply(this, args); }
-        ErrorTransform.prototype = Object.create(stream.Transform.prototype);
-        ErrorTransform.prototype.constructor = ErrorTransform;
-        ErrorTransform.prototype._transform = function(data, enc, cb) {
-          cb(errTest);
-        };
+        class ErrorTransform extends stream.Transform {
+          // eslint-disable-next-line class-methods-use-this
+          _transform(data, enc, cb) {
+            cb(errTest);
+          }
+        }
 
         const inflateAuto = new InflateAuto({ defaultFormat: ErrorTransform });
         const zeros = Buffer.alloc(10);

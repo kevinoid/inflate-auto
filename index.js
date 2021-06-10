@@ -1,7 +1,7 @@
 /**
  * @copyright Copyright 2016-2020 Kevin Locke <kevin@kevinlocke.name>
  * @license MIT
- * @module modulename
+ * @module inflate-auto
  */
 
 // It's helpful to use named parameters for documentation, which makes
@@ -15,7 +15,6 @@ const { Transform } = require('stream');
 const assert = require('assert');
 const {
   debuglog,
-  inherits,
   types: {
     isAnyArrayBuffer,
     isArrayBufferView,
@@ -40,10 +39,7 @@ const debug = debuglog('inflate-auto');
 // The risk that it will change is weighed against the value of more closely
 // matching the behavior of the zlib classes in several version-dependent ways
 // (e.g. autoDestroy, constructor argument validation, underscore properties).
-//
-// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
-const ZlibBase = zlib.Inflate.super_ ? zlib.Inflate.super_.super_
-  : Object.getPrototypeOf(Object.getPrototypeOf(zlib.Inflate));
+const ZlibBase = Object.getPrototypeOf(Object.getPrototypeOf(zlib.Inflate));
 const useZlibBase = ZlibBase.name === 'ZlibBase' && ZlibBase.length === 4;
 if (!useZlibBase) {
   debug(
@@ -70,10 +66,6 @@ function inheritsES6(Ctor, SuperCtor) {
   Object.setPrototypeOf(Ctor.prototype, SuperCtor.prototype);
   Object.setPrototypeOf(Ctor, SuperCtor);
 }
-
-// Apply inheritance using same style as zlib module
-// TODO [engine:node@>=12]: remove check for old-style super_ inheritance
-const zlibInherits = zlib.Inflate.super_ ? inherits : inheritsES6;
 
 function isNotFunction(val) {
   return typeof val !== 'function';
@@ -297,7 +289,7 @@ function InflateAuto(opts) {
    */
   this._writeBuf = undefined;
 }
-zlibInherits(InflateAuto, useZlibBase ? ZlibBase : Transform);
+inheritsES6(InflateAuto, useZlibBase ? ZlibBase : Transform);
 
 if (!useZlibBase) {
   // Define _closed from _handle as Zlib does since nodejs/node@b53473f0e7e (v7)
@@ -509,7 +501,7 @@ if (zlib.Inflate.prototype._processChunk) {
   /** Process a chunk of data, synchronously or asynchronously.
    *
    * @protected
-   * @param {!external:ArrayBufferView} chunk Chunk of data to write.
+   * @param {!TypedArray|!DataView} chunk Chunk of data to write.
    * @param {number} flushFlag Flush flag with which to write the data.
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
    * @returns {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
