@@ -1924,7 +1924,7 @@ function defineFormatTests(format) {
         class AsyncTransform extends stream.Transform {
           // eslint-disable-next-line class-methods-use-this
           _transform(data, enc, cb) {
-            process.nextTick(() => {
+            queueMicrotask(() => {
               cb(null, data);
             });
           }

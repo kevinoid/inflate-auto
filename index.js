@@ -584,7 +584,7 @@ if (zlib.Inflate.prototype._processChunk) {
     }
 
     this._writeBuf = chunk;
-    process.nextTick(cb);
+    queueMicrotask(cb);
     return undefined;
   };
 }
@@ -672,7 +672,7 @@ InflateAuto.prototype._transform = function _transform(chunk, encoding,
     this._decoder.write(chunk, encoding, callback);
   } else {
     this._writeBuf = chunk;
-    process.nextTick(callback);
+    queueMicrotask(callback);
   }
 };
 
@@ -720,7 +720,9 @@ InflateAuto.prototype.close = function close(callback) {
   if (this._decoder && typeof this._decoder.close === 'function') {
     this._decoder.close(callback);
   } else if (callback) {
-    process.nextTick(callback, new ERR_STREAM_PREMATURE_CLOSE());
+    queueMicrotask(() => {
+      callback(new ERR_STREAM_PREMATURE_CLOSE());
+    });
   }
 
   this.destroy();
@@ -829,7 +831,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   const lastArg = args[args.length - 1];
   if (typeof lastArg === 'function') {
     args = Array.prototype.slice.call(args, 0, -1);
-    process.nextTick(lastArg);
+    queueMicrotask(lastArg);
   }
 
   if (!this._queuedMethodCalls) {
