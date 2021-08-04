@@ -798,11 +798,12 @@ function defineFormatTests(format) {
 
     // #destroy() is called (and 'close' emitted) unconditionally since
     // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
-    // which differs from other error code paths that respect autoDestroy.
+    // which differs from other error code paths that respect
+    // `autoDestroy: false`.
     //
-    // Stick with pre-14 behavior for now.  Re-evaluate after next release.
+    // Stick with pre-14 behavior for now.
     let compareOptions = COMPARE_OPTIONS;
-    if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+    if (nodeVersion[0] >= 14) {
       compareOptions = {
         ...COMPARE_OPTIONS,
         endEvents: COMPARE_OPTIONS.endEvents.filter((e) => e !== 'close'),
@@ -827,11 +828,12 @@ function defineFormatTests(format) {
 
     // #destroy() is called (and 'close' emitted) unconditionally since
     // nodejs/node@a9401439c7b - https://github.com/nodejs/node/pull/32220
-    // which differs from other error code paths that respect autoDestroy.
+    // which differs from other error code paths that respect
+    // `autoDestroy: false`.
     //
-    // Stick with pre-14 behavior for now.  Re-evaluate after next release.
+    // Stick with pre-14 behavior for now.
     let compareOptions = COMPARE_OPTIONS;
-    if (nodeVersion[0] === 15 || nodeVersion[0] === 14) {
+    if (nodeVersion[0] >= 14) {
       compareOptions = {
         ...COMPARE_OPTIONS,
         endEvents: COMPARE_OPTIONS.endEvents.filter((e) => e !== 'close'),
