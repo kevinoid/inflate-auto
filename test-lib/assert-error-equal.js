@@ -25,7 +25,7 @@ function collectPropertyDescriptors(propMap, obj) {
     // Removed (below Error.prototype in inheritance hierarchy) in
     // a86a295fd7 https://github.com/nodejs/node/pull/33857
     if (p === 'constructor' && nodeVersion[0] < 15) {
-      continue; // eslint-disable-line no-continue
+      continue;
     }
 
     const desc = {
