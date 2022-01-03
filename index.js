@@ -509,8 +509,11 @@ if (zlib.Inflate.prototype._processChunk) {
    * @throws If a detector or format constructor throws and <code>cb</code> is
    * not a function.
    */
-  InflateAuto.prototype._processChunk = function _processChunk(chunk, flushFlag,
-    cb) {
+  InflateAuto.prototype._processChunk = function _processChunk(
+    chunk,
+    flushFlag,
+    cb,
+  ) {
     if (!Buffer.isBuffer(chunk)) {
       if (isArrayBufferView(chunk)) {
         chunk = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
@@ -657,8 +660,11 @@ InflateAuto.prototype.setFormat = function setFormat(Format) {
  * @param {?string} encoding Ignored.
  * @param {?function(Error)=} callback Callback once chunk has been written.
  */
-InflateAuto.prototype._transform = function _transform(chunk, encoding,
-  callback) {
+InflateAuto.prototype._transform = function _transform(
+  chunk,
+  encoding,
+  callback,
+) {
   if (!this._decoder) {
     try {
       chunk = this._writeEarly(chunk);
