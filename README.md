@@ -2,7 +2,7 @@ InflateAuto
 ===========
 
 [![Build Status](https://img.shields.io/github/actions/workflow/status/kevinoid/inflate-auto/node.js.yml?branch=main&style=flat&label=build)](https://github.com/kevinoid/inflate-auto/actions?query=branch%3Amain)
-[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto.svg?style=flat)](https://codecov.io/github/kevinoid/inflate-auto?branch=main)
+[![Coverage](https://img.shields.io/codecov/c/github/kevinoid/inflate-auto/main.svg?style=flat)](https://app.codecov.io/gh/kevinoid/inflate-auto/branch/main)
 [![Dependency Status](https://img.shields.io/david/kevinoid/inflate-auto.svg?style=flat)](https://david-dm.org/kevinoid/inflate-auto)
 [![Supported Node Version](https://img.shields.io/node/v/inflate-auto.svg?style=flat)](https://www.npmjs.com/package/inflate-auto)
 [![Version on NPM](https://img.shields.io/npm/v/inflate-auto.svg?style=flat)](https://www.npmjs.com/package/inflate-auto)
