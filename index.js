@@ -840,9 +840,7 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
     queueMicrotask(lastArg);
   }
 
-  if (!this._queuedMethodCalls) {
-    this._queuedMethodCalls = [];
-  }
+  this._queuedMethodCalls ||= [];
   this._queuedMethodCalls.push({ name, args });
 };
 

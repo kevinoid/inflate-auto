@@ -104,12 +104,10 @@ function assertErrorEqual(actual, expected, message) {
     const actualInstanceOf = actual instanceof builtInError;
     const expectedInstanceOf = expected instanceof builtInError;
     if (actualInstanceOf !== expectedInstanceOf) {
-      if (!message) {
-        message = `Expected "actual" and "expected" to be instanceof ${
-          builtInError.prototype.name}: actual ${
-          actualInstanceOf ? 'is' : 'is not'}, expected ${
-          expectedInstanceOf ? 'is' : 'is not'}.`;
-      }
+      message ||= `Expected "actual" and "expected" to be instanceof ${
+        builtInError.prototype.name}: actual ${
+        actualInstanceOf ? 'is' : 'is not'}, expected ${
+        expectedInstanceOf ? 'is' : 'is not'}.`;
       throw new AssertionError({
         actual,
         expected,
