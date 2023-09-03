@@ -14,6 +14,8 @@ const { inspect, promisify } = require('util');
 const zlib = require('zlib');
 
 const assertErrorEqual = require('../test-lib/assert-error-equal.js');
+// https://github.com/import-js/eslint-plugin-import/issues/2844
+// eslint-disable-next-line import/extensions
 const InflateAuto = require('..');
 
 const { AssertionError } = assert;
