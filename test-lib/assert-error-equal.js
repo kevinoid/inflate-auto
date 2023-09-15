@@ -9,7 +9,7 @@ const {
   AssertionError,
   deepStrictEqual,
   strictEqual,
-} = require('assert');
+} = require('node:assert');
 
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 

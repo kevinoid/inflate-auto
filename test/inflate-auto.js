@@ -7,16 +7,17 @@
 
 'use strict';
 
-const assert = require('assert');
-const stream = require('stream');
-const streamCompare = require('stream-compare');
-const { inspect, promisify } = require('util');
-const zlib = require('zlib');
+const assert = require('node:assert');
+const stream = require('node:stream');
+const { inspect, promisify } = require('node:util');
+const zlib = require('node:zlib');
 
-const assertErrorEqual = require('../test-lib/assert-error-equal.js');
+const streamCompare = require('stream-compare');
+
 // https://github.com/import-js/eslint-plugin-import/issues/2844
 // eslint-disable-next-line import/extensions
 const InflateAuto = require('..');
+const assertErrorEqual = require('../test-lib/assert-error-equal.js');
 
 const { AssertionError } = assert;
 const nodeVersion = process.version.slice(1).split('.').map(Number);

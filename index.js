@@ -11,16 +11,16 @@
 
 'use strict';
 
-const { Transform } = require('stream');
-const assert = require('assert');
+const assert = require('node:assert');
+const { Transform } = require('node:stream');
 const {
   debuglog,
   types: {
     isAnyArrayBuffer,
     isArrayBufferView,
   },
-} = require('util');
-const zlib = require('zlib');
+} = require('node:util');
+const zlib = require('node:zlib');
 
 const {
   ERR_INVALID_ARG_TYPE,
@@ -166,7 +166,7 @@ function runDetectors(chunk, detectors, detectorsLeft) {
  * class which will be used to decode the data.</p>
  *
  * @class
- * @augments stream.Transform
+ * @augments module:stream.Transform
  * @param {InflateAuto.InflateAutoOptions=} opts Combined options for this
  * class and for the detected format.
  */
@@ -406,7 +406,7 @@ InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
 };
 
 /** Implements {@link #destroy} on this stream by ensuring
- * <code>_handle</code> is set <code>null</code> (for {@link _closed})
+ * <code>_handle</code> is set <code>null</code> (for <code>_closed</code>)
  * as done by {@link zlib.ZlibBase#_destroy} since nodejs/node@8a02d941b6c
  * (v12) and nodejs/node@c6a43fa2ef (v10.15.1).
  *
@@ -422,11 +422,11 @@ InflateAuto.prototype._destroy = function _destroy(err, callback) {
 /** Detects the format of a given <code>Buffer</code>.
  *
  * This method passes <code>chunk</code> to each of the {@link
- * InflateAutoOptions.detectors}.  The first detector to match is returned.
- * If at least one detector is indeterminate and <code>end</code> is
- * <code>false</code>, <code>null</code> is returned.  Otherwise
- * {@link InflateAutoOptions.defaultFormat} is returned or an <code>Error</code>
- * is thrown.
+ * module:inflate-auto.InflateAutoOptions.detectors}.  The first detector to
+ * match is returned.  If at least one detector is indeterminate and
+ * <code>end</code> is <code>false</code>, <code>null</code> is returned.
+ * Otherwise {@link module:inflate-auto.InflateAutoOptions.defaultFormat} is
+ * returned or an <code>Error</code> is thrown.
  *
  * @protected
  * @param {Buffer} chunk Beginning of data for which to detect the
@@ -770,8 +770,8 @@ if (zlib.Inflate.prototype.params) {
   /** Sets the inflate compression parameters.
    *
    * <p>For inflate, this has no effect.  This method is kept for compatibility
-   * only.  It is only defined when {@link Inflate.prototype.params} is
-   * defined.</p>
+   * only.  It is only defined when {@link
+   * module:inflate-auto.Inflate.prototype.params} is defined.</p>
    *
    * <p>Note: Parameter checking is not performed if the format hasn't been
    * determined.  Although this is currently possible (since parameters are
