@@ -61,7 +61,7 @@ const SUPPORTED_FORMATS = [
       const invalid = Buffer.from(compressed);
       // gzip format has 4-byte CRC32 before 4-byte size at end
       // eslint-disable-next-line no-bitwise
-      invalid[invalid.length - 5] = invalid[invalid.length - 5] ^ 0x1;
+      invalid[invalid.length - 5] = invalid.at(-5) ^ 0x1;
       return invalid;
     },
     data: TEST_DATA,
@@ -150,7 +150,7 @@ const SUPPORTED_FORMATS = [
       const invalid = Buffer.from(compressed);
       // zlib format has 4-byte Adler-32 at end
       // eslint-disable-next-line no-bitwise
-      invalid[invalid.length - 1] = invalid[invalid.length - 1] ^ 0x1;
+      invalid[invalid.length - 1] = invalid.at(-1) ^ 0x1;
       return invalid;
     },
     data: TEST_DATA,
