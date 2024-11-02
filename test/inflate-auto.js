@@ -22,9 +22,6 @@ const assertErrorEqual = require('../test-lib/assert-error-equal.js');
 const { AssertionError } = assert;
 const nodeVersion = process.version.slice(1).split('.').map(Number);
 
-// Don't warn about array.deepStrictEqual due to destructuring AssertionError
-/* eslint-disable unicorn/consistent-destructuring */
-
 // streamCompare options to read in flowing mode with exact matching of
 // event data for all events listed in the API.
 const COMPARE_OPTIONS = {
