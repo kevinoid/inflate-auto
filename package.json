@@ -20,7 +20,7 @@
   "author": "Kevin Locke <kevin@kevinlocke.name>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/kevinoid/inflate-auto.git"
+    "url": "git+https://github.com/kevinoid/inflate-auto.git"
   },
   "type": "commonjs",
   "files": [
