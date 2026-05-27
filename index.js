@@ -112,10 +112,10 @@ function runDetectors(chunk, detectors, detectorsLeft) {
  */
 
 /**
- * Define JSDoc type for <code>ArrayBufferView</code>
- * {@see https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView}
- * {@see ArrayBuffer.isView}
+ * Define JSDoc type for [<code>ArrayBufferView</code>]{@link
+ * https://developer.mozilla.org/en-US/docs/Web/API/ArrayBufferView}
  *
+ * @see {@code ArrayBuffer.isView}
  * @typedef {
  *   Int8Array|
  *   Uint8Array|
