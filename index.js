@@ -831,7 +831,7 @@ InflateAuto.prototype.reset = function reset() {
  *
  * @protected
  * @param {string} name Name of the method to call.
- * @param {!(arguments|Array)} args Arguments to pass to the method call.
+ * @param {!arguments|!Array} args Arguments to pass to the method call.
  */
 InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   assert(!this._decoder);
