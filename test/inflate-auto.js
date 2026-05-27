@@ -322,7 +322,8 @@ function reorderEndEvents(events) {
  * @private
  * @param {!module:stream-compare.StreamState} state1 First state to compare.
  * @param {!module:stream-compare.StreamState} state2 Second state to compare.
- * @throws If the states are not equivalent, ignoring 'end' event order.
+ * @throws {AssertionError} If the states are not equivalent, ignoring 'end'
+ * event order.
  */
 function compareReorderedEndEvents(state1, state2) {
   const state1Reordered = {

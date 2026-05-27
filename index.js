@@ -436,8 +436,8 @@ InflateAuto.prototype._destroy = function _destroy(err, callback) {
  * An instance of the zlib type which will decode <code>chunk</code> and
  * subsequent data, or <code>null</code> if <code>chunk</code> is too short to
  * deduce the format conclusively and <code>end</code> is <code>false</code>.
- * @throws If any detector throws or <code>end</code> is <code>true</code> and
- * no default format is given.
+ * @throws {Error} If any detector throws or <code>end</code> is
+ * <code>true</code> and no default format is given.
  */
 InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
   if (chunk && chunk.length > 0) {
@@ -506,8 +506,11 @@ if (zlib.Inflate.prototype._processChunk) {
    * @param {?function(Error=)=} cb Callback.  Synchronous if falsey.
    * @returns {!Buffer|undefined} Decompressed chunk if synchronous, otherwise
    * <code>undefined</code>.
-   * @throws If a detector or format constructor throws and <code>cb</code> is
-   * not a function.
+   * @throws {TypeError} If {@link chunk} is not a `TypedArray` or `DataView`.
+   * @throws {module:inflate-auto.InflateAutoError} If the decoder does not
+   * support synchronous operation.
+   * @throws {Error} If a detector or format constructor throws and
+   * <code>cb</code> is not a function.
    */
   InflateAuto.prototype._processChunk = function _processChunk(
     chunk,
@@ -599,7 +602,7 @@ if (zlib.Inflate.prototype._processChunk) {
  *
  * @param {function(new:module:stream.Duplex, object=)} Format Constructor for
  * the stream class which will be used to decode data written to this stream.
- * @throws If previously set to a different <code>Format</code> or
+ * @throws {Error} If previously set to a different <code>Format</code> or
  * <code>Format</code> constructor throws.
  * @see #_detectFormat()
  */
@@ -689,8 +692,8 @@ InflateAuto.prototype._transform = function _transform(
  * @param {Buffer} chunk Chunk of data to write.
  * @returns {Buffer} <code>chunk</code> appended to any previously buffered
  * data.
- * @throws If a detector or format constructor throws.  In this case the data
- * will be saved in <code>_writeBuf</code>.
+ * @throws {Error} If a detector or format constructor throws.  In this case
+ * the data will be saved in <code>_writeBuf</code>.
  */
 InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
   if (chunk === null || chunk.length === 0) {

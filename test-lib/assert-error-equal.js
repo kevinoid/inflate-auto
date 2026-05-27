@@ -80,7 +80,7 @@ function collectPropertyDescriptors(propMap, obj) {
  * @param {Error} actual Actual error.
  * @param {Error} expected Expected error.
  * @param {string=} message Error message.
- * @throws If actual is not the same error as expected.
+ * @throws {AssertionError} If actual is not the same error as expected.
  */
 function assertErrorEqual(actual, expected, message) {
   if (actual === expected) {
