@@ -1777,6 +1777,7 @@ function defineFormatTests(format) {
               if (err.message === 'incorrect header check') {
                 headerError = true;
                 // Comparison result ignored.  Suppress unhandled rejection.
+                // eslint-disable-next-line n/handle-callback-err
                 result.catch((errResult) => {});
               }
             });
