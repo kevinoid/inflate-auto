@@ -47,7 +47,7 @@ const TEST_DATA = {
   normal: Buffer.from('uncompressed data'),
 };
 
-/* eslint-disable comma-spacing */
+/* eslint-disable @stylistic/comma-spacing */
 const SUPPORTED_FORMATS = [
   {
     Compress: zlib.Gzip,
@@ -230,7 +230,7 @@ const SUPPORTED_FORMATS = [
     isDefault: true,
   },
 ];
-/* eslint-enable comma-spacing */
+/* eslint-enable @stylistic/comma-spacing */
 
 function assertInstanceOf(obj, ctor) {
   if (!(obj instanceof ctor)) {
