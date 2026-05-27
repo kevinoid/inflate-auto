@@ -2042,6 +2042,7 @@ function defineFormatTests(format) {
           throw new Error('error should not be emitted');
         });
         inflateAuto._processChunk(zeros, zlib.Z_NO_FLUSH, (err, data) => {
+          assert.ifError(err);
           assert.deepStrictEqual(data, zeros);
           done();
         });
