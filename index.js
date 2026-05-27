@@ -840,7 +840,9 @@ InflateAuto.prototype._queueMethodCall = function _queueMethodCall(name, args) {
   // Ideally we would let the proxied method call the callback,
   // but callers may depend on a reply before the next write.
   // So call the callback now to avoid deadlocks.
-  const lastArg = args.at(-1);
+  // (Note: Can't use .at() since Arguments doesn't define #at())
+  // eslint-disable-next-line unicorn/prefer-at
+  const lastArg = args[args.length - 1];
   if (typeof lastArg === 'function') {
     args = Array.prototype.slice.call(args, 0, -1);
     queueMicrotask(lastArg);
