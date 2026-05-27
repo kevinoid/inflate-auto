@@ -187,10 +187,12 @@ function InflateAuto(opts) {
     // Ignore encoding, objectMode, and writableObjectMode
     // as done in nodejs/node@add4b0ab8c (v9 and later)
     if (opts && (opts.encoding || opts.objectMode || opts.writableObjectMode)) {
-      opts = { ...opts };
-      opts.encoding = undefined;
-      opts.objectMode = false;
-      opts.writableObjectMode = false;
+      opts = {
+        ...opts,
+        encoding: undefined,
+        objectMode: false,
+        writableObjectMode: false,
+      };
     }
 
     Transform.call(this, opts);

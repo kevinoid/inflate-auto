@@ -1008,8 +1008,10 @@ function defineFormatTests(format) {
       const options = { objectMode: true };
       const zlibStream = new Decompress(options);
       const inflateAuto = new InflateAuto(options);
-      const compareOptions = { ...COMPARE_OPTIONS };
-      compareOptions.endEvents = ['end'];
+      const compareOptions = {
+        ...COMPARE_OPTIONS,
+        endEvents: ['end'],
+      };
 
       const result = streamCompare(inflateAuto, zlibStream, compareOptions);
 
