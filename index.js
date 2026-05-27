@@ -404,6 +404,7 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
  * @returns {!Buffer} Decompressed data.
  */
 InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
+  // eslint-disable-next-line n/no-sync
   return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
 };
 

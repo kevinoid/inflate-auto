@@ -625,11 +625,13 @@ function defineFormatTests(format) {
     }
   });
 
+  /* eslint-disable n/no-sync */
   it('as synchronous function', () => {
     const dataDecompress = decompressSync(compressed);
     const dataAuto = InflateAuto.inflateAutoSync(compressed);
     assert.deepStrictEqual(dataAuto, dataDecompress);
   });
+  /* eslint-enable n/no-sync */
 
   it('single-write with immediate end', () => {
     const zlibStream = new Decompress();
@@ -1038,6 +1040,7 @@ function defineFormatTests(format) {
     });
   }
 
+  /* eslint-disable n/no-sync */
   describe('.inflateAutoSync()', () => {
     it('invalid type synchronously', () => {
       let errInflate;
@@ -1178,6 +1181,7 @@ function defineFormatTests(format) {
       });
     }
   });
+  /* eslint-enable n/no-sync */
 
   function itValidatesOptions(options) {
     it(inspect(options), () => {
@@ -1202,6 +1206,7 @@ function defineFormatTests(format) {
 
       let errAuto;
       try {
+        // eslint-disable-next-line n/no-sync
         InflateAuto.inflateAutoSync(compressed, options);
       } catch (err) {
         errAuto = err;
