@@ -731,10 +731,12 @@ InflateAuto.prototype._writeEarly = function _writeEarly(chunk) {
 InflateAuto.prototype.close = function close(callback) {
   if (this._decoder && typeof this._decoder.close === 'function') {
     this._decoder.close(callback);
-  } else if (callback) {
+  } else if (typeof callback === 'function') {
     queueMicrotask(() => {
       callback(new ERR_STREAM_PREMATURE_CLOSE());
     });
+  } else if (callback) {
+    throw new ERR_INVALID_ARG_TYPE('callback', 'function', callback);
   }
 
   this.destroy();
