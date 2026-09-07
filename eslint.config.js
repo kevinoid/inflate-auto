@@ -22,13 +22,13 @@ module.exports = [
       'no-underscore-dangle': 'off',
 
       // Allow requiring devDependencies for build and test
-      'import/no-extraneous-dependencies': ['error', {
+      'import-x/no-extraneous-dependencies': ['error', {
         devDependencies: [
           ...nodejs
             .findLast(
-              (conf) => conf.rules?.['import/no-extraneous-dependencies'],
+              (conf) => conf.rules?.['import-x/no-extraneous-dependencies'],
             )
-            .rules['import/no-extraneous-dependencies'][1].devDependencies,
+            .rules['import-x/no-extraneous-dependencies'][1].devDependencies,
           'test-bin/**',
           'test-lib/**',
           'test/**',
@@ -79,7 +79,7 @@ module.exports = [
       '@stylistic/no-extra-parens': ['error', 'functions'],
       '@stylistic/nonblock-statement-body-position': ['error', 'below'],
       '@stylistic/operator-linebreak': ['error', 'after'],
-      'import/order': 'off',
+      'import-x/order': 'off',
       'unicorn/no-null': 'off',
       'unicorn/prefer-spread': 'off',
     },
