@@ -94,14 +94,14 @@ function assertErrorEqual(actual, expected, message) {
   }
 
   // Check instance of same built-in Error type (if any)
-  [
+  for (const builtInError of [
     EvalError,
     RangeError,
     ReferenceError,
     SyntaxError,
     TypeError,
     URIError,
-  ].some((builtInError) => {
+  ]) {
     const isActualBuiltIn = actual instanceof builtInError;
     const isExpectedBuiltIn = expected instanceof builtInError;
     if (isActualBuiltIn !== isExpectedBuiltIn) {
@@ -117,8 +117,11 @@ function assertErrorEqual(actual, expected, message) {
       });
     }
 
-    return isActualBuiltIn;
-  });
+    if (isActualBuiltIn) {
+      // Once the type is found, there's no need to check further
+      break;
+    }
+  }
 
   // Note: Would be nice if OwnPropertyNames was the same, but some vary
   // (e.g. toString moved from proto to instance in nodejs/node@a86a295fd71)
