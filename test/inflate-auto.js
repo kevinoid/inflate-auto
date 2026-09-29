@@ -644,7 +644,7 @@ function defineFormatTests(format) {
     return result;
   });
 
-  it('single-write delayed end', () => {
+  it('single-write delayed end', async () => {
     const zlibStream = new Decompress();
     const inflateAuto = new InflateAuto();
     const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -652,17 +652,17 @@ function defineFormatTests(format) {
     const zlibWriteP = promisify(zlibStream.write);
     const autoWriteP = promisify(inflateAuto.write);
 
-    return Promise.all([
+    await Promise.all([
       zlibWriteP.call(zlibStream, compressed),
       autoWriteP.call(inflateAuto, compressed),
-    ]).then(() => {
-      result.checkpoint();
-      zlibStream.end();
-      inflateAuto.end();
-      result.checkpoint();
+    ]);
 
-      return result;
-    });
+    result.checkpoint();
+    zlibStream.end();
+    inflateAuto.end();
+    result.checkpoint();
+
+    return result;
   });
 
   for (const blockSize of [1, 2, 3]) {
@@ -1236,7 +1236,7 @@ function defineFormatTests(format) {
     //
     // Test that InflateAuto behaves the same as stream.Transform when
     // an error occurs in _flush.
-    it(`on end with ${inspect(options)}`, () => {
+    it(`on end with ${inspect(options)}`, async () => {
       const transform = new stream.Transform({
         transform: (chunk, encoding, cb) => cb(),
         flush: (cb) => {
@@ -1276,20 +1276,19 @@ function defineFormatTests(format) {
             events: state2.events.filter((e) => e.name !== 'prefinish'),
           },
         ),
-      })
-        .then(() => {
-          assert.strictEqual(errorCount, 1, 'error emitted once');
-        });
+      });
 
       let transformEndArgs;
       transform.end((...args) => { transformEndArgs = args; });
       let inflateAutoEndArgs;
       inflateAuto.end((...args) => { inflateAutoEndArgs = args; });
 
+      await result;
+
+      assert.strictEqual(errorCount, 1, 'error emitted once');
+
       // end callback may or may not be called.  Check after stream compare.
-      return result.then(
-        () => assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs),
-      );
+      assert.deepStrictEqual(inflateAutoEndArgs, transformEndArgs);
     });
   }
 
@@ -1679,7 +1678,7 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('between writes', () => {
+    it('between writes', async () => {
       const zlibStream = new Decompress();
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1688,34 +1687,34 @@ function defineFormatTests(format) {
       const autoWriteP = promisify(inflateAuto.write);
 
       const partial = compressed.slice(0, 4);
-      return Promise.all([
+      await Promise.all([
         zlibWriteP.call(zlibStream, partial),
         autoWriteP.call(inflateAuto, partial),
-      ]).then(() => {
-        result.checkpoint();
+      ]);
 
-        const remainder = compressed.slice(4);
+      result.checkpoint();
 
-        zlibStream.params(
-          zlib.Z_BEST_COMPRESSION,
-          zlib.Z_FILTERED,
-          (err) => {
-            assert.ifError(err);
-            zlibStream.end(remainder);
-          },
-        );
-        inflateAuto.params(
-          zlib.Z_BEST_COMPRESSION,
-          zlib.Z_FILTERED,
-          (err) => {
-            assert.ifError(err);
-            inflateAuto.end(remainder);
-          },
-        );
-        result.checkpoint();
+      const remainder = compressed.slice(4);
 
-        return result;
-      });
+      zlibStream.params(
+        zlib.Z_BEST_COMPRESSION,
+        zlib.Z_FILTERED,
+        (err) => {
+          assert.ifError(err);
+          zlibStream.end(remainder);
+        },
+      );
+      inflateAuto.params(
+        zlib.Z_BEST_COMPRESSION,
+        zlib.Z_FILTERED,
+        (err) => {
+          assert.ifError(err);
+          inflateAuto.end(remainder);
+        },
+      );
+      result.checkpoint();
+
+      return result;
     });
 
     // Zlib causes uncaughtException for params after close, so skip testing
@@ -1743,7 +1742,7 @@ function defineFormatTests(format) {
     });
 
     if (headerLen > 0) {
-      it('discards partial header', () => {
+      it('discards partial header', async () => {
         const zlibStream = new Decompress();
         const inflateAuto = new InflateAuto();
         const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1757,50 +1756,51 @@ function defineFormatTests(format) {
         const autoWriteP = promisify(inflateAuto.write);
 
         const partial = compressed.slice(0, 1);
-        return Promise.all([
+        await Promise.all([
           zlibWriteP.call(zlibStream, partial),
           autoWriteP.call(inflateAuto, partial),
-        ]).then(() => {
-          result.checkpoint();
+        ]);
 
-          // IMPORTANT:  Can't call Zlib.reset() with write in progress
-          // Since write is run from uv work queue thread and reset from main
-          zlibStream.reset();
-          inflateAuto.reset();
-          result.checkpoint();
+        result.checkpoint();
 
-          zlibStream.end(compressed);
-          inflateAuto.end(compressed);
-          result.checkpoint();
+        // IMPORTANT:  Can't call Zlib.reset() with write in progress
+        // Since write is run from uv work queue thread and reset from main
+        zlibStream.reset();
+        inflateAuto.reset();
+        result.checkpoint();
 
-          // Gunzip gained reset in v6.0.0
-          // https://github.com/nodejs/node/commit/f380db23
-          // If zlib stream emits a header error, test for success instead of ==
-          return new Promise((resolve, reject) => {
-            let haveHeaderError = false;
-            zlibStream.once('error', (err) => {
-              if (err.message === 'incorrect header check') {
-                haveHeaderError = true;
-                // Comparison result ignored.  Suppress unhandled rejection.
-                // eslint-disable-next-line n/handle-callback-err
-                result.catch((errResult) => {});
-              }
-            });
-            zlibStream.once('end', () => {
-              resolve(result);
-            });
+        zlibStream.end(compressed);
+        inflateAuto.end(compressed);
+        result.checkpoint();
 
-            inflateAuto.once('end', () => {
-              assert.deepStrictEqual(Buffer.concat(dataAuto), uncompressed);
-              if (haveHeaderError) {
-                resolve();
-              }
-            });
+        // Gunzip gained reset in v6.0.0
+        // https://github.com/nodejs/node/commit/f380db23
+        // If zlib stream emits a header error, test for success instead of ==
+        return new Promise((resolve, reject) => {
+          let haveHeaderError = false;
+          zlibStream.once('error', (err) => {
+            if (err.message === 'incorrect header check') {
+              haveHeaderError = true;
+              // Comparison result ignored.  Suppress unhandled rejection.
+              // eslint-disable-next-line @stylistic/max-len
+              // eslint-disable-next-line n/handle-callback-err,unicorn/prefer-await
+              result.catch((errResult) => {});
+            }
+          });
+          zlibStream.once('end', () => {
+            resolve(result);
+          });
+
+          inflateAuto.once('end', () => {
+            assert.deepStrictEqual(Buffer.concat(dataAuto), uncompressed);
+            if (haveHeaderError) {
+              resolve();
+            }
           });
         });
       });
 
-      it('forgets partial header', () => {
+      it('forgets partial header', async () => {
         const zlibStream = new Decompress();
         const inflateAuto = new InflateAuto();
         const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1811,37 +1811,7 @@ function defineFormatTests(format) {
 
         // Write data with a different header before reset to check that reset
         // clears any partial-header state.
-        return autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1))
-          .then(() => {
-            // IMPORTANT:  Can't call Zlib.reset() with write in progress
-            // Since write is run from uv work queue thread and reset from main
-            zlibStream.reset();
-            inflateAuto.reset();
-            result.checkpoint();
-
-            zlibStream.end(compressed);
-            inflateAuto.end(compressed);
-            result.checkpoint();
-
-            return result;
-          });
-      });
-    }
-
-    it('discards post-header data', () => {
-      const zlibStream = new Decompress();
-      const inflateAuto = new InflateAuto();
-      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
-
-      const zlibWriteP = promisify(zlibStream.write);
-      const autoWriteP = promisify(inflateAuto.write);
-
-      const partial = compressed.slice(0, headerLen + 1);
-      return Promise.all([
-        zlibWriteP.call(zlibStream, partial),
-        autoWriteP.call(inflateAuto, partial),
-      ]).then(() => {
-        result.checkpoint();
+        await autoWriteP.call(inflateAuto, otherCompressed.slice(0, 1));
 
         // IMPORTANT:  Can't call Zlib.reset() with write in progress
         // Since write is run from uv work queue thread and reset from main
@@ -1855,6 +1825,35 @@ function defineFormatTests(format) {
 
         return result;
       });
+    }
+
+    it('discards post-header data', async () => {
+      const zlibStream = new Decompress();
+      const inflateAuto = new InflateAuto();
+      const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
+
+      const zlibWriteP = promisify(zlibStream.write);
+      const autoWriteP = promisify(inflateAuto.write);
+
+      const partial = compressed.slice(0, headerLen + 1);
+      await Promise.all([
+        zlibWriteP.call(zlibStream, partial),
+        autoWriteP.call(inflateAuto, partial),
+      ]);
+
+      result.checkpoint();
+
+      // IMPORTANT:  Can't call Zlib.reset() with write in progress
+      // Since write is run from uv work queue thread and reset from main
+      zlibStream.reset();
+      inflateAuto.reset();
+      result.checkpoint();
+
+      zlibStream.end(compressed);
+      inflateAuto.end(compressed);
+      result.checkpoint();
+
+      return result;
     });
 
     // Note:  Behavior on compression type change after reset is not
@@ -1878,7 +1877,7 @@ function defineFormatTests(format) {
       return result;
     });
 
-    it('behaves the same after format', () => {
+    it('behaves the same after format', async () => {
       const zlibStream = new Decompress();
       const inflateAuto = new InflateAuto();
       const result = streamCompare(inflateAuto, zlibStream, COMPARE_OPTIONS);
@@ -1887,23 +1886,23 @@ function defineFormatTests(format) {
       const autoWriteP = promisify(inflateAuto.write);
 
       const chunk = compressed.slice(0, headerLen + 4);
-      return Promise.all([
+      await Promise.all([
         zlibWriteP.call(zlibStream, chunk),
         autoWriteP.call(inflateAuto, chunk),
-      ]).then(() => {
-        result.checkpoint();
+      ]);
 
-        zlibStream.setEncoding('utf8');
-        inflateAuto.setEncoding('utf8');
-        result.checkpoint();
+      result.checkpoint();
 
-        const rest = compressed.slice(chunk.length);
-        zlibStream.end(rest);
-        inflateAuto.end(rest);
-        result.checkpoint();
+      zlibStream.setEncoding('utf8');
+      inflateAuto.setEncoding('utf8');
+      result.checkpoint();
 
-        return result;
-      });
+      const rest = compressed.slice(chunk.length);
+      zlibStream.end(rest);
+      inflateAuto.end(rest);
+      result.checkpoint();
+
+      return result;
     });
   });
 
