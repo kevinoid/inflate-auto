@@ -35,6 +35,9 @@ module.exports = [
         ],
       }],
 
+      // Allow this outside of ES6 classes to avoid major refactoring
+      'unicorn/no-this-outside-of-class': 'off',
+
       // Allow CommonJS modules
       'unicorn/prefer-module': 'off',
 
