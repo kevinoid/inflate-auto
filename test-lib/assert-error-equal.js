@@ -21,7 +21,8 @@ function collectPropertyDescriptors(propMap, obj) {
   if (proto !== Error.prototype) {
     collectPropertyDescriptors(propMap, proto);
   }
-  for (const [p, d] of Object.entries(Object.getOwnPropertyDescriptors(obj))) {
+  const ownPropertyDescriptors = Object.getOwnPropertyDescriptors(obj);
+  for (const [p, d] of Object.entries(ownPropertyDescriptors)) {
     // Removed (below Error.prototype in inheritance hierarchy) in
     // a86a295fd7 https://github.com/nodejs/node/pull/33857
     if (p === 'constructor' && nodeVersion[0] < 15) {
