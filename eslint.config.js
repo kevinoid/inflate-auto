@@ -41,6 +41,10 @@ module.exports = [
       // Allow CommonJS modules
       'unicorn/prefer-module': 'off',
 
+      // Don't prefer private fields to underscores
+      // Streams expose protected members with underscores
+      'unicorn/prefer-private-class-fields': 'off',
+
       // Don't prefer top-level await
       // Since top-level await is only supported in ECMAScript Modules (ESM)
       'unicorn/prefer-top-level-await': 'off',
@@ -64,7 +68,10 @@ module.exports = [
       '@stylistic/operator-linebreak': ['error', 'after'],
       'n/global-require': 'off',
       'no-use-before-define': ['error', { functions: false }],
+      'unicorn/no-nonstandard-builtin-properties': 'off',
       'unicorn/no-null': 'off',
+      'unicorn/no-top-level-assignment-in-function': 'off',
+      'unicorn/no-useless-template-literals': 'off',
       'unicorn/prefer-prototype-methods': 'off',
     },
   },
