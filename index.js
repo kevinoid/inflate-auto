@@ -27,7 +27,7 @@ const {
   ERR_STREAM_PREMATURE_CLOSE,
   ERR_SYNC_NOT_SUPPORTED,
 } = require('./lib/errors.js');
-const zlibInternal = require('./lib/zlib-internal.js');
+const { zlibBuffer, zlibBufferSync } = require('./lib/zlib-internal.js');
 
 const {
   INFLATE, Z_NO_FLUSH, Z_BLOCK, Z_FULL_FLUSH, Z_FINISH,
@@ -393,7 +393,7 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
     callback = opts;
     opts = {};
   }
-  zlibInternal.zlibBuffer(new InflateAuto(opts), buffer, callback);
+  zlibBuffer(new InflateAuto(opts), buffer, callback);
 };
 
 /** Decompresses a compressed Buffer synchronously.
@@ -405,7 +405,7 @@ InflateAuto.inflateAuto = function inflateAuto(buffer, opts, callback) {
  */
 InflateAuto.inflateAutoSync = function inflateAutoSync(buffer, opts) {
   // eslint-disable-next-line n/no-sync
-  return zlibInternal.zlibBufferSync(new InflateAuto(opts), buffer);
+  return zlibBufferSync(new InflateAuto(opts), buffer);
 };
 
 /** Implements {@link #destroy} on this stream by ensuring
