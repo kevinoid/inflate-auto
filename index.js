@@ -452,7 +452,7 @@ InflateAuto.prototype._detectFormat = function _detectFormat(chunk, end) {
     this._detectorsLeft = newDetectorsLeft;
   }
 
-  if (this._detectorsLeft.length === 0 || end) {
+  if (end || this._detectorsLeft.length === 0) {
     if (this._defaultFormat) {
       return this._defaultFormat;
     }
@@ -523,7 +523,7 @@ if (zlib.Inflate.prototype._processChunk) {
     if (!Buffer.isBuffer(chunk)) {
       if (isArrayBufferView(chunk)) {
         chunk = Buffer.from(chunk.buffer, chunk.byteOffset, chunk.byteLength);
-      } else if (isAnyArrayBuffer(chunk) || typeof chunk === 'string') {
+      } else if (typeof chunk === 'string' || isAnyArrayBuffer(chunk)) {
         chunk = Buffer.from(chunk);
       } else {
         throw new ERR_INVALID_ARG_TYPE(
@@ -546,7 +546,7 @@ if (zlib.Inflate.prototype._processChunk) {
         throw err;
       }
 
-      if (!this._decoder && typeof cb !== 'function') {
+      if (typeof cb !== 'function' && !this._decoder) {
         // Synchronous calls operate on complete buffer.  Choose format now.
         this.setFormat(this._detectFormat(chunk, true));
       }
