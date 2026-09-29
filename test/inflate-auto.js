@@ -361,16 +361,16 @@ function assertWriteError(writable, chunk, assertError) {
     // Previous behavior was restored in nodejs/node@f8f6a21580 for v13.0.0.
     // Therefore, this function asserts that 'error' is emitted at most once,
     // rather than exactly once.
-    let errorEmitted = false;
+    let wasErrorEmitted = false;
     writable.on('error', (err) => {
-      if (errorEmitted) {
+      if (wasErrorEmitted) {
         reject(new AssertionError({
           message: 'error should be emitted at most once',
           operator: 'fail',
         }));
         return;
       }
-      errorEmitted = true;
+      wasErrorEmitted = true;
 
       try {
         assertError(err);
@@ -1385,10 +1385,10 @@ function defineFormatTests(format) {
     it('emits once for multiple calls', () => {
       const inflateAuto = new InflateAuto();
 
-      let closeEmitted = false;
+      let wasCloseEmitted = false;
       inflateAuto.on('close', () => {
-        assert.strictEqual(closeEmitted, false);
-        closeEmitted = true;
+        assert.strictEqual(wasCloseEmitted, false);
+        wasCloseEmitted = true;
       });
 
       inflateAuto.once('close', () => {
@@ -1400,7 +1400,7 @@ function defineFormatTests(format) {
 
       return new Promise((resolve, reject) => {
         setImmediate(() => {
-          assert.strictEqual(closeEmitted, true);
+          assert.strictEqual(wasCloseEmitted, true);
           resolve();
         });
       });
@@ -1777,10 +1777,10 @@ function defineFormatTests(format) {
           // https://github.com/nodejs/node/commit/f380db23
           // If zlib stream emits a header error, test for success instead of ==
           return new Promise((resolve, reject) => {
-            let headerError = false;
+            let haveHeaderError = false;
             zlibStream.once('error', (err) => {
               if (err.message === 'incorrect header check') {
-                headerError = true;
+                haveHeaderError = true;
                 // Comparison result ignored.  Suppress unhandled rejection.
                 // eslint-disable-next-line n/handle-callback-err
                 result.catch((errResult) => {});
@@ -1792,7 +1792,7 @@ function defineFormatTests(format) {
 
             inflateAuto.once('end', () => {
               assert.deepStrictEqual(Buffer.concat(dataAuto), uncompressed);
-              if (headerError) {
+              if (haveHeaderError) {
                 resolve();
               }
             });
@@ -1910,13 +1910,13 @@ function defineFormatTests(format) {
   describe('#setFormat()', () => {
     it('emits \'format\' event with decoder', () => {
       const inflateAuto = new InflateAuto();
-      let gotFormat = false;
+      let haveFormat = false;
       inflateAuto.on('format', (decoder) => {
         assert(decoder instanceof Decompress);
-        gotFormat = true;
+        haveFormat = true;
       });
       inflateAuto.setFormat(Decompress);
-      assert.strictEqual(gotFormat, true);
+      assert.strictEqual(haveFormat, true);
     });
 
     it('can set correct format before write', () => {

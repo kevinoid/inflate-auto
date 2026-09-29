@@ -102,13 +102,13 @@ function assertErrorEqual(actual, expected, message) {
     TypeError,
     URIError,
   ].some((builtInError) => {
-    const actualInstanceOf = actual instanceof builtInError;
-    const expectedInstanceOf = expected instanceof builtInError;
-    if (actualInstanceOf !== expectedInstanceOf) {
+    const isActualBuiltIn = actual instanceof builtInError;
+    const isExpectedBuiltIn = expected instanceof builtInError;
+    if (isActualBuiltIn !== isExpectedBuiltIn) {
       message ||= `Expected "actual" and "expected" to be instanceof ${
         builtInError.prototype.name}: actual ${
-        actualInstanceOf ? 'is' : 'is not'}, expected ${
-        expectedInstanceOf ? 'is' : 'is not'}.`;
+        isActualBuiltIn ? 'is' : 'is not'}, expected ${
+        isExpectedBuiltIn ? 'is' : 'is not'}.`;
       throw new AssertionError({
         actual,
         expected,
@@ -117,7 +117,7 @@ function assertErrorEqual(actual, expected, message) {
       });
     }
 
-    return actualInstanceOf;
+    return isActualBuiltIn;
   });
 
   // Note: Would be nice if OwnPropertyNames was the same, but some vary
